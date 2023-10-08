@@ -2,10 +2,10 @@
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
-using MaltiezFirearms.FiniteStateMachine.API;
+using MaltiezFSM.API;
 using System.Diagnostics.CodeAnalysis;
 
-namespace MaltiezFirearms.FiniteStateMachine.Framework
+namespace MaltiezFSM.Framework
 {    
     public class FiniteStateMachine : IFiniteStateMachine
     {    
@@ -64,7 +64,7 @@ namespace MaltiezFirearms.FiniteStateMachine.Framework
             }
         }
         
-        private const string cStateAtributeName = "firearms.state";
+        private const string cStateAtributeName = "FMSlib.state";
         private const string cInitialStateAtribute = "initialState";
 
         private string mInitialState;
@@ -200,7 +200,7 @@ namespace MaltiezFirearms.FiniteStateMachine.Framework
 
             if (state.ToString() != newState.ToString())
             {
-                if (mApi.Side == EnumAppSide.Client) mApi.Logger.Debug("[Firearms] [CLIENT] State moved from '" + state.ToString() + "' to '" + newState.ToString() + "'.");
+                if (mApi.Side == EnumAppSide.Client) mApi.Logger.Debug("[FSMlib] [CLIENT] State moved from '" + state.ToString() + "' to '" + newState.ToString() + "'.");
                 WriteStateTo(slot, newState as State);
             }
 

@@ -1,8 +1,8 @@
 ﻿using Vintagestory.API.Common;
-using MaltiezFirearms.FiniteStateMachine.API;
+using MaltiezFSM.API;
 using Vintagestory.API.Client;
 
-namespace MaltiezFirearms.FiniteStateMachine
+namespace MaltiezFSM
 {
     public class FiniteStateMachineSystem : ModSystem, IFactoryProvider
     {
@@ -15,7 +15,7 @@ namespace MaltiezFirearms.FiniteStateMachine
         {  
             base.Start(api);
 
-            api.RegisterCollectibleBehaviorClass("FirearmsFiniteStateMachine", typeof(Framework.FiniteStateMachineBehaviour));
+            api.RegisterCollectibleBehaviorClass("FiniteStateMachine", typeof(Framework.FiniteStateMachineBehaviour));
 
             mOperationFactory = new Framework.Factory<IOperation, Framework.UniqueIdGeneratorForFactory>(api);
             mSystemFactory = new Framework.Factory<ISystem, Framework.UniqueIdGeneratorForFactory>(api);

@@ -2,7 +2,7 @@
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
-namespace MaltiezFirearms.FiniteStateMachine.API
+namespace MaltiezFSM.API
 {
     /// <summary>
     /// Implements id assignment and uses it for checks if two objects are equal (for example for the objects to be used as dictionary keys).<br/>

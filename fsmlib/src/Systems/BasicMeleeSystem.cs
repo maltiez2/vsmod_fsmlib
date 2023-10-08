@@ -1,12 +1,12 @@
-﻿using MaltiezFirearms.FiniteStateMachine.API;
-using MaltiezFirearms.FiniteStateMachine.Framework;
+﻿using MaltiezFSM.API;
+using MaltiezFSM.Framework;
 using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
-namespace MaltiezFirearms.FiniteStateMachine.Systems
+namespace MaltiezFSM.Systems
 {
     internal class BasicMelee : UniqueIdFactoryObject, ISystem // @TODO Placeholder system
     {

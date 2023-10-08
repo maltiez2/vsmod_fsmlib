@@ -1,13 +1,13 @@
-﻿using MaltiezFirearms.FiniteStateMachine.API;
+﻿using MaltiezFSM.API;
 using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.Client.NoObf;
-using static MaltiezFirearms.FiniteStateMachine.Systems.IAimingSystem;
+using static MaltiezFSM.Systems.IAimingSystem;
 
-namespace MaltiezFirearms.FiniteStateMachine.Systems
+namespace MaltiezFSM.Systems
 {
     internal class BasicAim : UniqueIdFactoryObject, ISystem, IAimingSystem
     {

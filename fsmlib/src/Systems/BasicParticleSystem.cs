@@ -1,4 +1,4 @@
-﻿using MaltiezFirearms.FiniteStateMachine.API;
+﻿using MaltiezFSM.API;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -11,7 +11,7 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
-namespace MaltiezFirearms.FiniteStateMachine.Systems
+namespace MaltiezFSM.Systems
 {
     internal class BasicParticles : UniqueIdFactoryObject, ISystem
     {

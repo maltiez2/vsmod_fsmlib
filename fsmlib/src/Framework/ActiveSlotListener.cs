@@ -1,11 +1,11 @@
-﻿using MaltiezFirearms.FiniteStateMachine.API;
+﻿using MaltiezFSM.API;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Metadata;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 
-namespace MaltiezFirearms.FiniteStateMachine.Framework
+namespace MaltiezFSM.Framework
 {
     public class ActiveSlotPassiveListener : IActiveSlotListener
     {
@@ -135,7 +135,7 @@ namespace MaltiezFirearms.FiniteStateMachine.Framework
             {
                 if (!mClientApi.Input.HotKeys.ContainsKey(hotkeyId))
                 {
-                    mClientApi.Logger.Error("[Firearms] [ActiveSlotActiveListener] [KeyPressListener()] Hotkey '" + hotkeyId + "' not found");
+                    mClientApi.Logger.Error("[FSMlib] [ActiveSlotActiveListener] [KeyPressListener()] Hotkey '" + hotkeyId + "' not found");
                 }
 
                 if (mClientApi.Input.HotKeys.ContainsKey(hotkeyId) && CompareCombinations(ev, mClientApi.Input.HotKeys[hotkeyId].CurrentMapping))

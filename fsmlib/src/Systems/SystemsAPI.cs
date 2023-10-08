@@ -1,7 +1,7 @@
 ﻿using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
-namespace MaltiezFirearms.FiniteStateMachine.Systems
+namespace MaltiezFSM.Systems
 {
     public interface IVariantsAnimation
     {

@@ -1,10 +1,10 @@
 ﻿using Vintagestory.API.Datastructures;
 using Vintagestory.API.Common;
-using MaltiezFirearms.FiniteStateMachine.API;
+using MaltiezFSM.API;
 using System.Collections.Generic;
 using System;
 
-namespace MaltiezFirearms.FiniteStateMachine.Systems
+namespace MaltiezFSM.Systems
 {
     public class BasicVariantsAnimation<TAnimationPlayer> : UniqueIdFactoryObject, ISystem
         where TAnimationPlayer : IAnimationPlayer, new()

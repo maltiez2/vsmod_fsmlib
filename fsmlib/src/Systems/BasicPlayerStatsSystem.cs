@@ -1,4 +1,4 @@
-﻿using MaltiezFirearms.FiniteStateMachine.API;
+﻿using MaltiezFSM.API;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,7 +8,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 
-namespace MaltiezFirearms.FiniteStateMachine.Systems
+namespace MaltiezFSM.Systems
 {
     internal class BasicPlayerStats : UniqueIdFactoryObject, ISystem
     {
@@ -26,7 +26,7 @@ namespace MaltiezFirearms.FiniteStateMachine.Systems
             float value = parameters["value"].AsFloat(0);
             bool persistent = parameters["persist"].AsBool(false);
 
-            (player as EntityPlayer).Stats.Set(code, "maltiezfirearms.system.id" + GetId(), value, persistent);
+            (player as EntityPlayer).Stats.Set(code, "FSMLib." + GetId(), value, persistent);
 
             return true;
         }

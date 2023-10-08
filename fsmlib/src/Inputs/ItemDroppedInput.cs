@@ -1,8 +1,8 @@
 ﻿using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
-using MaltiezFirearms.FiniteStateMachine.API;
+using MaltiezFSM.API;
 
-namespace MaltiezFirearms.FiniteStateMachine.Inputs
+namespace MaltiezFSM.Inputs
 {
     public class ItemDropped : BaseInput, ISlotEvent
     {

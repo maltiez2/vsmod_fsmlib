@@ -3,9 +3,8 @@ using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
-using Vintagestory.API.MathTools;
 
-namespace MaltiezFirearms.FiniteStateMachine.API
+namespace MaltiezFSM.API
 {
     public struct KeyPressModifiers
     {
@@ -20,6 +19,8 @@ namespace MaltiezFirearms.FiniteStateMachine.API
             Shift = shift;
         }
     }
+
+    // DOCUMENTATION: WORK IN PROGRESS
 
     /// <summary>
     /// Is used to represent a state of FSM. Is used as dictionary key and to compare if two states are the same state.

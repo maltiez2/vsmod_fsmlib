@@ -1,9 +1,9 @@
 ﻿using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
-using MaltiezFirearms.FiniteStateMachine.API;
+using MaltiezFSM.API;
 using Vintagestory.API.Client;
 
-namespace MaltiezFirearms.FiniteStateMachine.Framework
+namespace MaltiezFSM.Framework
 {
     public class FiniteStateMachineBehaviour : CollectibleBehavior
     {

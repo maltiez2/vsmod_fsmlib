@@ -1,6 +1,6 @@
-﻿using MaltiezFirearms.FiniteStateMachine.API;
+﻿using MaltiezFSM.API;
 
-namespace MaltiezFirearms.FiniteStateMachine.Framework
+namespace MaltiezFSM.Framework
 {
     internal class UniqueIdGeneratorForFactory : IUniqueIdGeneratorForFactory
     {

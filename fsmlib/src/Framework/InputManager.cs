@@ -4,13 +4,13 @@ using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Server;
-using static MaltiezFirearms.FiniteStateMachine.API.IInputManager;
-using static MaltiezFirearms.FiniteStateMachine.API.IKeyInput;
-using static MaltiezFirearms.FiniteStateMachine.API.IMouseInput;
-using static MaltiezFirearms.FiniteStateMachine.API.ISlotChangedAfter;
-using MaltiezFirearms.FiniteStateMachine.API;
+using static MaltiezFSM.API.IInputManager;
+using static MaltiezFSM.API.IKeyInput;
+using static MaltiezFSM.API.IMouseInput;
+using static MaltiezFSM.API.ISlotChangedAfter;
+using MaltiezFSM.API;
 
-namespace MaltiezFirearms.FiniteStateMachine.Framework
+namespace MaltiezFSM.Framework
 {
     public class InputManager : IInputManager
     {
@@ -207,7 +207,7 @@ namespace MaltiezFirearms.FiniteStateMachine.Framework
                 
                 if (!rBlockingGuiDialogs.Contains(item.DebugName))
                 {
-                    mClientApi.Logger.Debug("[Firearms] [InputManager] [ClientIfEventShouldBeHandled()] Input was not handled due to opened: " + item.DebugName);
+                    mClientApi.Logger.Debug("[FSMlib] [InputManager] [ClientIfEventShouldBeHandled()] Input was not handled due to opened: " + item.DebugName);
                     rBlockingGuiDialogs.Add(item.DebugName);
                 }
                 

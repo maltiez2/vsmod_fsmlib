@@ -1,11 +1,11 @@
 ﻿using Vintagestory.API.Datastructures;
 using Vintagestory.API.Common;
-using MaltiezFirearms.FiniteStateMachine.API;
+using MaltiezFSM.API;
 using System.Collections.Generic;
 using Vintagestory.API.Config;
 using Vintagestory.API.Server;
 
-namespace MaltiezFirearms.FiniteStateMachine.Systems
+namespace MaltiezFSM.Systems
 {
     internal class BasicRequirements : UniqueIdFactoryObject, ISystem
     {

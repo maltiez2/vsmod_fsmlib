@@ -1,9 +1,9 @@
 ﻿using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
-using MaltiezFirearms.FiniteStateMachine.API;
+using MaltiezFSM.API;
 
-namespace MaltiezFirearms.FiniteStateMachine.Framework
+namespace MaltiezFSM.Framework
 {
     public class BehaviourAttributesParser : IBehaviourAttributesParser
     {

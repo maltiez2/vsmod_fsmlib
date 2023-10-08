@@ -1,12 +1,12 @@
 ﻿using Vintagestory.API.Datastructures;
 using Vintagestory.API.Common;
-using MaltiezFirearms.FiniteStateMachine.API;
+using MaltiezFSM.API;
 using System.Collections.Generic;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Server;
 
-namespace MaltiezFirearms.FiniteStateMachine.Systems
+namespace MaltiezFSM.Systems
 {  
     internal class BasicReload : UniqueIdFactoryObject, ISystem, IAmmoSelector
     {
@@ -16,7 +16,7 @@ namespace MaltiezFirearms.FiniteStateMachine.Systems
         public const string takeAction = "take";
         public const string putAction = "put";
 
-        public string AmmoStackAttrName = "firearms.ammo.";
+        public string AmmoStackAttrName = "FSMlib.stack.";
 
         private string mCode;
         
@@ -40,7 +40,7 @@ namespace MaltiezFirearms.FiniteStateMachine.Systems
             bool verified = ammoSlot != null && ammoSlot != slot && ammoSlot.Itemstack?.StackSize >= amount;
             if (!verified)
             {
-                ((player as EntityPlayer)?.Player as IServerPlayer)?.SendMessage(GlobalConstants.InfoLogChatGroup, "Cant reload, unfulfilled requirements: " + ammoCode, EnumChatType.Notification);
+                ((player as EntityPlayer)?.Player as IServerPlayer)?.SendMessage(GlobalConstants.InfoLogChatGroup, "[FSMlib] Cant operate, unfulfilled requirements: " + ammoCode, EnumChatType.Notification);
             }
             return verified;
         }

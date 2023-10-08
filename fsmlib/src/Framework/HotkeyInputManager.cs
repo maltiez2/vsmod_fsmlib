@@ -4,14 +4,14 @@ using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Server;
-using static MaltiezFirearms.FiniteStateMachine.API.IInputManager;
-using static MaltiezFirearms.FiniteStateMachine.API.IKeyInput;
-using static MaltiezFirearms.FiniteStateMachine.API.IMouseInput;
-using static MaltiezFirearms.FiniteStateMachine.API.ISlotChangedAfter;
-using MaltiezFirearms.FiniteStateMachine.API;
+using static MaltiezFSM.API.IInputManager;
+using static MaltiezFSM.API.IKeyInput;
+using static MaltiezFSM.API.IMouseInput;
+using static MaltiezFSM.API.ISlotChangedAfter;
+using MaltiezFSM.API;
 using System.Linq;
 
-namespace MaltiezFirearms.FiniteStateMachine.Framework
+namespace MaltiezFSM.Framework
 {
     public class HotkeyInputManager : IHotkeyInputManager
     {

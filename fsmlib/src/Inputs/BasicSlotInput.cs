@@ -1,9 +1,9 @@
 ﻿using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
-using MaltiezFirearms.FiniteStateMachine.API;
+using MaltiezFSM.API;
 using System.Collections.Generic;
 
-namespace MaltiezFirearms.FiniteStateMachine.Inputs
+namespace MaltiezFSM.Inputs
 {
     public class BasicSlotBefore : BaseInput, ISlotChangedBefore
     {

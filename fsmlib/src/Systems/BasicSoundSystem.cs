@@ -2,9 +2,9 @@
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using System.Collections.Generic;
-using MaltiezFirearms.FiniteStateMachine.API;
+using MaltiezFSM.API;
 
-namespace MaltiezFirearms.FiniteStateMachine.Systems
+namespace MaltiezFSM.Systems
 {
     internal interface ISound
     {

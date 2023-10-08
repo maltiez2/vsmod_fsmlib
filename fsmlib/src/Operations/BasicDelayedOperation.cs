@@ -1,10 +1,10 @@
-﻿using MaltiezFirearms.FiniteStateMachine.API;
+﻿using MaltiezFSM.API;
 using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
-namespace MaltiezFirearms.FiniteStateMachine.Operations
+namespace MaltiezFSM.Operations
 {
     public interface ITransition
     {

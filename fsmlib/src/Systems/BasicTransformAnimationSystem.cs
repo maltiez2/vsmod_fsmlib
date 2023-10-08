@@ -1,11 +1,11 @@
 ﻿using Vintagestory.API.Datastructures;
 using Vintagestory.API.Common;
-using MaltiezFirearms.FiniteStateMachine.API;
+using MaltiezFSM.API;
 using System.Collections.Generic;
 using System;
-using MaltiezFirearms.FiniteStateMachine.Framework;
+using MaltiezFSM.Framework;
 
-namespace MaltiezFirearms.FiniteStateMachine.Systems
+namespace MaltiezFSM.Systems
 {
     public class BasicTransformAnimation : UniqueIdFactoryObject, ISystem
     {

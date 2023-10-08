@@ -1,11 +1,11 @@
 ﻿using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
-using static MaltiezFirearms.FiniteStateMachine.API.IKeyInput;
-using MaltiezFirearms.FiniteStateMachine.API;
+using static MaltiezFSM.API.IKeyInput;
+using MaltiezFSM.API;
 using Vintagestory.API.Client;
 using System;
 
-namespace MaltiezFirearms.FiniteStateMachine.Inputs
+namespace MaltiezFSM.Inputs
 {
     public class BasicKey : BaseInput, IKeyInput
     {
