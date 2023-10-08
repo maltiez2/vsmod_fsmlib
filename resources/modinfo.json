@@ -1,0 +1,13 @@
+{
+    "type": "code",
+    "modid": "fsmlib",
+    "name": "FSMlib",
+    "authors": [
+        "Maltiez"
+    ],
+    "description": "Finite State Machine library as framework for implementing weapons and other usable items with complex behaviour",
+    "version": "0.1.0",
+    "dependencies": {
+        "game": "1.18.8"
+    }
+}
