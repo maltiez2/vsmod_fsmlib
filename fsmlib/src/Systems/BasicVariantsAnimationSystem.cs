@@ -143,15 +143,15 @@ namespace MaltiezFSM.Systems
         }
         public void Play()
         {
-            mCallback(mNextVariant++);
-            if (mNextVariant > mLastVariant) return;
+            mCallback(NextVariant());
+            if (mNextVariant > mLastVariant || mNextVariant < mFirstVariant) return;
             mCallbackId = mApi.World.RegisterCallback(Handler, mDelay_ms);
         }
         public void Handler(float time)
         {
-            mCallback(mNextVariant++);
+            mCallback(NextVariant());
 
-            if (mNextVariant > mLastVariant) return;
+            if (mNextVariant > mLastVariant || mNextVariant < mFirstVariant) return;
 
             int newDelay = 2 * mDelay_ms - (int)(time * 1000);
             mCallbackId = mApi.World.RegisterCallback(Handler, newDelay);
@@ -168,12 +168,21 @@ namespace MaltiezFSM.Systems
             Stop();
             mCallback(mFirstVariant);
         }
+        private int NextVariant()
+        {
+            if (mFirstVariant <= mLastVariant)
+            {
+                return mNextVariant++;
+            }
+            else
+            {
+                return mNextVariant--;
+            }
+        }
     }
 
     public sealed class TickBasedAnimation : IAnimationPlayer
     {
-        public const int listenerDelayGranularity = 10;
-        
         private Action<int> mCallback;
         private ICoreAPI mApi;
         private long? mCallbackId;
@@ -183,7 +192,6 @@ namespace MaltiezFSM.Systems
         private int mLastVariant;
         private int mDelay_ms;
         private int mTimeElapsed_ms;
-        private int mListenerDelay_ms;
 
         public void Init(ICoreAPI api, IAnimationPlayer.AnimationParameters parameters, Action<int> callback)
         {
@@ -192,8 +200,8 @@ namespace MaltiezFSM.Systems
             mFirstVariant = parameters.firstVariant;
             mLastVariant = parameters.lastVariant;
             mNextVariant = parameters.firstVariant;
-            mDelay_ms = (mLastVariant - mNextVariant == 0) ? parameters.duration_ms : parameters.duration_ms / (mLastVariant - mNextVariant);
-            mListenerDelay_ms = (listenerDelayGranularity == 0) ? 0 : mDelay_ms / listenerDelayGranularity;
+            int variantsNumber = mLastVariant > mNextVariant ? mLastVariant - mNextVariant : mNextVariant - mLastVariant;
+            mDelay_ms = (variantsNumber == 0) ? parameters.duration_ms : parameters.duration_ms / variantsNumber;
         }
         public void Play()
         {
@@ -226,13 +234,20 @@ namespace MaltiezFSM.Systems
         }
         private bool SetVariant()
         {
-            if (mNextVariant > mLastVariant)
+            if ((mNextVariant - mLastVariant) * (mNextVariant - mFirstVariant) > 0)
             {
                 StopListener();
                 return false;
             }
             mCallback(mNextVariant);
-            mNextVariant++;
+            if (mFirstVariant <= mLastVariant)
+            {
+                mNextVariant++;
+            }
+            else
+            {
+                mNextVariant--;
+            }
             return true;
         }
         private void RevertVariant()
@@ -242,8 +257,8 @@ namespace MaltiezFSM.Systems
         private void SetListener()
         {
             StopListener();
-            if (mNextVariant > mLastVariant) return;
-            mCallbackId = mApi.World.RegisterGameTickListener(Handler, mListenerDelay_ms);
+            if ((mNextVariant - mLastVariant) * (mNextVariant - mFirstVariant) > 0) return;
+            mCallbackId = mApi.World.RegisterGameTickListener(Handler, 0);
         }
         private void StopListener()
         {

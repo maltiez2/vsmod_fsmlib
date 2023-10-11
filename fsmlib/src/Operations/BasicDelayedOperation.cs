@@ -43,9 +43,12 @@ namespace MaltiezFSM.Operations
 
         public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
         {
-            foreach (JsonObject input in definition[inputsToInterceptAttrName].AsArray())
+            if (definition.KeyExists(inputsToInterceptAttrName))
             {
-                mInputsToPreventInitialData.Add(input.AsString());
+                foreach (JsonObject input in definition[inputsToInterceptAttrName].AsArray())
+                {
+                    mInputsToPreventInitialData.Add(input.AsString());
+                }
             }
 
             mApi = api;

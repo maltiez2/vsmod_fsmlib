@@ -63,13 +63,13 @@ namespace MaltiezFSM.Systems
             switch (mode)
             {
                 case "forward":
-                    mTimer.Play();
+                    mTimer?.Play();
                     break;
                 case "backward":
-                    mTimer.Revert();
+                    mTimer?.Revert();
                     break;
                 case "cancel":
-                    mTimer.Stop();
+                    mTimer?.Stop();
                     break;
             }
             

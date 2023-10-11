@@ -97,7 +97,6 @@ namespace MaltiezFSM.Systems
                     modelTransform.Rotation.Set((-20.0f - animationProgressSum) * 9f, animationProgressSum * 5f - 10f, (0f - animationProgressSum) * 30f);
                 }
 
-                byEntity.Controls.UsingHeldItemTransformAfter = modelTransform;
                 if (stab > 1.15f && byEntity.Attributes.GetInt("didattack") == 0)
                 {
                     clientWorldAccessor.TryAttackEntity(entitySel);

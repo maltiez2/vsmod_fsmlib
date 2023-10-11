@@ -7,7 +7,6 @@ namespace MaltiezFSM.Inputs
     public class BasicHotkey : BaseInput, IHotkeyInput
     {
         public const string keyAttrName = "key";
-        public const string keyPressTypeAttrName = "type";
         public const string altAttrName = "alt";
         public const string ctrlAttrName = "ctrl";
         public const string shiftAttrName = "shift";

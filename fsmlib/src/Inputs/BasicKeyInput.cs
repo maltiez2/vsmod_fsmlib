@@ -59,7 +59,7 @@ namespace MaltiezFSM.Inputs
             if (mClientApi == null) throw new InvalidOperationException("BasicKey.CheckIfShouldBeHandled() called on server side");
 
             if (mType != eventType) return false;
-            if (keyEvent.KeyCode != mKeyEnum) return false;
+            if (keyEvent.KeyCode != mKeyEnum && keyEvent.KeyCode2 != mKeyEnum) return false;
             if (keyEvent.AltPressed != mModifiers.Alt || keyEvent.CtrlPressed != mModifiers.Ctrl || keyEvent.ShiftPressed != mModifiers.Shift) return false;
 
             return true;

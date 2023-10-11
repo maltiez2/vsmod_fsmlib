@@ -6,7 +6,6 @@ namespace MaltiezFSM.Inputs
 {
     public class BaseInput : UniqueIdFactoryObject, IInput
     {
-        public const string codeAttrName = "key";
         public const string handledAttrName = "handle";
 
         private string mCode;
