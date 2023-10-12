@@ -45,6 +45,8 @@ namespace MaltiezFSM
             mSystemFactory.RegisterType<Systems.NoSway>("NoSway");
             mSystemFactory.RegisterType<Systems.ChangeGroup>("ChangeGroup");
             mSystemFactory.RegisterType<Systems.BasicMelee>("BasicMelee");
+            mSystemFactory.RegisterType<Systems.BasicDurabilityDamage>("DurabilityDamage");
+            mSystemFactory.RegisterType<Systems.BasicDurability>("Durability");
         }
         public void RegisterOperations()
         {

@@ -42,9 +42,9 @@ namespace MaltiezFSM.Inputs
             }
             mModifiers = new KeyPressModifiers
             (
-                definition[altAttrName].AsBool(false),
-                definition[ctrlAttrName].AsBool(false),
-                definition[shiftAttrName].AsBool(false)
+                definition.KeyExists(altAttrName) ? definition[altAttrName].AsBool(false) : null,
+                definition.KeyExists(ctrlAttrName) ? definition[ctrlAttrName].AsBool(false) : null,
+                definition.KeyExists(shiftAttrName) ? definition[shiftAttrName].AsBool(false) : null
             );
 
             mClientApi = api as ICoreClientAPI;
@@ -60,7 +60,9 @@ namespace MaltiezFSM.Inputs
 
             if (mType != eventType) return false;
             if (keyEvent.KeyCode != mKeyEnum && keyEvent.KeyCode2 != mKeyEnum) return false;
-            if (keyEvent.AltPressed != mModifiers.Alt || keyEvent.CtrlPressed != mModifiers.Ctrl || keyEvent.ShiftPressed != mModifiers.Shift) return false;
+            if (mModifiers.Alt != null && keyEvent.AltPressed != mModifiers.Alt) return false;
+            if (mModifiers.Ctrl != null && keyEvent.CtrlPressed != mModifiers.Ctrl) return false;
+            if (mModifiers.Shift != null && keyEvent.ShiftPressed != mModifiers.Shift) return false;
 
             return true;
         }

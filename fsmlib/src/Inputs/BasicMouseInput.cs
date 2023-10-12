@@ -46,9 +46,9 @@ namespace MaltiezFSM.Inputs
             }
             mModifiers = new KeyPressModifiers
             (
-                definition[altAttrName].AsBool(false),
-                definition[ctrlAttrName].AsBool(false),
-                definition[shiftAttrName].AsBool(false)
+                definition.KeyExists(altAttrName) ? definition[altAttrName].AsBool(false) : null,
+                definition.KeyExists(ctrlAttrName) ? definition[ctrlAttrName].AsBool(false) : null,
+                definition.KeyExists(shiftAttrName) ? definition[shiftAttrName].AsBool(false) : null
             );
 
             mClientApi = api as ICoreClientAPI;
@@ -88,7 +88,11 @@ namespace MaltiezFSM.Inputs
             bool ctrlPressed = mClientApi.Input.KeyboardKeyState[(int)GlKeys.ControlLeft] || mClientApi.Input.KeyboardKeyState[(int)GlKeys.ControlRight];
             bool shiftPressed = mClientApi.Input.KeyboardKeyState[(int)GlKeys.ShiftLeft] || mClientApi.Input.KeyboardKeyState[(int)GlKeys.ShiftRight];
 
-            return mModifiers.Alt == altPressed && mModifiers.Ctrl == ctrlPressed && mModifiers.Shift == shiftPressed;
+            if (mModifiers.Alt != null && altPressed != mModifiers.Alt) return false;
+            if (mModifiers.Ctrl != null && ctrlPressed != mModifiers.Ctrl) return false;
+            if (mModifiers.Shift != null && shiftPressed != mModifiers.Shift) return false;
+
+            return true;
         }
     }
 }

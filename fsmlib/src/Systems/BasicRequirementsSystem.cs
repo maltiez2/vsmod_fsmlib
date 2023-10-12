@@ -4,6 +4,7 @@ using MaltiezFSM.API;
 using System.Collections.Generic;
 using Vintagestory.API.Config;
 using Vintagestory.API.Server;
+using System;
 
 namespace MaltiezFSM.Systems
 {
@@ -14,11 +15,13 @@ namespace MaltiezFSM.Systems
             public string code { get; set; }
             public int amount { get; set; }
             public int durability { get; set; }
+            public int durabilityDamage { get; set; }
             public int offHand { get; set; }
+            public bool consume { get; set; }
 
-            public static implicit operator OperationRequirement((string code, int amount, int durability, int offHand) parameters)
+            public static implicit operator OperationRequirement((string code, int amount, int durability, int durabilityDamage, int offHand, bool consume) parameters)
             {
-                return new OperationRequirement() { code = parameters.code, amount = parameters.amount, durability = parameters.durability, offHand = parameters.offHand };
+                return new OperationRequirement() { code = parameters.code, amount = parameters.amount, durability = parameters.durability, durabilityDamage = parameters.durabilityDamage, offHand = parameters.offHand, consume = parameters.consume };
             }
         }
 
@@ -82,12 +85,19 @@ namespace MaltiezFSM.Systems
             {
                 ItemSlot ammoSlot = GetNextRequirement(byEntity, requirement);
 
-                if (requirement.durability > 0)
+                if (requirement.durability != 0)
                 {
-                    ammoSlot?.Itemstack.Item.DamageItem(byEntity.World, byEntity, ammoSlot, requirement.durability);
+                    if (ChangeDurability(ammoSlot.Itemstack, -requirement.durability))
+                    {
+                        ammoSlot.MarkDirty();
+                    }
+                }
+                else if (requirement.durabilityDamage > 0)
+                {
+                    ammoSlot?.Itemstack.Item.DamageItem(byEntity.World, byEntity, ammoSlot, requirement.durabilityDamage);
                     ammoSlot?.MarkDirty();
                 }
-                else if (requirement.durability < 0 && requirement.amount > 0)
+                else if (requirement.consume)
                 {
                     ammoSlot?.TakeOut(requirement.amount);
                     ammoSlot?.MarkDirty();
@@ -103,10 +113,14 @@ namespace MaltiezFSM.Systems
 
             if (requirement.offHand >= 0)
             {
-                if (byEntity.LeftHandItemSlot.Itemstack == null) return null;
-                if (!byEntity.LeftHandItemSlot.Itemstack.Collectible.Code.Path.StartsWith(requirement.code)) return null;
+                ItemStack stack = byEntity.LeftHandItemSlot.Itemstack;
+
+                if (stack == null) return null;
+                if (!stack.Collectible.Code.Path.StartsWith(requirement.code)) return null;
                 if (byEntity.RightHandItemSlot.StackSize < requirement.amount) return null;
-                if (requirement.durability > 0 && byEntity.LeftHandItemSlot.Itemstack.Item.GetRemainingDurability(byEntity.LeftHandItemSlot.Itemstack) < requirement.durability) return null;
+                if (requirement.durabilityDamage > 0 && stack.Item.GetRemainingDurability(stack) < requirement.durabilityDamage) return null;
+                if (requirement.durability > 0 && stack.Item.GetRemainingDurability(stack) < requirement.durability) return null;
+                if (requirement.durability < 0 && stack.Item.GetRemainingDurability(stack) - stack.Item.GetMaxDurability(stack) > requirement.durability) return null;
 
                 return byEntity.LeftHandItemSlot;
             }
@@ -117,7 +131,17 @@ namespace MaltiezFSM.Systems
 
                 if (invslot.Itemstack != null && invslot.Itemstack.Collectible.Code.Path.StartsWith(requirement.code) && invslot.Itemstack.StackSize >= requirement.amount)
                 {
+                    if (requirement.durabilityDamage > 0 && invslot.Itemstack.Item.GetRemainingDurability(invslot.Itemstack) < requirement.durabilityDamage)
+                    {
+                        return true;
+                    }
+
                     if (requirement.durability > 0 && invslot.Itemstack.Item.GetRemainingDurability(invslot.Itemstack) < requirement.durability)
+                    {
+                        return true;
+                    }
+
+                    if (requirement.durability < 0 && invslot.Itemstack.Item.GetRemainingDurability(invslot.Itemstack) - invslot.Itemstack.Item.GetMaxDurability(invslot.Itemstack) > requirement.durability)
                     {
                         return true;
                     }
@@ -140,13 +164,35 @@ namespace MaltiezFSM.Systems
             {
                 string code = requirement["code"].AsString();
                 int amount = requirement["amount"].AsInt(1);
-                int durability = requirement["durability"].AsInt(-1);
+                int durability = requirement["durability"].AsInt(0);
+                int durabilityDamage = requirement["durabilityDamage"].AsInt(-1);
                 int offHand = requirement["offhand"].AsInt(-1);
+                bool consume = requirement["consume"].AsBool(true);
 
-                output.Add((code, amount, durability, offHand));
+                output.Add((code, amount, durability, durabilityDamage, offHand, consume));
             }
 
             return output;
+        }
+
+        private bool ChangeDurability(ItemStack itemstack, int amount)
+        {
+            if (amount >= 0 && itemstack.Collectible.GetRemainingDurability(itemstack) >= itemstack.Collectible.GetMaxDurability(itemstack))
+            {
+                return false;
+            }
+
+            int remainingDurability = itemstack.Collectible.GetRemainingDurability(itemstack) + amount;
+            remainingDurability = Math.Min(itemstack.Collectible.GetMaxDurability(itemstack), remainingDurability);
+
+            if (remainingDurability < 0)
+            {
+                return false;
+            }
+
+            itemstack.Attributes.SetInt("durability", Math.Max(remainingDurability, 0));
+
+            return true;
         }
     }
 }

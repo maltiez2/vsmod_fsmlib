@@ -4,21 +4,64 @@ using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
+using Vintagestory.GameContent;
 
 namespace MaltiezFSM.Systems
 {
-    internal class BasicMelee : UniqueIdFactoryObject, ISystem // @TODO Placeholder system
+    public class AnimationData
+    {
+        public float windUp { get; set; }
+        public float strike { get; set; }
+        public float easeOff { get; set; }
+        public ModelTransform fpWindUp { get; set; }
+        public ModelTransform tpWindUp { get; set; }
+        public ModelTransform fpStrike {  get; set; }
+        public ModelTransform tpStrike { get; set; }
+
+        public AnimationData(JsonObject definition)
+        {
+            windUp = (float)definition["windUp_ms"].AsInt() / 1000;
+            strike = (float)definition["strike_ms"].AsInt() / 1000;
+            easeOff = (float)definition["easeOff_ms"].AsInt() / 1000;
+            fpWindUp = GetTransform(definition["fpWindUp"]);
+            tpWindUp = GetTransform(definition["tpWindUp"]);
+            fpStrike = GetTransform(definition["fpStrike"]);
+            tpStrike = GetTransform(definition["tpStrike"]);
+        }
+
+        private ModelTransform GetTransform(JsonObject transform)
+        {
+            JsonObject translation = transform["translation"];
+            JsonObject rotation = transform["rotation"];
+            JsonObject origin = transform["origin"];
+
+            ModelTransform modelTransform = new ModelTransform();
+            modelTransform.EnsureDefaultValues();
+            modelTransform.Translation.Set(translation["x"].AsFloat(), translation["y"].AsFloat(), translation["z"].AsFloat());
+            modelTransform.Rotation.Set(rotation["x"].AsFloat(), rotation["y"].AsFloat(), rotation["z"].AsFloat());
+            modelTransform.Origin.Set(origin["x"].AsFloat(), origin["y"].AsFloat(), origin["z"].AsFloat());
+            modelTransform.Scale = transform["scale"].AsFloat(1);
+            return modelTransform;
+        }
+    }
+    
+    public class BasicMelee : UniqueIdFactoryObject, ISystem // @TODO Placeholder system
     {
         private MeleeCallbackTimer mTimer;
         private ICoreAPI mApi;
         private CollectibleObject mCollectible;
+        private AnimationData mAnimation;
+        private ModelTransform mFpInitial;
+        private ModelTransform mTpInitial;
 
         public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
         {
             mApi = api;
             mTimer = new();
             mCollectible = collectible;
+            mAnimation = new AnimationData(definition);                                                                      
         }
 
         void ISystem.SetSystems(Dictionary<string, ISystem> systems)
@@ -33,6 +76,14 @@ namespace MaltiezFSM.Systems
                 case "start":
                     if (mApi is ICoreClientAPI)
                     {
+                        mFpInitial = mCollectible.GetBehavior<FiniteStateMachineBehaviour>().fpTransform?.Clone();
+                        mTpInitial = mCollectible.GetBehavior<FiniteStateMachineBehaviour>().tpTransform?.Clone();
+
+                        if (mFpInitial == null) mFpInitial = GetIdentityTransform();
+                        if (mTpInitial == null) mTpInitial = GetIdentityTransform();
+
+                        player.Attributes.SetInt("didattack", 0);
+
                         mTimer.Init(mApi, (float time) => TryAttack(time, player));
                         mTimer.Start();
                     }
@@ -51,70 +102,83 @@ namespace MaltiezFSM.Systems
             return true;
         }
 
-        public bool TryAttack(float secondsPassed, EntityAgent byEntity)
+        private ModelTransform GetIdentityTransform()
         {
-            var entitySel = (byEntity as EntityPlayer).EntitySelection;
+            ModelTransform modelTransform = new ModelTransform();
+            modelTransform.EnsureDefaultValues();
+            modelTransform.Translation.Set(0, 0, 0);
+            modelTransform.Rotation.Set(0, 0, 0);
+            modelTransform.Origin.Set(0, 0, 0);
+            modelTransform.Scale = 1;
+            return modelTransform;
+        }
 
-            if (secondsPassed == 0)
+        private bool TryAttack(float secondsPassed, EntityAgent byEntity)
+        {
+            if (secondsPassed > mAnimation.windUp + mAnimation.strike + mAnimation.easeOff) return false;
+
+            PlayAnimation(secondsPassed);
+
+            if (mAnimation.windUp < secondsPassed && secondsPassed < mAnimation.windUp + mAnimation.strike && byEntity.Attributes.GetInt("didattack") == 0)
             {
-                byEntity.Attributes.SetInt("didattack", 0);
-                byEntity.World.RegisterCallback(delegate
-                {
-                    IPlayer player = (byEntity as EntityPlayer).Player;
-                    if (player != null && byEntity.Controls.HandUse == EnumHandInteract.HeldItemAttack)
-                    {
-                        float pitchModifier = (byEntity as EntityPlayer).talkUtil.pitchModifier;
-                        player.Entity.World.PlaySoundAt(new AssetLocation("sounds/player/strike"), player.Entity, player, pitchModifier * 0.9f + (float)mApi.World.Rand.NextDouble() * 0.2f, 16f, 0.35f);
-                    }
-                }, 464);
+                EntitySelection entitySel = (byEntity as EntityPlayer)?.EntitySelection;
+                (byEntity.World as IClientWorldAccessor)?.TryAttackEntity(entitySel);
+                (byEntity.World as IClientWorldAccessor)?.AddCameraShake(0.25f);
+                byEntity.Attributes.SetInt("didattack", 1);
             }
 
-            float backwards = 0f - Math.Min(0.8f, 3f * secondsPassed);
-            float stab = Math.Min(1.2f, 20f * Math.Max(0f, secondsPassed - 0.25f));
-            if (byEntity.World.Side == EnumAppSide.Client)
+            return true;
+        }
+
+        private bool PlayAnimation(float secondsPassed)
+        {
+            if (secondsPassed < mAnimation.windUp)
             {
-                IClientWorldAccessor clientWorldAccessor = byEntity.World as IClientWorldAccessor;
-                ModelTransform modelTransform = new ModelTransform();
-                modelTransform.EnsureDefaultValues();
-                float animationProgressSum = stab + backwards;
-                float animationProgressYAxis = Math.Min(0.2f, 1.5f * secondsPassed);
-                float easeOut = Math.Max(0f, 2f * (secondsPassed - 1f));
-                if (secondsPassed > 0.4f)
-                {
-                    animationProgressSum = Math.Max(0f, animationProgressSum - easeOut);
-                }
-
-                animationProgressYAxis = Math.Max(0f, animationProgressYAxis - easeOut);
-
-                if (mCollectible.Code.Path.Contains("bayonet")) // Just placeholder
-                {
-                    modelTransform.Translation.Set(-1f * animationProgressSum + 0.2f, animationProgressYAxis * 0.4f, (0f - animationProgressSum) * 0.8f * 2.6f);
-                    modelTransform.Rotation.Set((0.3f - animationProgressSum) * 9f, animationProgressSum * 5f, (0f - animationProgressSum) * 30f);
-                }
-                else
-                {
-                    modelTransform.Translation.Set(0f * (-0.5f + animationProgressSum), 1f + animationProgressYAxis * -3.0f - 0.5f, (-1.0f - animationProgressSum) * 0.8f * 2.6f);
-                    modelTransform.Rotation.Set((-20.0f - animationProgressSum) * 9f, animationProgressSum * 5f - 10f, (0f - animationProgressSum) * 30f);
-                }
-
-                if (stab > 1.15f && byEntity.Attributes.GetInt("didattack") == 0)
-                {
-                    clientWorldAccessor.TryAttackEntity(entitySel);
-                    byEntity.Attributes.SetInt("didattack", 1);
-                    clientWorldAccessor.AddCameraShake(0.25f);
-                }
-
-                mCollectible.GetBehavior<FiniteStateMachineBehaviour>().tpTransform = modelTransform;
-                mCollectible.GetBehavior<FiniteStateMachineBehaviour>().fpTransform = modelTransform;
+                PlayWindUp(secondsPassed / mAnimation.windUp);
+            }
+            else if (secondsPassed < mAnimation.strike + mAnimation.windUp)
+            {
+                PlayStrike((secondsPassed - mAnimation.strike) / mAnimation.windUp);
+            }
+            else if (secondsPassed < mAnimation.strike + mAnimation.windUp + mAnimation.easeOff)
+            {
+                PlayEaseOff((secondsPassed - mAnimation.strike - mAnimation.windUp) / mAnimation.easeOff);
+            }
+            else
+            {
+                return false;
             }
 
-            if (secondsPassed >= 1.2f)
-            {
-                mCollectible.GetBehavior<FiniteStateMachineBehaviour>().tpTransform = null;
-                mCollectible.GetBehavior<FiniteStateMachineBehaviour>().fpTransform = null;
-            }
+            return true;
+        }
 
-            return secondsPassed < 1.2f;
+        private void PlayWindUp(float progress)
+        {
+            mCollectible.GetBehavior<FiniteStateMachineBehaviour>().fpTransform = ApplyProgress(MathF.Sqrt(progress), mFpInitial, mAnimation.fpWindUp);
+            mCollectible.GetBehavior<FiniteStateMachineBehaviour>().tpTransform = ApplyProgress(MathF.Sqrt(progress), mTpInitial, mAnimation.tpWindUp);
+        }
+
+        private void PlayStrike(float progress)
+        {
+            mCollectible.GetBehavior<FiniteStateMachineBehaviour>().fpTransform = ApplyProgress(progress * progress, mAnimation.fpWindUp, mAnimation.fpStrike);
+            mCollectible.GetBehavior<FiniteStateMachineBehaviour>().tpTransform = ApplyProgress(progress * progress, mAnimation.tpWindUp, mAnimation.tpStrike);
+        }
+
+        private void PlayEaseOff(float progress)
+        {
+            mCollectible.GetBehavior<FiniteStateMachineBehaviour>().fpTransform = ApplyProgress(progress, mAnimation.fpStrike, mFpInitial);
+            mCollectible.GetBehavior<FiniteStateMachineBehaviour>().tpTransform = ApplyProgress(progress, mAnimation.tpStrike, mTpInitial);
+        }
+
+        private ModelTransform ApplyProgress(float progress, ModelTransform startTransofrm, ModelTransform endTransform)
+        {
+            ModelTransform modelTransform = new ModelTransform();
+            modelTransform.EnsureDefaultValues();
+            modelTransform.Translation = startTransofrm.Translation + (endTransform.Translation - startTransofrm.Translation) * progress;
+            modelTransform.Rotation = startTransofrm.Rotation + (endTransform.Rotation - startTransofrm.Rotation) * progress;
+            modelTransform.Origin = startTransofrm.Origin + (endTransform.Origin - startTransofrm.Origin) * progress;
+            modelTransform.Scale = startTransofrm.ScaleXYZ.X + (endTransform.ScaleXYZ.X - startTransofrm.ScaleXYZ.X) * progress;
+            return modelTransform;
         }
     }
 

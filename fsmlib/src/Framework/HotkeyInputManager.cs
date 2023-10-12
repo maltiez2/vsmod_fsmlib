@@ -39,7 +39,7 @@ namespace MaltiezFSM.Framework
             KeyPressModifiers altCtrlShift = input.GetIfAltCtrlShiftPressed();
             GlKeys key = (GlKeys)Enum.Parse(typeof(GlKeys), input.GetKey());
 
-            mClientApi.Input.RegisterHotKey(code, code, key, HotkeyType.CharacterControls, altCtrlShift.Alt, altCtrlShift.Ctrl, altCtrlShift.Shift);
+            mClientApi.Input.RegisterHotKey(code, code, key, HotkeyType.CharacterControls, altCtrlShift.AltAsBool(), altCtrlShift.CtrlAsBool(), altCtrlShift.ShiftAsBool());
             mClientApi.Input.SetHotKeyHandler(code, (KeyCombination keys) => ProxyHandler(keys, code));
         }
 

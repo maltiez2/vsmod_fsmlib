@@ -8,16 +8,20 @@ namespace MaltiezFSM.API
 {
     public struct KeyPressModifiers
     {
-        public bool Alt { get; set; }
-        public bool Ctrl { get; set; }
-        public bool Shift { get; set; }
+        public bool? Alt { get; set; }
+        public bool? Ctrl { get; set; }
+        public bool? Shift { get; set; }
 
-        public KeyPressModifiers(bool alt, bool ctrl, bool shift)
+        public KeyPressModifiers(bool? alt, bool? ctrl, bool? shift)
         {
             Alt = alt;
             Ctrl = ctrl;
             Shift = shift;
         }
+
+        public bool AltAsBool(bool defaultValue = false) => Alt == null ? defaultValue : (bool)Alt;
+        public bool CtrlAsBool(bool defaultValue = false) => Ctrl == null ? defaultValue : (bool)Ctrl;
+        public bool ShiftAsBool(bool defaultValue = false) => Shift == null ? defaultValue : (bool)Shift;
     }
 
     // DOCUMENTATION: WORK IN PROGRESS

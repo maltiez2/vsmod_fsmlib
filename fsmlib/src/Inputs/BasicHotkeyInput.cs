@@ -21,9 +21,9 @@ namespace MaltiezFSM.Inputs
             mKey = definition[keyAttrName].AsString(); // @TODO @LOCAL Add localization
             mModifiers = new KeyPressModifiers
             (
-                definition[altAttrName].AsBool(false),
-                definition[ctrlAttrName].AsBool(false),
-                definition[shiftAttrName].AsBool(false)
+                definition.KeyExists(altAttrName) ? definition[altAttrName].AsBool(false) : null,
+                definition.KeyExists(ctrlAttrName) ? definition[ctrlAttrName].AsBool(false) : null,
+                definition.KeyExists(shiftAttrName) ? definition[shiftAttrName].AsBool(false) : null
             );
         }
 

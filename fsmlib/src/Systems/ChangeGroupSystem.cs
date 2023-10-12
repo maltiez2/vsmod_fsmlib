@@ -22,7 +22,9 @@ namespace MaltiezFSM.Systems
         {
             string group = parameters["group"].AsString();
             string value = parameters["value"].AsString();
+            mApi.Logger.Notification("[FSMlib] change `" + group + "` to: " + value);
             TryChangeVariant(slot.Itemstack, mApi, group, value);
+            slot.MarkDirty();
             return true;
         }
 
