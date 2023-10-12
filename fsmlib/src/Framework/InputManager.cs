@@ -9,6 +9,7 @@ using static MaltiezFSM.API.IKeyInput;
 using static MaltiezFSM.API.IMouseInput;
 using static MaltiezFSM.API.ISlotChangedAfter;
 using MaltiezFSM.API;
+using Vintagestory.GameContent;
 
 namespace MaltiezFSM.Framework
 {
@@ -17,6 +18,7 @@ namespace MaltiezFSM.Framework
         private readonly ICoreClientAPI mClientApi;
         private readonly IActiveSlotListener mSlotListener;
         private readonly IHotkeyInputManager mHotkeyInputManager;
+        private readonly IStatusInputManager mHStatusInputManager;
         private readonly List<IInput> mInputs = new();
         private readonly List<InputCallback> mCallbacks = new();
         private readonly List<CollectibleObject> mCollectibles = new();
@@ -28,10 +30,11 @@ namespace MaltiezFSM.Framework
         private readonly static Type rHudMouseToolsType = typeof(Vintagestory.Client.NoObf.ClientMain).Assembly.GetType("Vintagestory.Client.NoObf.HudMouseTools");
         private readonly HashSet<string> rBlockingGuiDialogs = new HashSet<string>();
 
-        public InputManager(ICoreAPI api, IActiveSlotListener slotListener, IHotkeyInputManager hotkeyManager)
+        public InputManager(ICoreAPI api, IActiveSlotListener slotListener, IHotkeyInputManager hotkeyManager, IStatusInputManager statusManager)
         {
             mPacketSender = new InputPacketSender(api, ServerInputProxyHandler, cNetworkChannelName);
             mHotkeyInputManager = hotkeyManager;
+            mHStatusInputManager = statusManager;
 
             if (api.Side == EnumAppSide.Client)
             {
@@ -56,6 +59,11 @@ namespace MaltiezFSM.Framework
             if (input is IEventInput && mClientApi != null)
             {
                 ClientRegisterEventHandler(input as IEventInput, inputIndex);
+            }
+
+            if (input is IStatusInput && mClientApi != null)
+            {
+                mHStatusInputManager.RegisterStatusInput(input as IStatusInput, _ => ClientInputProxyHandler(inputIndex, null));
             }
         }
         private void ClientRegisterEventHandler(IEventInput input, int inputIndex)
@@ -101,7 +109,7 @@ namespace MaltiezFSM.Framework
             }
         }
 
-        private ItemSlot GetSlotById(int? slotId, IServerPlayer serverPlayer)
+        private ItemSlot GetSlotById(int? slotId, IServerPlayer serverPlayer, int inputIndex)
         {
             IPlayer player;
             
@@ -120,7 +128,15 @@ namespace MaltiezFSM.Framework
             }
             else
             {
-                return player?.Entity.ActiveHandItemSlot;
+                switch (mInputs[inputIndex].SlotType())
+                {
+                    case IInput.SlotTypes.MAIN_HAND:
+                        return player?.Entity.RightHandItemSlot;
+                    case IInput.SlotTypes.OFF_HAND:
+                        return player?.Entity.LeftHandItemSlot;
+                    default:
+                        return player?.Entity.ActiveHandItemSlot;
+                }
             }
         }
 
@@ -173,13 +189,13 @@ namespace MaltiezFSM.Framework
 
             mPacketSender.SendPacket(inputIndex, slotId);
 
-            return InputHandler(inputIndex, playerEntity, GetSlotById(slotId, null));
+            return InputHandler(inputIndex, playerEntity, GetSlotById(slotId, null, inputIndex));
         }
         public void ServerInputProxyHandler(int inputIndex, int? slotId, IServerPlayer serverPlayer)
         {
             EntityAgent playerEntity = serverPlayer.Entity;
 
-            InputHandler(inputIndex, playerEntity, GetSlotById(slotId, serverPlayer));
+            InputHandler(inputIndex, playerEntity, GetSlotById(slotId, serverPlayer, inputIndex));
         }
 
         private bool InputHandler(int inputIndex, EntityAgent player, ItemSlot slot)

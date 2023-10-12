@@ -1,15 +1,7 @@
-﻿using ProtoBuf;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
-using Vintagestory.API.Common;
-using Vintagestory.API.Server;
-using static MaltiezFSM.API.IInputManager;
-using static MaltiezFSM.API.IKeyInput;
-using static MaltiezFSM.API.IMouseInput;
-using static MaltiezFSM.API.ISlotChangedAfter;
 using MaltiezFSM.API;
-using System.Linq;
 
 namespace MaltiezFSM.Framework
 {

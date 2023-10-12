@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
+using static MaltiezFSM.API.IKeyInput;
 
 namespace MaltiezFSM.API
 {
@@ -107,8 +108,25 @@ namespace MaltiezFSM.API
     }
     public interface IInput : IFactoryObject
     {
+        enum SlotTypes
+        {
+            MAIN_HAND,
+            OFF_HAND,
+            ANY, // Not implemented
+            ALL // Not implemented
+        }
         string GetName();
         bool Handled();
+        SlotTypes SlotType();
+    }
+    public interface IStatusInput : IInput
+    {
+        enum StatusType
+        {
+            SWIMMING
+        }
+        StatusType GetStatusType();
+        bool CheckStatus();
     }
     public interface IHotkeyInput : IInput, IKeyRelatedInput
     {
@@ -193,6 +211,11 @@ namespace MaltiezFSM.API
     {
         public delegate bool InputCallback(KeyCombination keyCombination);
         void RegisterHotkeyInput(IHotkeyInput input, InputCallback callback);
+    }
+    public interface IStatusInputManager
+    {
+        public delegate bool InputCallback(IStatusInput.StatusType statusType);
+        void RegisterStatusInput(IStatusInput input, InputCallback callback);
     }
     public interface IFactoryProvider
     {

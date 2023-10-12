@@ -15,6 +15,7 @@ namespace MaltiezFSM.Systems
         public const string amountAttrName = "amount";
         public const string takeAction = "take";
         public const string putAction = "put";
+        public const string removeAction = "remove";
         public const string offHandAttrName = "offHand";
 
         public string AmmoStackAttrName = "FSMlib.stack.";
@@ -53,29 +54,35 @@ namespace MaltiezFSM.Systems
             bool offHand = parameters[offHandAttrName].AsBool(false);
             string action = parameters[actionAttrName].AsString();
 
-            if (action == putAction)
+            switch (action)
             {
-                if (ReadAmmoStackFrom(slot)?.Item == null && ReadAmmoStackFrom(slot)?.Block == null) return false;
-                PutAmmoBack(slot, player, offHand);
-                return true;
+                case putAction:
+                    if (ReadAmmoStackFrom(slot)?.Item == null && ReadAmmoStackFrom(slot)?.Block == null) return false;
+                    PutAmmoBack(slot, player, offHand);
+                    return true;
+                case takeAction:
+                    int amount = 1;
+                    if (parameters.KeyExists(amountAttrName)) amount = parameters[amountAttrName].AsInt(1);
+
+                    string ammoCode = parameters[ammoCodeAttrName].AsString();
+                    ItemSlot ammoSlot = GetAmmoSlot(player, ammoCode, offHand);
+                    if (ammoSlot == null || ammoSlot == slot) return false;
+
+                    WriteAmmoStackTo(slot, ammoSlot.TakeOut(amount));
+                    ammoSlot.MarkDirty();
+                    return true;
+                case removeAction:
+                    TakeAmmoStackFrom(slot);
+                    break;
             }
 
-            int amount = 1;
-            if (parameters.KeyExists(amountAttrName)) amount = parameters[amountAttrName].AsInt(1);
-
-            string ammoCode = parameters[ammoCodeAttrName].AsString();
-            ItemSlot ammoSlot = GetAmmoSlot(player, ammoCode, offHand);
-            if (ammoSlot == null || ammoSlot == slot) return false;
-
-            WriteAmmoStackTo(slot, ammoSlot.TakeOut(amount));
-
-            return true;
+            return false;
         }
         public ItemStack GetSelectedAmmo(ItemSlot slot)
         {
             return ReadAmmoStackFrom(slot);
         }
-        public ItemStack TakeSelectedAmmo(ItemSlot slot, int amount = 0)
+        public ItemStack TakeSelectedAmmo(ItemSlot slot, int amount = -1)
         {
             return TakeAmmoStackFrom(slot, amount);
         }
@@ -123,6 +130,9 @@ namespace MaltiezFSM.Systems
             }
 
             if (ammoStack?.Item != null || ammoStack?.Block != null) player.TryGiveItemStack(ammoStack);
+
+            slot?.Itemstack?.Attributes?.RemoveAttribute(AmmoStackAttrName);
+            slot?.MarkDirty();
         }
 
         private void WriteAmmoStackTo(ItemSlot slot, ItemStack ammoStack)
@@ -132,21 +142,25 @@ namespace MaltiezFSM.Systems
         }
         private ItemStack ReadAmmoStackFrom(ItemSlot slot)
         {
-            return slot.Itemstack.Attributes.GetItemstack(AmmoStackAttrName, null);
+            ItemStack stack = slot.Itemstack.Attributes.GetItemstack(AmmoStackAttrName, null);
+            stack?.ResolveBlockOrItem(mApi.World);
+            WriteAmmoStackTo(slot, stack);
+            return stack;
         }
-        private ItemStack TakeAmmoStackFrom(ItemSlot slot, int amount = 0)
+        private ItemStack TakeAmmoStackFrom(ItemSlot slot, int amount = -1)
         {
             ItemStack ammoStack = ReadAmmoStackFrom(slot);
-            if (amount == 0 || ammoStack.StackSize == amount)
+            if (amount == -1 || ammoStack.StackSize == amount || ammoStack.StackSize == 0)
             {
-                slot.Itemstack.Attributes.RemoveAttribute(AmmoStackAttrName);
-                slot.MarkDirty();
+                slot?.Itemstack?.Attributes?.RemoveAttribute(AmmoStackAttrName);
+                slot?.MarkDirty();
                 return ammoStack;
             }
 
             if (ammoStack.StackSize < amount) return null;
 
             ItemStack takenAmmoStack = ammoStack.Clone();
+            takenAmmoStack.ResolveBlockOrItem(mApi.World);
             takenAmmoStack.StackSize = amount;
             ammoStack.StackSize -= amount;
 

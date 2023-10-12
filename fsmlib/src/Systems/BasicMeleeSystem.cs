@@ -6,6 +6,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
 using Vintagestory.GameContent;
 
 namespace MaltiezFSM.Systems
@@ -22,26 +23,37 @@ namespace MaltiezFSM.Systems
 
         public AnimationData(JsonObject definition)
         {
+            bool flipTpAxles = definition["flipTpAxles"].AsBool(false);
             windUp = (float)definition["windUp_ms"].AsInt() / 1000;
             strike = (float)definition["strike_ms"].AsInt() / 1000;
             easeOff = (float)definition["easeOff_ms"].AsInt() / 1000;
-            fpWindUp = GetTransform(definition["fpWindUp"]);
-            tpWindUp = GetTransform(definition["tpWindUp"]);
-            fpStrike = GetTransform(definition["fpStrike"]);
-            tpStrike = GetTransform(definition["tpStrike"]);
+            fpWindUp = GetTransform(definition["fpWindUp"], false);
+            tpWindUp = GetTransform(definition["tpWindUp"], flipTpAxles);
+            fpStrike = GetTransform(definition["fpStrike"], false);
+            tpStrike = GetTransform(definition["tpStrike"], flipTpAxles);
         }
 
-        private ModelTransform GetTransform(JsonObject transform)
+        private ModelTransform GetTransform(JsonObject transform, bool flipAxles)
         {
             JsonObject translation = transform["translation"];
             JsonObject rotation = transform["rotation"];
             JsonObject origin = transform["origin"];
+            
 
             ModelTransform modelTransform = new ModelTransform();
             modelTransform.EnsureDefaultValues();
-            modelTransform.Translation.Set(translation["x"].AsFloat(), translation["y"].AsFloat(), translation["z"].AsFloat());
-            modelTransform.Rotation.Set(rotation["x"].AsFloat(), rotation["y"].AsFloat(), rotation["z"].AsFloat());
-            modelTransform.Origin.Set(origin["x"].AsFloat(), origin["y"].AsFloat(), origin["z"].AsFloat());
+            if (!flipAxles)
+            {
+                modelTransform.Translation.Set(translation["x"].AsFloat(), translation["y"].AsFloat(), translation["z"].AsFloat());
+                modelTransform.Rotation.Set(rotation["x"].AsFloat(), rotation["y"].AsFloat(), rotation["z"].AsFloat());
+                modelTransform.Origin.Set(origin["x"].AsFloat(), origin["y"].AsFloat(), origin["z"].AsFloat());
+            }
+            else
+            {
+                modelTransform.Translation.Set(translation["z"].AsFloat(), translation["y"].AsFloat(), -translation["x"].AsFloat());
+                modelTransform.Rotation.Set(rotation["x"].AsFloat(), rotation["y"].AsFloat(), rotation["z"].AsFloat());
+                modelTransform.Origin.Set(origin["z"].AsFloat(), origin["y"].AsFloat(), -origin["x"].AsFloat());
+            }
             modelTransform.Scale = transform["scale"].AsFloat(1);
             return modelTransform;
         }
@@ -84,7 +96,7 @@ namespace MaltiezFSM.Systems
 
                         player.Attributes.SetInt("didattack", 0);
 
-                        mTimer.Init(mApi, (float time) => TryAttack(time, player));
+                        mTimer.Init(mApi, (float time) => TryAttack(time, slot, player));
                         mTimer.Start();
                     }
                     break;
@@ -113,7 +125,7 @@ namespace MaltiezFSM.Systems
             return modelTransform;
         }
 
-        private bool TryAttack(float secondsPassed, EntityAgent byEntity)
+        private bool TryAttack(float secondsPassed, ItemSlot slot, EntityAgent byEntity)
         {
             if (secondsPassed > mAnimation.windUp + mAnimation.strike + mAnimation.easeOff) return false;
 
@@ -123,7 +135,9 @@ namespace MaltiezFSM.Systems
             {
                 EntitySelection entitySel = (byEntity as EntityPlayer)?.EntitySelection;
                 (byEntity.World as IClientWorldAccessor)?.TryAttackEntity(entitySel);
-                (byEntity.World as IClientWorldAccessor)?.AddCameraShake(0.25f);
+                (byEntity.World as IClientWorldAccessor)?.AddCameraShake(0.1f);
+                if ((byEntity as EntityPlayer)?.EntitySelection != null) slot?.Itemstack?.Item?.DamageItem(byEntity.World, byEntity, slot);
+                slot?.MarkDirty();
                 byEntity.Attributes.SetInt("didattack", 1);
             }
 
