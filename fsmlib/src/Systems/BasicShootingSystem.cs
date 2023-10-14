@@ -1,5 +1,4 @@
 ﻿using MaltiezFSM.API;
-using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -9,14 +8,12 @@ using Vintagestory.GameContent;
 
 namespace MaltiezFSM.Systems
 {
-    public class BasicShooting : UniqueIdFactoryObject, ISystem
+    public class BasicShooting : BaseSystem
     {
         public const string ammoSelectorSystemAttrName = "reloadSystem";
         public const string aimingSystemAttrName = "aimingSystem";
         public const string velocityAttrName = "projectileVelocity";
         public const string damageAttrName = "projectileDamage";
-
-        private static Random sRand = new Random();
 
         private string mReloadSystemName;
         private string mAimingSystemName;
@@ -25,21 +22,32 @@ namespace MaltiezFSM.Systems
         private float mProjectileVelocity;
         private float mProjectileDamage;
 
-        public override void Init(string name, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
+        public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
         {
+            base.Init(code, definition, collectible, api);
+
             mReloadSystemName = definition[ammoSelectorSystemAttrName].AsString();
             mAimingSystemName = definition[aimingSystemAttrName].AsString();
             mProjectileVelocity = definition[velocityAttrName].AsFloat();
             mProjectileDamage = definition[damageAttrName].AsFloat();
         }
-        public void SetSystems(Dictionary<string, ISystem> systems)
+        public override void SetSystems(Dictionary<string, ISystem> systems)
         {
             mReloadSystem = systems[mReloadSystemName] as IAmmoSelector;
             mAimingSystem = systems[mAimingSystemName] as IAimingSystem;
         }
 
-        public bool Process(ItemSlot slot, EntityAgent player, JsonObject parameters)
+        public override bool Verify(ItemSlot slot, EntityAgent player, JsonObject parameters)
         {
+            if (!base.Verify(slot, player, parameters)) return false;
+
+            return mReloadSystem.GetSelectedAmmo(slot) != null;
+        }
+
+        public override bool Process(ItemSlot slot, EntityAgent player, JsonObject parameters)
+        {
+            if (!base.Process(slot, player, parameters)) return false;
+
             ItemStack ammoStack = mReloadSystem.TakeSelectedAmmo(slot);
             if (ammoStack == null) return false;
 
@@ -50,10 +58,7 @@ namespace MaltiezFSM.Systems
 
             return true;
         }
-        public bool Verify(ItemSlot slot, EntityAgent player, JsonObject parameters)
-        {
-            return mReloadSystem.GetSelectedAmmo(slot) != null;
-        }
+        
 
         private Vec3d ProjectilePosition(EntityAgent player, Vec3f muzzlePosition)
         {

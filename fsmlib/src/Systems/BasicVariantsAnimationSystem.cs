@@ -6,7 +6,7 @@ using System;
 
 namespace MaltiezFSM.Systems
 {
-    public class BasicVariantsAnimation<TAnimationPlayer> : UniqueIdFactoryObject, ISystem
+    public class BasicVariantsAnimation<TAnimationPlayer> : BaseSystem
         where TAnimationPlayer : IAnimationPlayer, new()
     {
         public const string animationsAttrName = "animations";
@@ -18,7 +18,6 @@ namespace MaltiezFSM.Systems
         public const string soundsAttrName = "sounds";
         public const string variantAttrName = "variant";
 
-        private ICoreAPI mApi;
         private readonly Dictionary<string, IAnimationPlayer.AnimationParameters> mAnimations = new();
         private readonly Dictionary<string, Dictionary<int, string>> mAnimationsSounds = new();
         private TAnimationPlayer mTimer;
@@ -26,8 +25,8 @@ namespace MaltiezFSM.Systems
         private string mSoundSystemId = "";
 
         public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
-        {     
-            mApi = api;
+        {
+            base.Init(code, definition, collectible, api);
 
             JsonObject[] animations = definition[animationsAttrName].AsArray();
             foreach (JsonObject animation in animations)
@@ -59,18 +58,24 @@ namespace MaltiezFSM.Systems
                 mSoundSystemId = definition[soundSystemAttrName].AsString();
             }
         }
-        void ISystem.SetSystems(Dictionary<string, ISystem> systems)
+        public override void SetSystems(Dictionary<string, ISystem> systems)
         {
             if (systems.ContainsKey(mSoundSystemId)) mSoundSystem = systems[mSoundSystemId] as ISoundSystem;
         }
-        bool ISystem.Verify(ItemSlot slot, EntityAgent player, JsonObject parameters)
+        public override bool Verify(ItemSlot slot, EntityAgent player, JsonObject parameters)
         {
+            if (!base.Verify(slot, player, parameters)) return false;
+
             string code = parameters[codeAttrName].AsString();
+
+            if (!mAnimations.ContainsKey(code)) mApi.Logger.Error("[FSMlib] [BasicVariantsAnimation] [Verify] No animations with code '" + code + "' are defined");
 
             return mAnimations.ContainsKey(code);
         }
-        bool ISystem.Process(ItemSlot slot, EntityAgent player, JsonObject parameters)
+        public override bool Process(ItemSlot slot, EntityAgent player, JsonObject parameters)
         {
+            if (!base.Process(slot, player, parameters)) return false;
+
             string code = parameters[codeAttrName].AsString();
 
             if (!mAnimations.ContainsKey(code)) return false;

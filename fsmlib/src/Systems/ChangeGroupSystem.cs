@@ -1,34 +1,18 @@
-﻿using MaltiezFSM.API;
-using System.Collections.Generic;
-using Vintagestory.API.Common;
+﻿using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
 namespace MaltiezFSM.Systems
 {
-    internal class ChangeGroup : UniqueIdFactoryObject, ISystem
+    internal class ChangeGroup : BaseSystem
     {
-        private ICoreAPI mApi;
-
-        public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
+        public override bool Process(ItemSlot slot, EntityAgent player, JsonObject parameters)
         {
-            mApi = api;
-        }
+            if (!base.Process(slot, player, parameters)) return false;
 
-        void ISystem.SetSystems(Dictionary<string, ISystem> systems)
-        {
-        }
-
-        bool ISystem.Process(ItemSlot slot, EntityAgent player, JsonObject parameters)
-        {
             string group = parameters["group"].AsString();
             string value = parameters["value"].AsString();
             TryChangeVariant(slot.Itemstack, mApi, group, value);
             slot.MarkDirty();
-            return true;
-        }
-
-        bool ISystem.Verify(ItemSlot slot, EntityAgent player, JsonObject parameters)
-        {
             return true;
         }
 

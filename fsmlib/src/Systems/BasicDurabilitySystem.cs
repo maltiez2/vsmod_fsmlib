@@ -6,26 +6,22 @@ using Vintagestory.API.Datastructures;
 
 namespace MaltiezFSM.Systems
 {
-    internal class BasicDurability : UniqueIdFactoryObject, ISystem
+    internal class BasicDurability : BaseSystem
     {
-        public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
+        public override bool Verify(ItemSlot slot, EntityAgent player, JsonObject parameters)
         {
-        }
+            if (!base.Verify(slot, player, parameters)) return false;
 
-        void ISystem.SetSystems(Dictionary<string, ISystem> systems)
-        {
-        }
-
-        bool ISystem.Verify(ItemSlot slot, EntityAgent player, JsonObject parameters)
-        {
             if (slot.Itemstack.Item == null) return false;
             
             int change = parameters["value"].AsInt(0);
             return CanChangeDurability(slot.Itemstack, change);
         }
 
-        bool ISystem.Process(ItemSlot slot, EntityAgent player, JsonObject parameters)
+        public override bool Process(ItemSlot slot, EntityAgent player, JsonObject parameters)
         {
+            if (!base.Process(slot, player, parameters)) return false;
+
             int change = parameters["value"].AsInt(0);
             if (!CanChangeDurability(slot.Itemstack, change)) return false;
             

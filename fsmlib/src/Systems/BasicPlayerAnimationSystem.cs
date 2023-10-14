@@ -1,22 +1,14 @@
-﻿using MaltiezFSM.API;
-using System.Collections.Generic;
-using Vintagestory.API.Common;
+﻿using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
 namespace MaltiezFSM.Systems
 {
-    internal class BasicPlayerAnimation : UniqueIdFactoryObject, ISystem
+    internal class BasicPlayerAnimation : BaseSystem
     {
-        public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
+        public override bool Process(ItemSlot slot, EntityAgent player, JsonObject parameters)
         {
-        }
+            if (!base.Process(slot, player, parameters)) return false;
 
-        void ISystem.SetSystems(Dictionary<string, ISystem> systems)
-        {
-        }
-
-        bool ISystem.Process(ItemSlot slot, EntityAgent player, JsonObject parameters)
-        {
             string code = parameters["code"].AsString();
             string type = parameters["type"].AsString();
             switch (type)
@@ -27,12 +19,10 @@ namespace MaltiezFSM.Systems
                 case "stop":
                     player.AnimManager.StopAnimation(code);
                     break;
+                default:
+                    mApi.Logger.Error("[FSMlib] [BasicPlayerAnimation] [Process] Type does not exists: " + type);
+                    return false;
             }
-            return true;
-        }
-
-        bool ISystem.Verify(ItemSlot slot, EntityAgent player, JsonObject parameters)
-        {
             return true;
         }
     }

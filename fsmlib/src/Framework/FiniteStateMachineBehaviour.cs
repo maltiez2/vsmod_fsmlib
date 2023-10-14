@@ -21,6 +21,7 @@ namespace MaltiezFSM.Framework
         private IFiniteStateMachine mFsm;
         private IInputManager mInputIterceptor;
         private JsonObject mProperties;
+        private readonly List<ISystem> mSystems = new();
 
         public ModelTransform tpTransform { get; set; }
         public ModelTransform fpTransform { get; set; }
@@ -44,6 +45,11 @@ namespace MaltiezFSM.Framework
             foreach (var inputEntry in parser.GetInputs())
             {
                 mInputIterceptor.RegisterInput(inputEntry.Value, mFsm.Process, collObj);
+            }
+
+            foreach (var systemEntry in parser.GetSystems())
+            {
+                mSystems.Add(systemEntry.Value);
             }
         }
 
@@ -95,7 +101,17 @@ namespace MaltiezFSM.Framework
         {
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
 
-            //dsc.AppendLine(Lang.Get("bullseye:projectile-break-chance"));
+            foreach (ISystem system in mSystems)
+            {
+                string[] descriptions = system.GetDescription(inSlot, world);
+                if (descriptions != null)
+                {
+                    foreach (string description in descriptions)
+                    {
+                        dsc.Append(description);
+                    }
+                }
+            }
         }
 
         public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot, ref EnumHandling handling)

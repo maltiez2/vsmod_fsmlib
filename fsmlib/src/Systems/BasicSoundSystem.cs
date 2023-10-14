@@ -2,7 +2,6 @@
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using System.Collections.Generic;
-using MaltiezFSM.API;
 
 namespace MaltiezFSM.Systems
 {
@@ -71,18 +70,17 @@ namespace MaltiezFSM.Systems
         }
     }
     
-    public class BasicSoundSystem : UniqueIdFactoryObject, ISystem, ISoundSystem
+    public class BasicSoundSystem : BaseSystem, ISoundSystem
     {
         private readonly Dictionary<string, ISound> mSounds = new();
 
         public const string soundsAttrName = "sounds";
         public const string soundCodeAttrName = "code";
 
-        private ICoreAPI mApi;
-
-        public override void Init(string name, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
+        public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
         {
-            mApi = api;
+            base.Init(code, definition, collectible, api);
+
             JsonObject[] sounds = definition[soundsAttrName].AsArray();
 
             foreach (JsonObject sound in sounds)
@@ -100,12 +98,10 @@ namespace MaltiezFSM.Systems
                 mSounds[soundCode].Init(sound);
             }
         }
-        public void SetSystems(Dictionary<string, ISystem> systems)
+        public override bool Verify(ItemSlot slot, EntityAgent player, JsonObject parameters)
         {
-            // Does not require access to other systems
-        }
-        public virtual bool Verify(ItemSlot weaponSlot, EntityAgent player, JsonObject parameters)
-        {
+            if (!base.Verify(slot, player, parameters)) return false;
+
             if (parameters.KeyExists(soundCodeAttrName) && mSounds.ContainsKey(parameters[soundCodeAttrName].AsString()))
             {
                 return true;
@@ -113,8 +109,10 @@ namespace MaltiezFSM.Systems
 
             return false;
         }
-        public virtual bool Process(ItemSlot weaponSlot, EntityAgent player, JsonObject parameters)
+        public override bool Process(ItemSlot slot, EntityAgent player, JsonObject parameters)
         {
+            if (!base.Process(slot, player, parameters)) return false;
+
             if (mApi?.Side != EnumAppSide.Server) return true;
             string soundCode = parameters[soundCodeAttrName].AsString();
             mSounds[soundCode].Play(player);

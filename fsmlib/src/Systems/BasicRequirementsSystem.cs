@@ -8,7 +8,7 @@ using System;
 
 namespace MaltiezFSM.Systems
 {
-    internal class BasicRequirements : UniqueIdFactoryObject, ISystem
+    internal class BasicRequirements : BaseSystem
     {
         private struct OperationRequirement
         {
@@ -55,33 +55,37 @@ namespace MaltiezFSM.Systems
 
         public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
         {
-            foreach(JsonObject requrementPack in definition["requirementSets"].AsArray())
+            base.Init(code, definition, collectible, api);
+
+            foreach (JsonObject requrementPack in definition["requirementSets"].AsArray())
             {
                 mRequirements.Add(requrementPack["code"].AsString(), requrementPack["requirements"]);
             }
         }
-        public void SetSystems(Dictionary<string, ISystem> systems)
+        public override bool Verify(ItemSlot slot, EntityAgent player, JsonObject parameters)
         {
-        }
-        public virtual bool Verify(ItemSlot slot, EntityAgent player, JsonObject parameters)
-        {
+            if (!base.Verify(slot, player, parameters)) return false;
+
             string code = parameters["code"].AsString();
             return Check(player, mRequirements[code]);
         }
-        public virtual bool Process(ItemSlot slot, EntityAgent player, JsonObject parameters)
+        public override bool Process(ItemSlot slot, EntityAgent player, JsonObject parameters)
         {
+            if (!base.Process(slot, player, parameters)) return false;
+
             string code = parameters["code"].AsString();
-            switch (parameters["type"].AsString())
+            string action = parameters["type"].AsString();
+            switch (action)
             {
                 case "check":
                     return Check(player, mRequirements[code]);
                 case "take":
                     return Consume(player, mRequirements[code]);
                 default:
+                    mApi.Logger.Error("[FSMlib] [BasicRequirements] [Process] Type does not exists: " + action);
                     return false;
             }
         }
-
 
         private bool Check(EntityAgent byEntity, JsonObject requirements)
         {

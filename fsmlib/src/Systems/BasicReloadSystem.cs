@@ -2,13 +2,12 @@
 using Vintagestory.API.Common;
 using MaltiezFSM.API;
 using System.Collections.Generic;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Server;
 
 namespace MaltiezFSM.Systems
 {  
-    internal class BasicReload : UniqueIdFactoryObject, ISystem, IAmmoSelector
+    internal class BasicReload : BaseSystem, IAmmoSelector
     {
         public const string ammoCodeAttrName = "ammoCode";
         public const string ammoNameAttrName = "ammoName";
@@ -21,40 +20,46 @@ namespace MaltiezFSM.Systems
 
         public string AmmoStackAttrName = "FSMlib.stack.";
 
-        private string mCode;
-        private ICoreAPI mApi;
-
-        public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
-        {
-            mCode = code;
-            mApi = api;
-        }
-        public void SetSystems(Dictionary<string, ISystem> systems)
+        public override void SetSystems(Dictionary<string, ISystem> systems)
         {
             AmmoStackAttrName += mCode;
         }
-        public bool Verify(ItemSlot slot, EntityAgent player, JsonObject parameters)
+        public override bool Verify(ItemSlot slot, EntityAgent player, JsonObject parameters)
         {
+            if (!base.Verify(slot, player, parameters)) return false;
+
             bool offHand = parameters[offHandAttrName].AsBool(false);
             string action = parameters[actionAttrName].AsString();
-            if (action == putAction) return ReadAmmoStackFrom(slot)?.Item != null || ReadAmmoStackFrom(slot)?.Block != null;
-            int amount = 1;
-            if (parameters.KeyExists(amountAttrName)) amount = parameters[amountAttrName].AsInt(1);
 
-            string ammoCode = parameters[ammoCodeAttrName].AsString();
-            string ammoName = parameters[ammoNameAttrName].AsString(ammoCode);
-            ItemSlot ammoSlot = GetAmmoSlot(player, ammoCode, offHand);
-            bool verified = ammoSlot != null && ammoSlot != slot && ammoSlot.Itemstack?.StackSize >= amount;
-            if (!verified)
+            switch (action)
             {
-                string missingItem = Lang.Get(ammoName);
-                if (offHand) missingItem += " (" + Lang.Get("fsmlib:requirements-offhand") + ")";
-                ((player as EntityPlayer)?.Player as IServerPlayer)?.SendMessage(GlobalConstants.InfoLogChatGroup, Lang.Get("fsmlib:requirements-missing", missingItem), EnumChatType.Notification);
+                case putAction:
+                    return ReadAmmoStackFrom(slot)?.Item != null || ReadAmmoStackFrom(slot)?.Block != null;
+                case takeAction:
+                case removeAction:
+                    int amount = 1;
+                    if (parameters.KeyExists(amountAttrName)) amount = parameters[amountAttrName].AsInt(1);
+
+                    string ammoCode = parameters[ammoCodeAttrName].AsString();
+                    string ammoName = parameters[ammoNameAttrName].AsString(ammoCode);
+                    ItemSlot ammoSlot = GetAmmoSlot(player, ammoCode, offHand);
+                    bool verified = ammoSlot != null && ammoSlot != slot && ammoSlot.Itemstack?.StackSize >= amount;
+                    if (!verified)
+                    {
+                        string missingItem = Lang.Get(ammoName);
+                        if (offHand) missingItem += " (" + Lang.Get("fsmlib:requirements-offhand") + ")";
+                        ((player as EntityPlayer)?.Player as IServerPlayer)?.SendMessage(GlobalConstants.InfoLogChatGroup, Lang.Get("fsmlib:requirements-missing", missingItem), EnumChatType.Notification);
+                    }
+                    return verified;
+                default:
+                    mApi.Logger.Error("[FSMlib] [BasicReload] [Verify] Action does not exists: " + action);
+                    return false;
             }
-            return verified;
         }
-        public bool Process(ItemSlot slot, EntityAgent player, JsonObject parameters)
+        public override bool Process(ItemSlot slot, EntityAgent player, JsonObject parameters)
         {
+            if (!base.Process(slot, player, parameters)) return false;
+
             bool offHand = parameters[offHandAttrName].AsBool(false);
             string action = parameters[actionAttrName].AsString();
 
@@ -77,10 +82,11 @@ namespace MaltiezFSM.Systems
                     return true;
                 case removeAction:
                     TakeAmmoStackFrom(slot);
-                    break;
+                    return true;
+                default:
+                    mApi.Logger.Error("[FSMlib] [BasicReload] [Process] Action does not exists: " + action);
+                    return false;
             }
-
-            return false;
         }
         public ItemStack GetSelectedAmmo(ItemSlot slot)
         {

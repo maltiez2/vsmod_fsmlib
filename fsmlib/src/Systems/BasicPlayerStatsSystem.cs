@@ -8,28 +8,33 @@ using Vintagestory.API.Datastructures;
 
 namespace MaltiezFSM.Systems
 {
-    internal class BasicPlayerStats : UniqueIdFactoryObject, ISystem
+    internal class BasicPlayerStats : BaseSystem
     {
         public const int cDefaultTimeout = 30 * 1000;
         public const float cDefaultValue = 0;
         
-        private ICoreAPI mApi;
         private string mStatCode;
-        private Dictionary<string, TimeoutCallback> mStats = new();
+        private readonly Dictionary<string, TimeoutCallback> mStats = new();
 
         public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
         {
-            mApi = api;
+            base.Init(code, definition, collectible, api);
+
             mStatCode = "FSMLib." + code;
         }
 
-        void ISystem.SetSystems(Dictionary<string, ISystem> systems)
+        public override bool Process(ItemSlot slot, EntityAgent player, JsonObject parameters)
         {
-        }
+            if (!base.Process(slot, player, parameters)) return false;
 
-        bool ISystem.Process(ItemSlot slot, EntityAgent player, JsonObject parameters)
-        {
             string code = parameters["code"].AsString();
+
+            if (code == null)
+            {
+                mApi.Logger.Error("[FSMlib] [BasicPlayerStats] [Process] No stat code specified");
+                return false;
+            }
+
             float value = parameters["value"].AsFloat(0);
             bool persistent = parameters["persist"].AsBool(false);
             int timeout = parameters["timeout"].AsInt(0);
@@ -51,13 +56,9 @@ namespace MaltiezFSM.Systems
             return true;
         }
 
-        bool ISystem.Verify(ItemSlot slot, EntityAgent player, JsonObject parameters)
-        {
-            return true;
-        }
         void Revert(float time, EntityAgent player, string category, float defaultValue)
         {
-            mApi.Logger.Debug("[FSMlib] [BasicPlayerStats] Timeout triggered after " + time);
+            mApi.Logger.Debug("[FSMlib] [BasicPlayerStats] [Revert] Timeout triggered after " + time);
             (player as EntityPlayer)?.Stats.Set(category, mStatCode, defaultValue, true);
             if (mStats.ContainsKey(category)) mStats.Remove(category);
         }

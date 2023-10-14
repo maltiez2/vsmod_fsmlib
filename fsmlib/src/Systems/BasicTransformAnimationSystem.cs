@@ -1,13 +1,12 @@
 ﻿using Vintagestory.API.Datastructures;
 using Vintagestory.API.Common;
-using MaltiezFSM.API;
 using System.Collections.Generic;
 using System;
 using MaltiezFSM.Framework;
 
 namespace MaltiezFSM.Systems
 {
-    public class BasicTransformAnimation : UniqueIdFactoryObject, ISystem
+    public class BasicTransformAnimation : BaseSystem
     {
         public const string animationsAttrName = "animations";
         public const string durationAttrName = "duration";
@@ -16,17 +15,14 @@ namespace MaltiezFSM.Systems
         public const string fpAnimationAttrName = "fpTransform";
         public const string tpAnimationAttrName = "tpTransform";
 
-        private ICoreAPI mApi;
         private readonly Dictionary<string, JsonObject> mFpAnimations = new();
         private readonly Dictionary<string, JsonObject> mTpAnimations = new();
         private readonly Dictionary<string, int> mDurations = new();
         private TickBasedPlayerAnimation mTimer;
-        private CollectibleObject mCollectible;
 
         public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
         {
-            mApi = api;
-            mCollectible = collectible;
+            base.Init(code, definition, collectible, api);
 
             JsonObject[] animations = definition[animationsAttrName].AsArray();
             foreach (JsonObject animation in animations)
@@ -39,17 +35,20 @@ namespace MaltiezFSM.Systems
 
             mTimer = new TickBasedPlayerAnimation();
         }
-        void ISystem.SetSystems(Dictionary<string, ISystem> systems)
+        public override bool Verify(ItemSlot slot, EntityAgent player, JsonObject parameters)
         {
-        }
-        bool ISystem.Verify(ItemSlot slot, EntityAgent player, JsonObject parameters)
-        {
+            if (!base.Verify(slot, player, parameters)) return false;
+
             string code = parameters[codeAttrName].AsString();
+
+            if (!mFpAnimations.ContainsKey(code)) mApi.Logger.Error("[FSMlib] [BasicTransformAnimation] [Verify] No animations with code '" + code + "' are defined");
 
             return mFpAnimations.ContainsKey(code);
         }
-        bool ISystem.Process(ItemSlot slot, EntityAgent player, JsonObject parameters)
+        public override bool Process(ItemSlot slot, EntityAgent player, JsonObject parameters)
         {
+            if (!base.Process(slot, player, parameters)) return false;
+
             string code = parameters[codeAttrName].AsString();
             string mode = parameters[modeAttrName].AsString();
             int duration = mDurations[code];
@@ -71,6 +70,9 @@ namespace MaltiezFSM.Systems
                 case "cancel":
                     mTimer?.Stop();
                     break;
+                default:
+                    mApi.Logger.Error("[FSMlib] [BasicTransformAnimation] [Process] Mode does not exists: " + mode);
+                    return false;
             }
             
             return true;

@@ -8,24 +8,22 @@ using Vintagestory.Client.NoObf;
 
 namespace MaltiezFSM.Systems
 {
-    internal class NoSway : UniqueIdFactoryObject, ISystem
+    internal class NoSway : BaseSystem
     {
         private ActionCallbackTimer mTimer;
-        private ICoreAPI mApi;
 
         public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
         {
-            mApi = api;
+            base.Init(code, definition, collectible, api);
+
             mTimer = new();
             mTimer.Init(api, SetAimAnimationCrutch);
         }
 
-        void ISystem.SetSystems(Dictionary<string, ISystem> systems)
+        public override bool Process(ItemSlot slot, EntityAgent player, JsonObject parameters)
         {
-        }
+            if (!base.Process(slot, player, parameters)) return false;
 
-        bool ISystem.Process(ItemSlot slot, EntityAgent player, JsonObject parameters)
-        {
             string action = parameters["action"].AsString();
             switch (action)
             {
@@ -35,6 +33,9 @@ namespace MaltiezFSM.Systems
                 case "stop":
                     if (mApi is ICoreClientAPI) mTimer.Stop();
                     break;
+                default:
+                    mApi.Logger.Error("[FSMlib] [NoSway] [Process] Action does not exists: " + action);
+                    return false;
             }
             return true;
         }
@@ -54,11 +55,6 @@ namespace MaltiezFSM.Systems
             {
                 player.Controls.HandUse = EnumHandInteract.None;
             }
-        }
-
-        bool ISystem.Verify(ItemSlot slot, EntityAgent player, JsonObject parameters)
-        {
-            return true;
         }
     }
 

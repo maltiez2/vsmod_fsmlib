@@ -1,31 +1,21 @@
-﻿using MaltiezFSM.API;
-using System;
-using System.Collections.Generic;
-using Vintagestory.API.Common;
+﻿using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
 namespace MaltiezFSM.Systems
 {
-    internal class BasicDurabilityDamage : UniqueIdFactoryObject, ISystem
+    public class BasicDurabilityDamage : BaseSystem
     {
-        private ICoreAPI mApi;
-
-        public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
+        public override bool Verify(ItemSlot slot, EntityAgent player, JsonObject parameters)
         {
-            mApi = api;
-        }
+            if (!base.Verify(slot, player, parameters)) return false;
 
-        void ISystem.SetSystems(Dictionary<string, ISystem> systems)
-        {
-        }
-
-        bool ISystem.Verify(ItemSlot slot, EntityAgent player, JsonObject parameters)
-        {
             return slot?.Itemstack?.Collectible != null && player != null && mApi?.World != null;
         }
 
-        bool ISystem.Process(ItemSlot slot, EntityAgent player, JsonObject parameters)
+        public override bool Process(ItemSlot slot, EntityAgent player, JsonObject parameters)
         {
+            if (!base.Process(slot, player, parameters)) return false;
+
             int damage = parameters["value"].AsInt(1);
             slot?.Itemstack?.Collectible.DamageItem(mApi.World, player, slot, damage);
             return true;

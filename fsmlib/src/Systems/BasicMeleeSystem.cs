@@ -1,13 +1,8 @@
-﻿using MaltiezFSM.API;
-using MaltiezFSM.Framework;
+﻿using MaltiezFSM.Framework;
 using System;
-using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
-using Vintagestory.API.MathTools;
-using Vintagestory.GameContent;
 
 namespace MaltiezFSM.Systems
 {
@@ -59,29 +54,25 @@ namespace MaltiezFSM.Systems
         }
     }
     
-    public class BasicMelee : UniqueIdFactoryObject, ISystem // @TODO Placeholder system
+    public class BasicMelee : BaseSystem
     {
         private MeleeCallbackTimer mTimer;
-        private ICoreAPI mApi;
-        private CollectibleObject mCollectible;
         private AnimationData mAnimation;
         private ModelTransform mFpInitial;
         private ModelTransform mTpInitial;
 
         public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
         {
-            mApi = api;
+            base.Init(code, definition, collectible, api);
+
             mTimer = new();
-            mCollectible = collectible;
-            mAnimation = new AnimationData(definition);                                                                      
+            mAnimation = new AnimationData(definition);                                                                 
         }
 
-        void ISystem.SetSystems(Dictionary<string, ISystem> systems)
+        public override bool Process(ItemSlot slot, EntityAgent player, JsonObject parameters)
         {
-        }
+            if (!base.Process(slot, player, parameters)) return false;
 
-        bool ISystem.Process(ItemSlot slot, EntityAgent player, JsonObject parameters)
-        {
             string action = parameters["action"].AsString();
             switch (action)
             {
@@ -105,12 +96,10 @@ namespace MaltiezFSM.Systems
                     mCollectible.GetBehavior<FiniteStateMachineBehaviour>().tpTransform = null;
                     mCollectible.GetBehavior<FiniteStateMachineBehaviour>().fpTransform = null;
                     break;
+                default:
+                    mApi.Logger.Error("[FSMlib] [BasicMelee] [Process] Action does not exists: " + action);
+                    return false;
             }
-            return true;
-        }
-
-        bool ISystem.Verify(ItemSlot slot, EntityAgent player, JsonObject parameters)
-        {
             return true;
         }
 

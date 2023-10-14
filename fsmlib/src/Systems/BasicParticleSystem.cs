@@ -1,35 +1,35 @@
-﻿using MaltiezFSM.API;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
 namespace MaltiezFSM.Systems
 {
-    internal class BasicParticles : UniqueIdFactoryObject, ISystem
+    internal class BasicParticles : BaseSystem
     {
         private readonly Dictionary<string, SimpleParticleProperties> mParticleEffectsTypes = new();
         private readonly Dictionary<string, Tuple<string, float, Vec3f, Vec3f>> mParticleEffects = new();
 
         public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
         {
+            base.Init(code, definition, collectible, api);
+
             FillParticleEffectsTypes();
             FillParticleEffects(definition["effects"]);
         }
 
-        void ISystem.SetSystems(Dictionary<string, ISystem> systems)
+        public override bool Process(ItemSlot slot, EntityAgent player, JsonObject parameters)
         {
-        }
+            if (!base.Process(slot, player, parameters)) return false;
 
-        bool ISystem.Process(ItemSlot slot, EntityAgent player, JsonObject parameters)
-        {
+            if (!parameters.KeyExists("effects")) return true;
+            if (!parameters["effects"].IsArray())
+            {
+                mApi.Logger.Error("[FSMlib] [BasicParticles] [Process] `effects` should be an array");
+                return false;
+            }
+
             foreach (JsonObject effectCode in parameters["effects"].AsArray())
             {
                 Tuple<string, float, Vec3f, Vec3f> effect = mParticleEffects[effectCode.AsString()];
@@ -39,11 +39,6 @@ namespace MaltiezFSM.Systems
                 }
             }
 
-            return true;
-        }
-
-        bool ISystem.Verify(ItemSlot slot, EntityAgent player, JsonObject parameters)
-        {
             return true;
         }
 
@@ -100,18 +95,37 @@ namespace MaltiezFSM.Systems
         }
         private void FillParticleEffects(JsonObject effectsData)
         {
+            if (effectsData == null || !effectsData.IsArray())
+            {
+                mApi.Logger.Error("[FSMlib] [BasicParticles] [FillParticleEffects] `effects` attribute should be an array");
+                return;
+            }
+
             JsonObject[] particleEffectsData = effectsData.AsArray();
 
             foreach (JsonObject particleEffect in particleEffectsData)
             {
+                string effectType = particleEffect["type"].AsString();
+                string effectCode = particleEffect["code"].AsString();
+                if (!mParticleEffectsTypes.ContainsKey(effectType))
+                {
+                    mApi.Logger.Error("[FSMlib] [BasicParticles] [FillParticleEffects] Effect type does not exist: '" + effectType + "'");
+                    continue;
+                }
+                if (mParticleEffects.ContainsKey(effectCode))
+                {
+                    mApi.Logger.Error("[FSMlib] [BasicParticles] [FillParticleEffects] Duplicated effect code: '" + effectCode + "'");
+                    continue;
+                }
+
                 JsonObject position = particleEffect["position"];
                 JsonObject velocity = particleEffect["velocity"];
                 mParticleEffects.Add
                     (
-                        particleEffect["code"].AsString(),
+                        effectCode,
                         new Tuple<string, float, Vec3f, Vec3f>
                         (
-                            particleEffect["type"].AsString(),
+                            effectType,
                             particleEffect["intensity"].AsFloat(1),
                             new Vec3f(position["x"].AsFloat(), position["y"].AsFloat(), position["z"].AsFloat()),
                             new Vec3f(velocity["x"].AsFloat(), velocity["y"].AsFloat(), velocity["z"].AsFloat())

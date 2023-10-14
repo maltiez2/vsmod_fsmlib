@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -108,6 +109,7 @@ namespace MaltiezFSM.API
         void SetSystems(Dictionary<string, ISystem> systems);
         bool Verify(ItemSlot slot, EntityAgent player, JsonObject parameters);
         bool Process(ItemSlot slot, EntityAgent player, JsonObject parameters);
+        string[] GetDescription(ItemSlot slot, IWorldAccessor world);
     }
     public interface IKeyRelatedInput
     {
