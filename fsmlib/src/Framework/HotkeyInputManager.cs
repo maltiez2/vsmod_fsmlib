@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using MaltiezFSM.API;
+using Vintagestory.API.Config;
 
 namespace MaltiezFSM.Framework
 {
@@ -10,7 +11,7 @@ namespace MaltiezFSM.Framework
         private readonly ICoreClientAPI mClientApi;
 
         private readonly Dictionary<string, List<IHotkeyInputManager.InputCallback>> mCallbacks = new();
-        
+
         public HotkeyInputManager(ICoreClientAPI api)
         {
             mClientApi = api;
@@ -28,10 +29,10 @@ namespace MaltiezFSM.Framework
 
         private void RegisterHotkey(IHotkeyInput input, string code)
         {
-            KeyPressModifiers altCtrlShift = input.GetIfAltCtrlShiftPressed();
+            KeyPressModifiers altCtrlShift = input.GetModifiers();
             GlKeys key = (GlKeys)Enum.Parse(typeof(GlKeys), input.GetKey());
 
-            mClientApi.Input.RegisterHotKey(code, code, key, HotkeyType.CharacterControls, altCtrlShift.AltAsBool(), altCtrlShift.CtrlAsBool(), altCtrlShift.ShiftAsBool());
+            mClientApi.Input.RegisterHotKey(code, Lang.Get(input.GetLangName()), key, HotkeyType.CharacterControls, altCtrlShift.AltAsBool(), altCtrlShift.CtrlAsBool(), altCtrlShift.ShiftAsBool());
             mClientApi.Input.SetHotKeyHandler(code, (KeyCombination keys) => ProxyHandler(keys, code));
         }
 

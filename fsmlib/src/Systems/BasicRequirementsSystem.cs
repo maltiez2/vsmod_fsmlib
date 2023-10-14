@@ -13,15 +13,41 @@ namespace MaltiezFSM.Systems
         private struct OperationRequirement
         {
             public string code { get; set; }
+            public string name { get; set; }
             public int amount { get; set; }
             public int durability { get; set; }
             public int durabilityDamage { get; set; }
             public int offHand { get; set; }
             public bool consume { get; set; }
 
-            public static implicit operator OperationRequirement((string code, int amount, int durability, int durabilityDamage, int offHand, bool consume) parameters)
+            public static implicit operator OperationRequirement((string code, string name, int amount, int durability, int durabilityDamage, int offHand, bool consume) parameters)
             {
-                return new OperationRequirement() { code = parameters.code, amount = parameters.amount, durability = parameters.durability, durabilityDamage = parameters.durabilityDamage, offHand = parameters.offHand, consume = parameters.consume };
+                return new OperationRequirement() { code = parameters.code, name = parameters.name, amount = parameters.amount, durability = parameters.durability, durabilityDamage = parameters.durabilityDamage, offHand = parameters.offHand, consume = parameters.consume };
+            }
+
+            public override string ToString()
+            {
+                string output = Lang.Get(name);
+                if (amount > 1)
+                {
+                    output += " (" + Lang.Get("fsmlib:requirements-amount", amount) + ")";
+                }
+
+                if (durabilityDamage > 0)
+                {
+                    output += " (" + Lang.Get("fsmlib:requirements-durability", durabilityDamage) + ")";
+                }
+                else if (durability > 0)
+                {
+                    output += " (" + Lang.Get("fsmlib:requirements-durability", durability) + ")";
+                }
+
+                if (offHand >= 1)
+                {
+                    output += " (" + Lang.Get("fsmlib:requirements-offhand") + ")";
+                }
+
+                return output;
             }
         }
 
@@ -65,7 +91,7 @@ namespace MaltiezFSM.Systems
             {
                 if ((GetNextRequirement(byEntity, requirement) == null) != (requirement.offHand == 0))
                 {
-                    ((byEntity as EntityPlayer)?.Player as IServerPlayer)?.SendMessage(GlobalConstants.InfoLogChatGroup, "Cant reload, unfulfilled requirements: " + requirement.code, EnumChatType.Notification);
+                    ((byEntity as EntityPlayer)?.Player as IServerPlayer)?.SendMessage(GlobalConstants.InfoLogChatGroup, Lang.Get("fsmlib:requirements-missing", requirement.ToString()), EnumChatType.Notification);
                     requirementsFulfilled = false;
                 }
             }
@@ -163,13 +189,14 @@ namespace MaltiezFSM.Systems
             foreach (JsonObject requirement in requirements.AsArray())
             {
                 string code = requirement["code"].AsString();
+                string name = requirement["name"].AsString(code);
                 int amount = requirement["amount"].AsInt(1);
                 int durability = requirement["durability"].AsInt(0);
                 int durabilityDamage = requirement["durabilityDamage"].AsInt(-1);
                 int offHand = requirement["offhand"].AsInt(-1);
                 bool consume = requirement["consume"].AsBool(true);
 
-                output.Add((code, amount, durability, durabilityDamage, offHand, consume));
+                output.Add((code, name, amount, durability, durabilityDamage, offHand, consume));
             }
 
             return output;

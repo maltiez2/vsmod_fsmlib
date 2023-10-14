@@ -1,6 +1,9 @@
 ﻿using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using MaltiezFSM.API;
+using Vintagestory.API.Client;
+using Vintagestory.GameContent;
+using System.Linq;
 
 namespace MaltiezFSM.Inputs
 {
@@ -10,15 +13,20 @@ namespace MaltiezFSM.Inputs
         public const string altAttrName = "alt";
         public const string ctrlAttrName = "ctrl";
         public const string shiftAttrName = "shift";
+        public const string nameAttrName = "name";
 
         private string mKey;
+        private string mCode;
         private KeyPressModifiers mModifiers;
+        private string mLangName;
 
         public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
         {
             base.Init(code, definition, collectible, api);
-
+            mLangName = definition[nameAttrName].AsString(code);
             mKey = definition[keyAttrName].AsString(); // @TODO @LOCAL Add localization
+            mCode = code;
+
             mModifiers = new KeyPressModifiers
             (
                 definition.KeyExists(altAttrName) ? definition[altAttrName].AsBool(false) : null,
@@ -27,13 +35,32 @@ namespace MaltiezFSM.Inputs
             );
         }
 
-        public KeyPressModifiers GetIfAltCtrlShiftPressed()
+        KeyPressModifiers IKeyRelatedInput.GetModifiers()
         {
             return mModifiers;
         }
-        public string GetKey()
+        string IKeyRelatedInput.GetKey()
         {
             return mKey;
+        }
+        public override WorldInteraction GetInteractionInfo(ItemSlot slot)
+        {
+            return new WorldInteraction()
+            {
+                ActionLangCode = mLangName,
+                MouseButton = EnumMouseButton.None,
+                HotKeyCodes = mModifiers.GetCodes().AsEnumerable().Append(mCode).ToArray()
+            };
+        }
+
+        string IHotkeyInput.GetLangName()
+        {
+            return mLangName;
+        }
+
+        public void SetModifiers(KeyPressModifiers modifiers)
+        {
+            mModifiers = modifiers;
         }
     }
 }

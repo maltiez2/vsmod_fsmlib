@@ -14,7 +14,7 @@ namespace MaltiezFSM
         public override void Start(ICoreAPI api)
         {  
             base.Start(api);
-
+            api.RegisterItemClass("NoMelee", typeof(NoMelee));
             api.RegisterCollectibleBehaviorClass("FiniteStateMachine", typeof(Framework.FiniteStateMachineBehaviour));
 
             mOperationFactory = new Framework.Factory<IOperation, Framework.UniqueIdGeneratorForFactory>(api);
@@ -28,7 +28,8 @@ namespace MaltiezFSM
             IActiveSlotListener activeSlotListener = (api.Side == EnumAppSide.Client) ? new Framework.ActiveSlotActiveListener(api as ICoreClientAPI) : null;
             IHotkeyInputManager hotkeyInputManager = (api.Side == EnumAppSide.Client) ? new Framework.HotkeyInputManager(api as ICoreClientAPI) : null;
             IStatusInputManager statusInputManager = (api.Side == EnumAppSide.Client) ? new Framework.StatusInputManager(api as ICoreClientAPI) : null;
-            mInputManager = new Framework.InputManager(api, activeSlotListener, hotkeyInputManager, statusInputManager);
+            IKeyInputManager    keyInputManager    = (api.Side == EnumAppSide.Client) ? new Framework.KeyInputManager(api as ICoreClientAPI) : null;
+            mInputManager = new Framework.InputManager(api, activeSlotListener, hotkeyInputManager, statusInputManager, keyInputManager);
         }
 
         public void RegisterSystems()

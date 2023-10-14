@@ -3,6 +3,7 @@ using Vintagestory.API.Datastructures;
 using MaltiezFSM.API;
 using static MaltiezFSM.API.IInput;
 using System.Collections.Generic;
+using Vintagestory.API.Client;
 
 namespace MaltiezFSM.Inputs
 {
@@ -42,6 +43,11 @@ namespace MaltiezFSM.Inputs
         public SlotTypes SlotType()
         {
             return mSlotType;
+        }
+
+        public virtual WorldInteraction GetInteractionInfo(ItemSlot slot)
+        {
+            return null;
         }
     }
 }

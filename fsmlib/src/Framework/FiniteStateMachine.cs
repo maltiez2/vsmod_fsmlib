@@ -123,6 +123,19 @@ namespace MaltiezFSM.Framework
             }
         }
 
+        public List<IInput> GetAvailableInputs(ItemSlot slot)
+        {
+            List<IInput> inputs = new();
+
+            State state = ReadStateFrom(slot);
+            foreach (var item in mOperationsByInputAndState[state])
+            {
+                inputs.Add(item.Key);   
+            }
+
+            return inputs;
+        }
+
         public bool Process(ItemSlot slot, EntityAgent player, IInput input)
         {
             if (slot?.Itemstack?.Collectible != mCollectible || player == null) return false;

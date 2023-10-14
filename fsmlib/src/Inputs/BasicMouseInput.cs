@@ -5,6 +5,7 @@ using MaltiezFSM.API;
 using static MaltiezFSM.API.IMouseInput;
 using Vintagestory.API.Client;
 using System;
+using System.Linq;
 
 namespace MaltiezFSM.Inputs
 {
@@ -16,6 +17,7 @@ namespace MaltiezFSM.Inputs
         public const string ctrlAttrName = "ctrl";
         public const string shiftAttrName = "shift";
         public const string repeatAttrName = "repeat";
+        public const string nameAttrName = "name";
 
         private string mKey;
         private bool mRepeatable;
@@ -23,12 +25,14 @@ namespace MaltiezFSM.Inputs
         private MouseEventType mType;
         private KeyPressModifiers mModifiers;
         private ICoreClientAPI mClientApi;
+        private string mLangName;
 
         public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
         {
             base.Init(code, definition, collectible, api);
 
             mKey = definition[keyAttrName].AsString();
+            mLangName = definition[nameAttrName].AsString();
             mRepeatable = definition[repeatAttrName].AsBool(false);
             mKeyEnum = (EnumMouseButton)Enum.Parse(typeof(EnumMouseButton), mKey);
             switch (definition[keyPressTypeAttrName].AsString())
@@ -68,13 +72,25 @@ namespace MaltiezFSM.Inputs
 
             return true;
         }
-        public KeyPressModifiers GetIfAltCtrlShiftPressed()
+        public KeyPressModifiers GetModifiers()
         {
             return mModifiers;
         }
         public string GetKey()
         {
             return mKey;
+        }
+
+        public override WorldInteraction GetInteractionInfo(ItemSlot slot)
+        {
+            if (mLangName == null) return null;
+            
+            return new WorldInteraction()
+            {
+                ActionLangCode = mLangName,
+                MouseButton = mKeyEnum,
+                HotKeyCodes = mModifiers.GetCodes()
+            };
         }
 
         public bool IsRepeatable()
@@ -93,6 +109,11 @@ namespace MaltiezFSM.Inputs
             if (mModifiers.Shift != null && shiftPressed != mModifiers.Shift) return false;
 
             return true;
+        }
+
+        public void SetModifiers(KeyPressModifiers modifiers)
+        {
+            mModifiers = modifiers;
         }
     }
 }

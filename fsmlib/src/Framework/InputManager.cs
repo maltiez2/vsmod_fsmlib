@@ -18,7 +18,8 @@ namespace MaltiezFSM.Framework
         private readonly ICoreClientAPI mClientApi;
         private readonly IActiveSlotListener mSlotListener;
         private readonly IHotkeyInputManager mHotkeyInputManager;
-        private readonly IStatusInputManager mHStatusInputManager;
+        private readonly IStatusInputManager mStatusInputManager;
+        private readonly IKeyInputManager mKeyManager;
         private readonly List<IInput> mInputs = new();
         private readonly List<InputCallback> mCallbacks = new();
         private readonly List<CollectibleObject> mCollectibles = new();
@@ -30,11 +31,12 @@ namespace MaltiezFSM.Framework
         private readonly static Type rHudMouseToolsType = typeof(Vintagestory.Client.NoObf.ClientMain).Assembly.GetType("Vintagestory.Client.NoObf.HudMouseTools");
         private readonly HashSet<string> rBlockingGuiDialogs = new HashSet<string>();
 
-        public InputManager(ICoreAPI api, IActiveSlotListener slotListener, IHotkeyInputManager hotkeyManager, IStatusInputManager statusManager)
+        public InputManager(ICoreAPI api, IActiveSlotListener slotListener, IHotkeyInputManager hotkeyManager, IStatusInputManager statusManager, IKeyInputManager keyManager)
         {
             mPacketSender = new InputPacketSender(api, ServerInputProxyHandler, cNetworkChannelName);
             mHotkeyInputManager = hotkeyManager;
-            mHStatusInputManager = statusManager;
+            mStatusInputManager = statusManager;
+            mKeyManager = keyManager;
 
             if (api.Side == EnumAppSide.Client)
             {
@@ -51,6 +53,11 @@ namespace MaltiezFSM.Framework
             mCallbacks.Add(callback);
             mCollectibles.Add(collectible);
 
+            if (input is IKeyInput && mClientApi != null)
+            {
+                mKeyManager.RegisterKeyInput(input as IKeyInput);
+            }
+
             if (input is IHotkeyInput && mClientApi != null)
             {
                 mHotkeyInputManager?.RegisterHotkeyInput(input as IHotkeyInput, _ => ClientInputProxyHandler(inputIndex, null));
@@ -63,7 +70,7 @@ namespace MaltiezFSM.Framework
 
             if (input is IStatusInput && mClientApi != null)
             {
-                mHStatusInputManager.RegisterStatusInput(input as IStatusInput, _ => ClientInputProxyHandler(inputIndex, null));
+                mStatusInputManager.RegisterStatusInput(input as IStatusInput, _ => ClientInputProxyHandler(inputIndex, null));
             }
         }
         private void ClientRegisterEventHandler(IEventInput input, int inputIndex)

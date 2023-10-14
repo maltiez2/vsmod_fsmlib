@@ -44,10 +44,7 @@ namespace MaltiezFSM.Systems
 
         protected void PlaySound(EntityAgent byEntity, AssetLocation location)
         {
-            IPlayer byPlayer = null;
-            if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid((byEntity as EntityPlayer).PlayerUID);
-
-            byEntity.World.PlaySoundAt(location: location, atEntity: byEntity, dualCallByPlayer: byPlayer, randomizePitch: mRandomizePitch, range: mRange, volume: mVolume);
+            byEntity.World.PlaySoundAt(location: location, atEntity: byEntity, dualCallByPlayer: null, randomizePitch: mRandomizePitch, range: mRange, volume: mVolume);
         }
     }
 
@@ -81,8 +78,11 @@ namespace MaltiezFSM.Systems
         public const string soundsAttrName = "sounds";
         public const string soundCodeAttrName = "code";
 
+        private ICoreAPI mApi;
+
         public override void Init(string name, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
         {
+            mApi = api;
             JsonObject[] sounds = definition[soundsAttrName].AsArray();
 
             foreach (JsonObject sound in sounds)
@@ -115,15 +115,15 @@ namespace MaltiezFSM.Systems
         }
         public virtual bool Process(ItemSlot weaponSlot, EntityAgent player, JsonObject parameters)
         {
+            if (mApi?.Side != EnumAppSide.Server) return true;
             string soundCode = parameters[soundCodeAttrName].AsString();
             mSounds[soundCode].Play(player);
-
             return true;
         }
 
         void ISoundSystem.PlaySound(string soundCode, ItemSlot slot, EntityAgent player)
         {
-            if (mSounds.ContainsKey(soundCode)) mSounds[soundCode].Play(player);
+            if (mApi.Side == EnumAppSide.Server && mSounds.ContainsKey(soundCode)) mSounds[soundCode].Play(player);
         }
     }
 }

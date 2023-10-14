@@ -23,7 +23,7 @@ namespace MaltiezFSM.Systems
     public interface IAmmoSelector
     {
         ItemStack GetSelectedAmmo(ItemSlot slot);
-        ItemStack TakeSelectedAmmo(ItemSlot slot, int amount = 0);
+        ItemStack TakeSelectedAmmo(ItemSlot slot, int amount = -1);
     }
 
     public interface IAimingSystem

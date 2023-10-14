@@ -4,6 +4,8 @@ using static MaltiezFSM.API.IKeyInput;
 using MaltiezFSM.API;
 using Vintagestory.API.Client;
 using System;
+using HarmonyLib;
+using System.Linq;
 
 namespace MaltiezFSM.Inputs
 {
@@ -14,18 +16,24 @@ namespace MaltiezFSM.Inputs
         public const string altAttrName = "alt";
         public const string ctrlAttrName = "ctrl";
         public const string shiftAttrName = "shift";
+        public const string hotkeyAttrName = "hotkey";
+        public const string nameAttrName = "name";
 
         private string mKey;
+        private string mHotkey;
+        private string mLangName;
         private KeyEventType mType;
         private int mKeyEnum;
         private KeyPressModifiers mModifiers;
         private ICoreClientAPI mClientApi;
 
-        public override void Init(string name, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
+        public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
         {
-            base.Init(name, definition, collectible, api);
+            base.Init(code, definition, collectible, api);
 
             mKey = definition[keyAttrName].AsString();
+            mHotkey = definition[hotkeyAttrName].AsString();
+            mLangName = definition[nameAttrName].AsString(code);
             mKeyEnum = (int)Enum.Parse(typeof(GlKeys), mKey);
             switch (definition[keyPressTypeAttrName].AsString())
             {
@@ -67,13 +75,43 @@ namespace MaltiezFSM.Inputs
             return true;
         }
 
-        public KeyPressModifiers GetIfAltCtrlShiftPressed()
+        public KeyPressModifiers GetModifiers()
         {
             return mModifiers;
         }
         public string GetKey()
         {
             return mKey;
+        }
+
+        public string GetHotkeyCode()
+        {
+            return mHotkey;
+        }
+
+        public string GetLangName()
+        {
+            return mLangName;
+        }
+
+        public void SetModifiers(KeyPressModifiers modifiers)
+        {
+            mModifiers = modifiers;
+        }
+
+        public void SetKey(string key)
+        {
+            mKey = key;
+            mKeyEnum = (int)Enum.Parse(typeof(GlKeys), mKey);
+        }
+        public override WorldInteraction GetInteractionInfo(ItemSlot slot)
+        {
+            return new WorldInteraction()
+            {
+                ActionLangCode = mLangName,
+                MouseButton = EnumMouseButton.None,
+                HotKeyCodes = mModifiers.GetCodes().AsEnumerable().Append(mHotkey).ToArray()
+            };
         }
     }
 }

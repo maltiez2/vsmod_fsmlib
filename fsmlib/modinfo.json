@@ -6,7 +6,7 @@
         "Maltiez"
     ],
     "description": "Finite State Machine library as framework for implementing items with complex behaviour",
-    "version": "0.1.3",
+    "version": "0.1.4",
     "dependencies": {
         "game": "1.18.8"
     }

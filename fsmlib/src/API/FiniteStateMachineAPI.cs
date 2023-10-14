@@ -23,6 +23,14 @@ namespace MaltiezFSM.API
         public bool AltAsBool(bool defaultValue = false) => Alt == null ? defaultValue : (bool)Alt;
         public bool CtrlAsBool(bool defaultValue = false) => Ctrl == null ? defaultValue : (bool)Ctrl;
         public bool ShiftAsBool(bool defaultValue = false) => Shift == null ? defaultValue : (bool)Shift;
+        public string[] GetCodes()
+        {
+            List<string> codes = new();
+            if (Alt == true) codes.Add("alt");
+            if (Ctrl == true) codes.Add("ctrl");
+            if (Shift == true) codes.Add("shift");
+            return codes.ToArray();
+        }
     }
 
     // DOCUMENTATION: WORK IN PROGRESS
@@ -103,8 +111,9 @@ namespace MaltiezFSM.API
     }
     public interface IKeyRelatedInput
     {
-        KeyPressModifiers GetIfAltCtrlShiftPressed();
+        KeyPressModifiers GetModifiers();
         string GetKey();
+        void SetModifiers(KeyPressModifiers modifiers);
     }
     public interface IInput : IFactoryObject
     {
@@ -118,6 +127,7 @@ namespace MaltiezFSM.API
         string GetName();
         bool Handled();
         SlotTypes SlotType();
+        WorldInteraction GetInteractionInfo(ItemSlot slot);
     }
     public interface IStatusInput : IInput
     {
@@ -130,7 +140,7 @@ namespace MaltiezFSM.API
     }
     public interface IHotkeyInput : IInput, IKeyRelatedInput
     {
-        
+        string GetLangName();
     }
     public interface IEventInput : IInput
     {
@@ -145,6 +155,9 @@ namespace MaltiezFSM.API
         }
         KeyEventType GetEventType();
         bool CheckIfShouldBeHandled(KeyEvent keyEvent, KeyEventType eventType);
+        string GetHotkeyCode();
+        string GetLangName();
+        void SetKey(string key);
     }
     public interface IMouseInput : IEventInput, IKeyRelatedInput
     {
@@ -200,6 +213,7 @@ namespace MaltiezFSM.API
         void Init(ICoreAPI api, Dictionary<string, IOperation> operations, Dictionary<string, ISystem> systems, Dictionary<string, IInput> inputs, JsonObject behaviourAttributes, CollectibleObject collectible);
         bool Process(ItemSlot slot, EntityAgent player, IInput input);
         bool OnTimer(ItemSlot slot, EntityAgent player, IInput input, IOperation operation);
+        List<IInput> GetAvailableInputs(ItemSlot slot);
     }
 
     public interface IInputManager
@@ -211,6 +225,10 @@ namespace MaltiezFSM.API
     {
         public delegate bool InputCallback(KeyCombination keyCombination);
         void RegisterHotkeyInput(IHotkeyInput input, InputCallback callback);
+    }
+    public interface IKeyInputManager
+    {
+        void RegisterKeyInput(IKeyInput input);
     }
     public interface IStatusInputManager
     {

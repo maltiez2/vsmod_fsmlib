@@ -11,6 +11,7 @@ namespace MaltiezFSM.Systems
     internal class BasicReload : UniqueIdFactoryObject, ISystem, IAmmoSelector
     {
         public const string ammoCodeAttrName = "ammoCode";
+        public const string ammoNameAttrName = "ammoName";
         public const string actionAttrName = "action";
         public const string amountAttrName = "amount";
         public const string takeAction = "take";
@@ -41,11 +42,14 @@ namespace MaltiezFSM.Systems
             if (parameters.KeyExists(amountAttrName)) amount = parameters[amountAttrName].AsInt(1);
 
             string ammoCode = parameters[ammoCodeAttrName].AsString();
+            string ammoName = parameters[ammoNameAttrName].AsString(ammoCode);
             ItemSlot ammoSlot = GetAmmoSlot(player, ammoCode, offHand);
             bool verified = ammoSlot != null && ammoSlot != slot && ammoSlot.Itemstack?.StackSize >= amount;
             if (!verified)
             {
-                ((player as EntityPlayer)?.Player as IServerPlayer)?.SendMessage(GlobalConstants.InfoLogChatGroup, "[FSMlib] Cant operate, unfulfilled requirements: " + ammoCode, EnumChatType.Notification);
+                string missingItem = Lang.Get(ammoName);
+                if (offHand) missingItem += " (" + Lang.Get("fsmlib:requirements-offhand") + ")";
+                ((player as EntityPlayer)?.Player as IServerPlayer)?.SendMessage(GlobalConstants.InfoLogChatGroup, Lang.Get("fsmlib:requirements-missing", missingItem), EnumChatType.Notification);
             }
             return verified;
         }

@@ -2,6 +2,10 @@
 using Vintagestory.API.Datastructures;
 using MaltiezFSM.API;
 using Vintagestory.API.Client;
+using System.Text;
+using Vintagestory.API.Config;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace MaltiezFSM.Framework
 {
@@ -85,6 +89,25 @@ namespace MaltiezFSM.Framework
             }
 
             base.OnBeforeRender(capi, itemstack, target, ref renderinfo);
+        }
+
+        public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
+        {
+            base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
+
+            //dsc.AppendLine(Lang.Get("bullseye:projectile-break-chance"));
+        }
+
+        public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot, ref EnumHandling handling)
+        {
+            List<WorldInteraction> interactionsHelp = base.GetHeldInteractionHelp(inSlot, ref handling).ToList();
+            foreach (IInput input in mFsm.GetAvailableInputs(inSlot))
+            {
+                WorldInteraction interactionHelp = input.GetInteractionInfo(inSlot);
+                if (interactionHelp != null) interactionsHelp.Add(interactionHelp);
+            }
+
+            return interactionsHelp.ToArray();
         }
     }
 }
