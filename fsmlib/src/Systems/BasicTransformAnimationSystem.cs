@@ -3,6 +3,7 @@ using Vintagestory.API.Common;
 using System.Collections.Generic;
 using System;
 using MaltiezFSM.Framework;
+using Vintagestory.API.Common.Entities;
 
 namespace MaltiezFSM.Systems
 {
@@ -62,12 +63,22 @@ namespace MaltiezFSM.Systems
             switch (mode)
             {
                 case "forward":
+                    ModelTransform modelTransform = new ModelTransform(); // @TODO Crutch
+                    modelTransform.EnsureDefaultValues();
+                    player.Controls.UsingHeldItemTransformAfter = modelTransform.Clone();
+                    player.Controls.UsingHeldItemTransformBefore = modelTransform.Clone();
                     mTimer?.Play();
                     break;
                 case "backward":
                     mTimer?.Revert();
                     break;
                 case "cancel":
+                    ModelTransform modelTransform2 = new ModelTransform(); // @TODO Crutch
+                    modelTransform2.EnsureDefaultValues();
+                    player.Controls.UsingHeldItemTransformAfter = modelTransform2.Clone();
+                    player.Controls.UsingHeldItemTransformBefore = modelTransform2.Clone();
+                    mCollectible.GetBehavior<FiniteStateMachineBehaviour>().tpTransform = modelTransform2;
+                    mCollectible.GetBehavior<FiniteStateMachineBehaviour>().fpTransform = modelTransform2;
                     mTimer?.Stop();
                     break;
                 default:

@@ -5,6 +5,10 @@ using System.Collections.Generic;
 using Vintagestory.API.Config;
 using Vintagestory.API.Server;
 using System;
+using System.Linq;
+using Vintagestory.API.Client;
+using System.Collections;
+using Vintagestory.API.Common.Entities;
 
 namespace MaltiezFSM.Systems
 {
@@ -17,12 +21,28 @@ namespace MaltiezFSM.Systems
             public int amount { get; set; }
             public int durability { get; set; }
             public int durabilityDamage { get; set; }
-            public int offHand { get; set; }
+            public SlotType slotType { get; set; }
             public bool consume { get; set; }
 
-            public static implicit operator OperationRequirement((string code, string name, int amount, int durability, int durabilityDamage, int offHand, bool consume) parameters)
+            public enum SlotType
             {
-                return new OperationRequirement() { code = parameters.code, name = parameters.name, amount = parameters.amount, durability = parameters.durability, durabilityDamage = parameters.durabilityDamage, offHand = parameters.offHand, consume = parameters.consume };
+                any,
+                hotbar,
+                offhand,
+                mainhand
+            }
+
+            public static implicit operator OperationRequirement((string code, string name, int amount, int durability, int durabilityDamage, SlotType slotType, bool consume) parameters)
+            {
+                return new OperationRequirement() { 
+                    code = parameters.code,
+                    name = parameters.name,
+                    amount = parameters.amount,
+                    durability = parameters.durability,
+                    durabilityDamage = parameters.durabilityDamage,
+                    slotType = parameters.slotType,
+                    consume = parameters.consume
+                };
             }
 
             public override string ToString()
@@ -42,24 +62,31 @@ namespace MaltiezFSM.Systems
                     output += " (" + Lang.Get("fsmlib:requirements-durability", durability) + ")";
                 }
 
-                if (offHand >= 1)
+                if (slotType == SlotType.offhand)
                 {
                     output += " (" + Lang.Get("fsmlib:requirements-offhand") + ")";
+                }
+
+                if (slotType == SlotType.mainhand)
+                {
+                    output += " (" + Lang.Get("fsmlib:requirements-mainhand") + ")";
                 }
 
                 return output;
             }
         }
 
-        private readonly Dictionary<string, JsonObject> mRequirements = new();
+        private readonly Dictionary<string, List<OperationRequirement>> mRequirements = new();
+        private readonly Dictionary<string, string> mDescriptions = new();
 
         public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
         {
             base.Init(code, definition, collectible, api);
 
-            foreach (JsonObject requrementPack in definition["requirementSets"].AsArray())
+            foreach (JsonObject requirementPack in definition["requirementSets"].AsArray())
             {
-                mRequirements.Add(requrementPack["code"].AsString(), requrementPack["requirements"]);
+                mRequirements.Add(requirementPack["code"].AsString(), GetRequirements(requirementPack["requirements"]));
+                mDescriptions.Add(requirementPack["code"].AsString(), requirementPack["description"].AsString());
             }
         }
         public override bool Verify(ItemSlot slot, EntityAgent player, JsonObject parameters)
@@ -86,14 +113,33 @@ namespace MaltiezFSM.Systems
                     return false;
             }
         }
-
-        private bool Check(EntityAgent byEntity, JsonObject requirements)
+        public override string[] GetDescription(ItemSlot slot, IWorldAccessor world)
         {
-            List<OperationRequirement> requirementsList = GetRequirements(requirements);
-            bool requirementsFulfilled = true;
-            foreach (OperationRequirement requirement in requirementsList)
+            List<string> output = new();
+
+            foreach (var entry in mRequirements)
             {
-                if ((GetNextRequirement(byEntity, requirement) == null) != (requirement.offHand == 0))
+                string descriptionTemplate = mDescriptions[entry.Key];
+                if (descriptionTemplate == null) continue;
+
+                List<string> requirementDescriptions = new();
+                foreach (OperationRequirement requirement in entry.Value)
+                {
+                    requirementDescriptions.Add(requirement.ToString());
+                }
+
+                output.Add(Lang.Get(descriptionTemplate, requirementDescriptions.ToArray()));
+            }
+
+           return output.ToArray();
+        }
+
+        private bool Check(EntityAgent byEntity, List<OperationRequirement> requirements)
+        {
+            bool requirementsFulfilled = true;
+            foreach (OperationRequirement requirement in requirements)
+            {
+                if ((GetNextRequirement(byEntity, requirement) == null) != (requirement.slotType == OperationRequirement.SlotType.offhand))
                 {
                     ((byEntity as EntityPlayer)?.Player as IServerPlayer)?.SendMessage(GlobalConstants.InfoLogChatGroup, Lang.Get("fsmlib:requirements-missing", requirement.ToString()), EnumChatType.Notification);
                     requirementsFulfilled = false;
@@ -103,15 +149,14 @@ namespace MaltiezFSM.Systems
             return requirementsFulfilled;
         }
 
-        private bool Consume(EntityAgent byEntity, JsonObject requirements)
+        private bool Consume(EntityAgent byEntity, List<OperationRequirement> requirements)
         {
-            List<OperationRequirement> requirementsList = GetRequirements(requirements);
-            foreach (OperationRequirement requirement in requirementsList)
+            foreach (OperationRequirement requirement in requirements)
             {
-                if ((GetNextRequirement(byEntity, requirement) == null) != (requirement.offHand == 0)) return false;
+                if ((GetNextRequirement(byEntity, requirement) == null) != (requirement.slotType == OperationRequirement.SlotType.offhand)) return false;
             }
 
-            foreach (OperationRequirement requirement in requirementsList)
+            foreach (OperationRequirement requirement in requirements)
             {
                 ItemSlot ammoSlot = GetNextRequirement(byEntity, requirement);
 
@@ -139,21 +184,24 @@ namespace MaltiezFSM.Systems
 
         private ItemSlot GetNextRequirement(EntityAgent byEntity, OperationRequirement requirement)
         {
-            ItemSlot slot = null;
-
-            if (requirement.offHand >= 0)
+            switch (requirement.slotType)
             {
-                ItemStack stack = byEntity.LeftHandItemSlot.Itemstack;
-
-                if (stack == null) return null;
-                if (!stack.Collectible.Code.Path.StartsWith(requirement.code)) return null;
-                if (byEntity.RightHandItemSlot.StackSize < requirement.amount) return null;
-                if (requirement.durabilityDamage > 0 && stack.Item.GetRemainingDurability(stack) < requirement.durabilityDamage) return null;
-                if (requirement.durability > 0 && stack.Item.GetRemainingDurability(stack) < requirement.durability) return null;
-                if (requirement.durability < 0 && stack.Item.GetRemainingDurability(stack) - stack.Item.GetMaxDurability(stack) > requirement.durability) return null;
-
-                return byEntity.LeftHandItemSlot;
+                case (OperationRequirement.SlotType.offhand):
+                    return CheckSlot(byEntity.LeftHandItemSlot, requirement);
+                case (OperationRequirement.SlotType.mainhand):
+                    return CheckSlot(byEntity.RightHandItemSlot, requirement);
+                case (OperationRequirement.SlotType.hotbar):
+                    throw new NotImplementedException();
+                case (OperationRequirement.SlotType.any):
+                    return CheckInventory(byEntity, requirement);
+                default:
+                    throw new NotImplementedException();
             }
+        }
+
+        private ItemSlot CheckInventory(EntityAgent byEntity, OperationRequirement requirement)
+        {
+            ItemSlot slot = null;
 
             byEntity.WalkInventory((invslot) =>
             {
@@ -186,6 +234,19 @@ namespace MaltiezFSM.Systems
             return slot;
         }
 
+        private ItemSlot CheckSlot(ItemSlot slot, OperationRequirement requirement)
+        {
+            ItemStack stack = slot?.Itemstack;
+
+            if (stack == null) return null;
+            if (!stack.Collectible.Code.Path.StartsWith(requirement.code)) return null;
+            if (slot.StackSize < requirement.amount) return null;
+            if (requirement.durabilityDamage > 0 && stack.Item.GetRemainingDurability(stack) < requirement.durabilityDamage) return null;
+            if (requirement.durability > 0 && stack.Item.GetRemainingDurability(stack) < requirement.durability) return null;
+            if (requirement.durability < 0 && stack.Item.GetRemainingDurability(stack) - stack.Item.GetMaxDurability(stack) > requirement.durability) return null;
+
+            return slot;
+        }
         private List<OperationRequirement> GetRequirements(JsonObject requirements)
         {
             List<OperationRequirement> output = new List<OperationRequirement>();
@@ -197,10 +258,10 @@ namespace MaltiezFSM.Systems
                 int amount = requirement["amount"].AsInt(1);
                 int durability = requirement["durability"].AsInt(0);
                 int durabilityDamage = requirement["durabilityDamage"].AsInt(-1);
-                int offHand = requirement["offhand"].AsInt(-1);
+                OperationRequirement.SlotType slotType = (OperationRequirement.SlotType)Enum.Parse(typeof(OperationRequirement.SlotType), requirement["slot"].AsString("any"));
                 bool consume = requirement["consume"].AsBool(true);
 
-                output.Add((code, name, amount, durability, durabilityDamage, offHand, consume));
+                output.Add((code, name, amount, durability, durabilityDamage, slotType, consume));
             }
 
             return output;

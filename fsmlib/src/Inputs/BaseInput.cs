@@ -16,8 +16,8 @@ namespace MaltiezFSM.Inputs
         {
             {"mainhand", SlotTypes.MAIN_HAND},
             {"offhand", SlotTypes.OFF_HAND},
-            {"any", SlotTypes.ANY},
-            {"all", SlotTypes.ALL}
+            {"all", SlotTypes.INVENTORY},
+            {"mouse", SlotTypes.MOUSE}
         };
 
         private string mCode;

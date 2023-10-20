@@ -233,8 +233,8 @@ namespace MaltiezFSM.Framework
         }
         private void WriteStateTo(ItemSlot slot, State state)
         {
-            slot.Itemstack.Attributes.SetString(cStateAtributeName, state.ToString());
-            slot.MarkDirty();
+            slot?.Itemstack?.Attributes?.SetString(cStateAtributeName, state.ToString());
+            slot?.MarkDirty();
         }
     }
 }

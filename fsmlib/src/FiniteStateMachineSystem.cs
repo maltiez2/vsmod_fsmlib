@@ -49,6 +49,7 @@ namespace MaltiezFSM
             mSystemFactory.RegisterType<Systems.BasicMelee>("BasicMelee");
             mSystemFactory.RegisterType<Systems.BasicDurabilityDamage>("DurabilityDamage");
             mSystemFactory.RegisterType<Systems.BasicDurability>("Durability");
+            mSystemFactory.RegisterType<Systems.ItemStackGiver>("ItemStackGiver");
         }
         public void RegisterOperations()
         {

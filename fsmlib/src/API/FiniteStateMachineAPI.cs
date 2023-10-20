@@ -123,8 +123,8 @@ namespace MaltiezFSM.API
         {
             MAIN_HAND,
             OFF_HAND,
-            ANY, // Not implemented
-            ALL // Not implemented
+            INVENTORY,
+            MOUSE
         }
         string GetName();
         bool Handled();

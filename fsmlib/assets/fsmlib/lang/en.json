@@ -1,6 +1,7 @@
 {
   "requirements-missing": "Unfulfilled requirement: {0}",
   "requirements-offhand": "offhand",
+  "requirements-mainhand": "main hand",
   "requirements-amount": "amount: {0}",
   "requirements-durability": "durability: {0}"
 }

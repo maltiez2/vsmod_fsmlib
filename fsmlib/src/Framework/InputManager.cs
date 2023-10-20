@@ -10,6 +10,7 @@ using static MaltiezFSM.API.IMouseInput;
 using static MaltiezFSM.API.ISlotChangedAfter;
 using MaltiezFSM.API;
 using Vintagestory.GameContent;
+using System.Numerics;
 
 namespace MaltiezFSM.Framework
 {
@@ -147,6 +148,45 @@ namespace MaltiezFSM.Framework
             }
         }
 
+        private List<ItemSlot> GetSlots(int? slotId, IPlayer player, IInput input, CollectibleObject collectible)
+        {
+            List<ItemSlot> slots = new();
+            IInput.SlotTypes slotType = input.SlotType();
+
+            if (slotId != null)
+            {
+                if (slotType == IInput.SlotTypes.OFF_HAND) return slots;
+
+                ItemSlot hotbarSlot = player?.Entity?.ActiveHandItemSlot?.Inventory[(int)slotId];
+
+                if (hotbarSlot != null)
+                {
+                    slots.Add(hotbarSlot);
+                }
+                return slots;
+            }
+
+            switch (slotType)
+            {
+                case IInput.SlotTypes.MAIN_HAND:
+                    slots.Add(player.Entity.RightHandItemSlot);
+                    return slots;
+                case IInput.SlotTypes.OFF_HAND:
+                    slots.Add(player.Entity.LeftHandItemSlot);
+                    return slots;
+                case IInput.SlotTypes.MOUSE:
+                    slots.Add(player.InventoryManager.MouseItemSlot);
+                    return slots;
+                default:
+                    player?.Entity?.WalkInventory((inventorySlot) =>
+                    {
+                        if (inventorySlot is ItemSlotCreative) return true;
+                        if (inventorySlot?.Itemstack?.Collectible == collectible) slots.Add(inventorySlot);
+                        return true;
+                    });
+                    return slots;
+            }
+        }
         public bool ClientKeyInputProxyHandler(KeyEvent ev, int inputIndex, KeyEventType keyEventType)
         {
             if (!(mInputs[inputIndex] as IKeyInput).CheckIfShouldBeHandled(ev, keyEventType)) return false;
@@ -192,32 +232,30 @@ namespace MaltiezFSM.Framework
         }
         public bool ClientInputProxyHandler(int inputIndex, int? slotId)
         {
-            EntityAgent playerEntity = mClientApi.World.Player.Entity;
-
             mPacketSender.SendPacket(inputIndex, slotId);
 
-            return InputHandler(inputIndex, playerEntity, GetSlotById(slotId, null, inputIndex));
+            return InputHandler(inputIndex, mClientApi.World.Player, slotId);
         }
         public void ServerInputProxyHandler(int inputIndex, int? slotId, IServerPlayer serverPlayer)
         {
-            EntityAgent playerEntity = serverPlayer.Entity;
-
-            InputHandler(inputIndex, playerEntity, GetSlotById(slotId, serverPlayer, inputIndex));
+            InputHandler(inputIndex, serverPlayer, slotId);
         }
 
-        private bool InputHandler(int inputIndex, EntityAgent player, ItemSlot slot)
+        private bool InputHandler(int inputIndex, IPlayer player, int? slotId)
         {
-            if (slot?.Itemstack?.Collectible == null || slot.Itemstack.Collectible != mCollectibles[inputIndex])
-            {
-                return false;
-            }
-
             IInput input = mInputs[inputIndex];
             InputCallback callback = mCallbacks[inputIndex];
+            List<ItemSlot> slots = GetSlots(slotId, player, input, mCollectibles[inputIndex]);
 
-            bool handled = callback(slot, player, input);
+            foreach (ItemSlot slot in slots)
+            {
+                if (callback(slot, player.Entity, input))
+                {
+                    return true;
+                }
+            }
 
-            return handled;
+            return false;
         }
 
         private bool ClientIfEventShouldBeHandled()

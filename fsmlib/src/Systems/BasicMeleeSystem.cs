@@ -85,6 +85,9 @@ namespace MaltiezFSM.Systems
                         if (mFpInitial == null) mFpInitial = GetIdentityTransform();
                         if (mTpInitial == null) mTpInitial = GetIdentityTransform();
 
+                        player.Controls.UsingHeldItemTransformAfter = mFpInitial.Clone();
+                        player.Controls.UsingHeldItemTransformBefore = mTpInitial.Clone();
+
                         player.Attributes.SetInt("didattack", 0);
 
                         mTimer.Init(mApi, (float time) => TryAttack(time, slot, player));

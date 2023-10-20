@@ -6,6 +6,7 @@ using System.Text;
 using Vintagestory.API.Config;
 using System.Collections.Generic;
 using System.Linq;
+using Vintagestory.API.Common.Entities;
 
 namespace MaltiezFSM.Framework
 {
@@ -71,7 +72,7 @@ namespace MaltiezFSM.Framework
         }
 
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
-        {            
+        {
             if (target == EnumItemRenderTarget.HandTp && tpTransform != null)
             {
                 renderinfo.Transform = renderinfo.Transform.Clone();

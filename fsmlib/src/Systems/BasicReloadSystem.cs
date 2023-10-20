@@ -36,7 +36,6 @@ namespace MaltiezFSM.Systems
                 case putAction:
                     return ReadAmmoStackFrom(slot)?.Item != null || ReadAmmoStackFrom(slot)?.Block != null;
                 case takeAction:
-                case removeAction:
                     int amount = 1;
                     if (parameters.KeyExists(amountAttrName)) amount = parameters[amountAttrName].AsInt(1);
 
@@ -51,6 +50,8 @@ namespace MaltiezFSM.Systems
                         ((player as EntityPlayer)?.Player as IServerPlayer)?.SendMessage(GlobalConstants.InfoLogChatGroup, Lang.Get("fsmlib:requirements-missing", missingItem), EnumChatType.Notification);
                     }
                     return verified;
+                case removeAction:
+                    return true;
                 default:
                     mApi.Logger.Error("[FSMlib] [BasicReload] [Verify] Action does not exists: " + action);
                     return false;

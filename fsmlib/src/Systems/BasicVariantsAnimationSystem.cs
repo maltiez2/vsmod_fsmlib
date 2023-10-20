@@ -3,6 +3,8 @@ using Vintagestory.API.Common;
 using MaltiezFSM.API;
 using System.Collections.Generic;
 using System;
+using Vintagestory.API.Config;
+using Vintagestory.API.Common.Entities;
 
 namespace MaltiezFSM.Systems
 {
@@ -17,9 +19,11 @@ namespace MaltiezFSM.Systems
         public const string soundSystemAttrName = "soundSystem";
         public const string soundsAttrName = "sounds";
         public const string variantAttrName = "variant";
+        public const string descriptionAttrName = "description";
 
         private readonly Dictionary<string, IAnimationPlayer.AnimationParameters> mAnimations = new();
         private readonly Dictionary<string, Dictionary<int, string>> mAnimationsSounds = new();
+        private readonly Dictionary<string, string> mDescriptions = new();
         private TAnimationPlayer mTimer;
         private ISoundSystem mSoundSystem;
         private string mSoundSystemId = "";
@@ -51,6 +55,8 @@ namespace MaltiezFSM.Systems
                         mAnimationsSounds[animationCode].Add(soundDefinition[variantAttrName].AsInt(), soundDefinition[codeAttrName].AsString());
                     }
                 }
+
+                mDescriptions.Add(animationCode, animation[descriptionAttrName].AsString());
             }
 
             if (definition.KeyExists(soundSystemAttrName))
@@ -65,9 +71,10 @@ namespace MaltiezFSM.Systems
         public override bool Verify(ItemSlot slot, EntityAgent player, JsonObject parameters)
         {
             if (!base.Verify(slot, player, parameters)) return false;
-
+            if (parameters["progressive"].AsBool()) return true;
+            
             string code = parameters[codeAttrName].AsString();
-
+            if (code == null) mApi.Logger.Error("[FSMlib] [BasicVariantsAnimation] [Verify] No code received");
             if (!mAnimations.ContainsKey(code)) mApi.Logger.Error("[FSMlib] [BasicVariantsAnimation] [Verify] No animations with code '" + code + "' are defined");
 
             return mAnimations.ContainsKey(code);
@@ -76,16 +83,48 @@ namespace MaltiezFSM.Systems
         {
             if (!base.Process(slot, player, parameters)) return false;
 
+            if (parameters["progressive"].AsBool())
+            {
+                int renderVariant = slot.Itemstack.Attributes.GetInt("renderVariant", 1);
+                int length = parameters["length"].AsInt(1);
+                int limit = parameters["limit"].AsInt(1);
+                renderVariant += length;
+                if (renderVariant < 1) renderVariant = 1;
+                if (renderVariant > limit) renderVariant = limit;
+                slot.Itemstack.TempAttributes.SetInt("renderVariant", renderVariant);
+                slot.Itemstack.Attributes.SetInt("renderVariant", renderVariant);
+                (player as EntityPlayer)?.Player.InventoryManager.BroadcastHotbarSlot();
+                slot.MarkDirty();
+                return true;
+            }
+
             string code = parameters[codeAttrName].AsString();
 
+            if (code == null) return false;
             if (!mAnimations.ContainsKey(code)) return false;
+
+            IAnimationPlayer.AnimationParameters animation = mAnimations[code];
 
             mTimer?.Stop();
             mTimer = new TAnimationPlayer();
-            mTimer.Init(mApi, mAnimations[code], (int variant) => SetRenderVariant(variant, slot, player, mAnimationsSounds[code]));
+            mTimer.Init(mApi, animation, (int variant) => SetRenderVariant(variant, slot, player, mAnimationsSounds[code]));
             mTimer.Play();
 
             return true;
+        }
+        public override string[] GetDescription(ItemSlot slot, IWorldAccessor world)
+        {
+            List<string> output = new();
+
+            foreach (var entry in mAnimations)
+            {
+                string descriptionTemplate = mDescriptions[entry.Key];
+                if (descriptionTemplate == null) continue;
+
+                output.Add(Lang.Get(descriptionTemplate, (float)entry.Value.duration_ms / 1000));
+            }
+
+            return output.ToArray();
         }
 
         private void SetRenderVariant(int renderVariant, ItemSlot weaponSlot, EntityAgent byEntity, Dictionary<int, string> sounds)

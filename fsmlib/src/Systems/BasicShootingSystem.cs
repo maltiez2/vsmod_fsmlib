@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.GameContent;
@@ -14,13 +15,17 @@ namespace MaltiezFSM.Systems
         public const string aimingSystemAttrName = "aimingSystem";
         public const string velocityAttrName = "projectileVelocity";
         public const string damageAttrName = "projectileDamage";
+        public const string damageMultiplierAttrName = "projectileDamageMultiplier";
+        public const string descriptionAttrName = "description";
 
         private string mReloadSystemName;
         private string mAimingSystemName;
+        private string mDescription;
         private IAmmoSelector mReloadSystem;
         private IAimingSystem mAimingSystem;
         private float mProjectileVelocity;
         private float mProjectileDamage;
+        private float mProjectileDamageMultiplier;
 
         public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
         {
@@ -28,8 +33,10 @@ namespace MaltiezFSM.Systems
 
             mReloadSystemName = definition[ammoSelectorSystemAttrName].AsString();
             mAimingSystemName = definition[aimingSystemAttrName].AsString();
-            mProjectileVelocity = definition[velocityAttrName].AsFloat();
-            mProjectileDamage = definition[damageAttrName].AsFloat();
+            mProjectileVelocity = definition[velocityAttrName].AsFloat(1);
+            mProjectileDamage = definition[damageAttrName].AsFloat(0);
+            mProjectileDamageMultiplier = definition[damageMultiplierAttrName].AsFloat(0);
+            mDescription = definition[descriptionAttrName].AsString();
         }
         public override void SetSystems(Dictionary<string, ISystem> systems)
         {
@@ -54,11 +61,20 @@ namespace MaltiezFSM.Systems
             Vec3d projectilePosition = ProjectilePosition(player, new Vec3f(0.0f, 0.0f, 0.0f));
             Vec3d projectileVelocity = ProjectileVelocity(player, mAimingSystem.GetShootingDirectionOffset());
 
-            SpawnProjectile(ammoStack, player, projectilePosition, projectileVelocity, mProjectileDamage);
+            float damage = mProjectileDamage;
+            if (ammoStack.Collectible != null) damage += mProjectileDamageMultiplier * ammoStack.Collectible.Attributes["damage"].AsFloat();
+
+            SpawnProjectile(ammoStack, player, projectilePosition, projectileVelocity, damage);
 
             return true;
         }
-        
+        public override string[] GetDescription(ItemSlot slot, IWorldAccessor world)
+        {
+            if (mDescription == null) return System.Array.Empty<string>();
+
+            return new string[] { Lang.Get(mDescription, mProjectileVelocity, mProjectileDamage, mProjectileDamageMultiplier) };
+        }
+
 
         private Vec3d ProjectilePosition(EntityAgent player, Vec3f muzzlePosition)
         {

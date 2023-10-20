@@ -21,7 +21,7 @@ namespace MaltiezFSM.Systems
             if (stack?.Collectible?.Variant?.ContainsKey(variantName) == null) return;
 
             var clonedAttributes = stack.Attributes.Clone();
-
+            int size = stack.StackSize;
             var newStack = new ItemStack();
 
             switch (stack.Collectible.ItemClass)
@@ -36,6 +36,7 @@ namespace MaltiezFSM.Systems
             }
 
             if (saveAttributes) newStack.Attributes = clonedAttributes;
+            newStack.StackSize = size;
 
             stack.SetFrom(newStack);
         }
