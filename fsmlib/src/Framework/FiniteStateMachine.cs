@@ -4,6 +4,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using MaltiezFSM.API;
 using System.Diagnostics.CodeAnalysis;
+using System.Collections.ObjectModel;
 
 namespace MaltiezFSM.Framework
 {    
@@ -70,8 +71,8 @@ namespace MaltiezFSM.Framework
         private string mInitialState;
         private readonly Dictionary<State, Dictionary<IInput, IOperation>> mOperationsByInputAndState = new();
         private readonly Dictionary<IOperation, HashSet<State>> mStatesByOperationForTimer = new();
-        private DelayedCallback mTimer;
         private DelayedCallback mRepeater;
+        private readonly Dictionary<long, DelayedCallback> mTimers = new();
 
         private CollectibleObject mCollectible;
         private ICoreAPI mApi;
@@ -207,7 +208,10 @@ namespace MaltiezFSM.Framework
 
         private bool RunOperation(ItemSlot slot, EntityAgent player, IOperation operation, IInput input, State state)
         {
-            if (operation.StopTimer(slot, player, state, input)) mTimer?.Cancel();
+            if (operation.StopTimer(slot, player, state, input) && player != null && mTimers.ContainsKey(player.EntityId))
+            {
+                mTimers[player.EntityId]?.Cancel();
+            }
 
             IState newState = operation.Perform(slot, player, state, input);
 
@@ -221,7 +225,7 @@ namespace MaltiezFSM.Framework
 
             if (timerDelayMs != null)
             {
-                mTimer = new DelayedCallback(mApi, (int)timerDelayMs, () => OnTimer(slot, player, input, operation));
+                mTimers[player.EntityId] = new DelayedCallback(mApi, (int)timerDelayMs, () => OnTimer(slot, player, input, operation));
             }
 
             return input.Handled();
