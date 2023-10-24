@@ -9,7 +9,7 @@ using MaltiezFSM.Framework;
 
 namespace MaltiezFSM.BullseyeCompatibility
 {
-    public class SmoothAnimationAttachableBehavior : BullseyeCollectibleBehaviorAnimatable
+    public class SmoothAnimationAttachableBehavior : BullseyeCollectibleBehaviorAnimatable // Based on code from TeacupAngel (https://github.com/TeacupAngel)
     {
         public SmoothAnimationAttachableBehavior(CollectibleObject collObj) : base(collObj)
         {
