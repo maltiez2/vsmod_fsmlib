@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System;
 using MaltiezFSM.Framework;
 using Vintagestory.API.Common.Entities;
+using System.Diagnostics;
 
 namespace MaltiezFSM.Systems
 {
@@ -20,6 +21,10 @@ namespace MaltiezFSM.Systems
         private readonly Dictionary<string, JsonObject> mTpAnimations = new();
         private readonly Dictionary<string, int> mDurations = new();
         private readonly Dictionary<long, TickBasedPlayerAnimation> mTimers = new();
+        private ModelTransform mFpInitialTransform;
+        private ModelTransform mTpInitialTransform;
+        private ModelTransform mFpTargetTransform;
+        private ModelTransform mTpTargetTransform;
 
         public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
         {
@@ -58,27 +63,34 @@ namespace MaltiezFSM.Systems
             if (!mTimers.ContainsKey(player.EntityId)) mTimers[player.EntityId] = new();
 
             mTimers[player.EntityId]?.Stop();
-            mTimers[player.EntityId]?.Init(mApi, duration, (float progress) => PlayAnimation(progress, code, player));
-            
+            mTimers[player.EntityId]?.Init(mApi, duration, (float progress) => PlayAnimation(progress, player));
+
+            ModelTransform fpLastTransform = mCollectible.GetBehavior<FiniteStateMachineBehaviour>().fpTransform;
+            ModelTransform tpLastTransform = mCollectible.GetBehavior<FiniteStateMachineBehaviour>().tpTransform;
+            ModelTransform modelTransform = new ModelTransform();
+            modelTransform.EnsureDefaultValues();
+
             switch (mode)
             {
                 case "forward":
-                    ModelTransform modelTransform = new ModelTransform(); // @TODO Crutch
-                    modelTransform.EnsureDefaultValues();
-                    player.Controls.UsingHeldItemTransformAfter = modelTransform.Clone();
-                    player.Controls.UsingHeldItemTransformBefore = modelTransform.Clone();
+                    mFpInitialTransform = fpLastTransform != null ? fpLastTransform.Clone() : modelTransform.Clone();
+                    mTpInitialTransform = tpLastTransform != null ? tpLastTransform.Clone() : modelTransform.Clone();
+                    mFpTargetTransform = Utils.ToTransformFrom(mFpAnimations[code]);
+                    mTpTargetTransform = Utils.ToTransformFrom(mTpAnimations[code]);
                     mTimers[player.EntityId]?.Play();
                     break;
                 case "backward":
-                    mTimers[player.EntityId]?.Revert();
+                    mFpInitialTransform = mFpTargetTransform.Clone();
+                    mTpInitialTransform = mTpTargetTransform.Clone();
+                    mFpTargetTransform = modelTransform.Clone();
+                    mTpTargetTransform = modelTransform.Clone();
+                    mTimers[player.EntityId]?.Play();
                     break;
                 case "cancel":
-                    ModelTransform modelTransform2 = new ModelTransform(); // @TODO Crutch
-                    modelTransform2.EnsureDefaultValues();
-                    player.Controls.UsingHeldItemTransformAfter = modelTransform2.Clone();
-                    player.Controls.UsingHeldItemTransformBefore = modelTransform2.Clone();
-                    mCollectible.GetBehavior<FiniteStateMachineBehaviour>().tpTransform = modelTransform2;
-                    mCollectible.GetBehavior<FiniteStateMachineBehaviour>().fpTransform = modelTransform2;
+                    player.Controls.UsingHeldItemTransformAfter = modelTransform.Clone();
+                    player.Controls.UsingHeldItemTransformBefore = modelTransform.Clone();
+                    mCollectible.GetBehavior<FiniteStateMachineBehaviour>().tpTransform = modelTransform.Clone();
+                    mCollectible.GetBehavior<FiniteStateMachineBehaviour>().fpTransform = modelTransform.Clone();
                     mTimers[player.EntityId]?.Stop();
                     break;
                 default:
@@ -89,25 +101,19 @@ namespace MaltiezFSM.Systems
             return true;
         }
 
-        private void PlayAnimation(float progress, string code, EntityAgent player)
+        private void PlayAnimation(float progress, EntityAgent player)
         {
-            mCollectible.GetBehavior<FiniteStateMachineBehaviour>().tpTransform = GetTransform(progress, mTpAnimations[code]);
-            mCollectible.GetBehavior<FiniteStateMachineBehaviour>().fpTransform = GetTransform(progress, mFpAnimations[code]);
+            mCollectible.GetBehavior<FiniteStateMachineBehaviour>().fpTransform = Utils.TransitionTransform(mFpInitialTransform, mFpTargetTransform, progress);
+            mCollectible.GetBehavior<FiniteStateMachineBehaviour>().tpTransform = Utils.TransitionTransform(mTpInitialTransform, mTpInitialTransform, progress);
+            ResetUsingTransforms(player);
         }
 
-        protected ModelTransform GetTransform(float animationProgress, JsonObject transform)
+        private void ResetUsingTransforms(EntityAgent player)
         {
-            JsonObject translation = transform["translation"];
-            JsonObject rotation = transform["rotation"];
-            JsonObject origin = transform["origin"];
-
             ModelTransform modelTransform = new ModelTransform();
             modelTransform.EnsureDefaultValues();
-            modelTransform.Translation.Set(animationProgress * translation["x"].AsFloat(), animationProgress * translation["y"].AsFloat(), animationProgress * translation["z"].AsFloat());
-            modelTransform.Rotation.Set(animationProgress * rotation["x"].AsFloat(), animationProgress * rotation["y"].AsFloat(), animationProgress * rotation["z"].AsFloat());
-            modelTransform.Origin.Set(animationProgress * origin["x"].AsFloat(), animationProgress * origin["y"].AsFloat(), animationProgress * origin["z"].AsFloat());
-            modelTransform.Scale = transform["scale"].AsFloat(1);
-            return modelTransform;
+            player.Controls.UsingHeldItemTransformAfter = modelTransform.Clone();
+            player.Controls.UsingHeldItemTransformBefore = modelTransform.Clone();
         }
     }
 

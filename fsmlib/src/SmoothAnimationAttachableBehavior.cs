@@ -65,7 +65,7 @@ namespace MaltiezFSM.BullseyeCompatibility
         public Attachment(ICoreClientAPI api, string attachmentPointCode, ItemStack attachment, JsonObject transform)
         {
             mApi = api;
-            mAttachedRenderInfo = GetAttachmentRenderInfo(attachment, Utils.ToTransformFrom(transform));
+            mAttachedRenderInfo = GetAttachmentRenderInfo(attachment, transform);
             mAttachmentPointCode = attachmentPointCode;
         }
 
@@ -100,10 +100,11 @@ namespace MaltiezFSM.BullseyeCompatibility
             ;
         }
 
-        private ItemRenderInfo GetAttachmentRenderInfo(ItemStack attachment, ModelTransform transform)
+        private ItemRenderInfo GetAttachmentRenderInfo(ItemStack attachment, JsonObject transform)
         {
-            ItemRenderInfo renderInfo = (mApi as ICoreClientAPI).Render.GetItemStackRenderInfo(attachment, EnumItemRenderTarget.Ground);
-            renderInfo.Transform = transform; // Utils.CombineTransforms(renderInfo.Transform, transform).Clone();
+            DummySlot dummySlot = new DummySlot(attachment);
+            ItemRenderInfo renderInfo = mApi.Render.GetItemStackRenderInfo(dummySlot, EnumItemRenderTarget.Ground);
+            renderInfo.Transform = Utils.ToTransformFrom(transform); // Utils.CombineTransforms(renderInfo.Transform, transform).Clone();
             return renderInfo;
         }
     }

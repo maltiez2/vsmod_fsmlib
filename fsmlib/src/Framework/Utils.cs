@@ -1,5 +1,7 @@
 ﻿using Vintagestory.API.Datastructures;
 using Vintagestory.API.Common;
+using System.Collections.Generic;
+using Vintagestory.API.MathTools;
 
 namespace MaltiezFSM.Framework
 {
@@ -23,13 +25,28 @@ namespace MaltiezFSM.Framework
         static public ModelTransform CombineTransforms(ModelTransform first, ModelTransform second)
         {
             ModelTransform output = first.Clone();
-            first.Translation = first.Translation + second.Translation;
-            first.Rotation = first.Rotation + second.Rotation;
-            first.Origin = first.Origin + second.Origin;
-            first.ScaleXYZ.X = first.ScaleXYZ.X * second.ScaleXYZ.X;
-            first.ScaleXYZ.Y = first.ScaleXYZ.Y * second.ScaleXYZ.Y;
-            first.ScaleXYZ.Z = first.ScaleXYZ.Z * second.ScaleXYZ.Z;
+            output.Translation = first.Translation + second.Translation;
+            output.Rotation = first.Rotation + second.Rotation;
+            output.Origin = first.Origin + second.Origin;
+            output.ScaleXYZ.X = first.ScaleXYZ.X * second.ScaleXYZ.X;
+            output.ScaleXYZ.Y = first.ScaleXYZ.Y * second.ScaleXYZ.Y;
+            output.ScaleXYZ.Z = first.ScaleXYZ.Z * second.ScaleXYZ.Z;
             return output;
+        }
+
+        static public ModelTransform TransitionTransform(ModelTransform fromTransform, ModelTransform toTransform, float progress)
+        {
+            ModelTransform output = toTransform.Clone();
+            output.Translation = TransitionVector(fromTransform.Translation, toTransform.Translation, progress);
+            output.Rotation = TransitionVector(fromTransform.Rotation, toTransform.Rotation, progress);
+            output.Origin = TransitionVector(fromTransform.Origin, toTransform.Origin, progress);
+            output.ScaleXYZ = TransitionVector(fromTransform.ScaleXYZ, toTransform.ScaleXYZ, progress);
+            return output;
+        }
+
+        static public Vec3f TransitionVector(Vec3f from, Vec3f to, float progress)
+        {
+            return from + (to - from) * progress;
         }
     }
 }
