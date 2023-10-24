@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using MaltiezFSM.API;
-using System.Diagnostics.CodeAnalysis;
-using System.Collections.ObjectModel;
 
 namespace MaltiezFSM.Framework
 {    

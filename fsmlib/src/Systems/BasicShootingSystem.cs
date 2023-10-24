@@ -59,7 +59,7 @@ namespace MaltiezFSM.Systems
             if (ammoStack == null) return false;
 
             Vec3d projectilePosition = ProjectilePosition(player, new Vec3f(0.0f, 0.0f, 0.0f));
-            Vec3d projectileVelocity = ProjectileVelocity(player, mAimingSystem.GetShootingDirectionOffset());
+            Vec3d projectileVelocity = ProjectileVelocity(player, mAimingSystem.GetShootingDirectionOffset(slot));
 
             float damage = mProjectileDamage;
             if (ammoStack.Collectible != null) damage += mProjectileDamageMultiplier * ammoStack.Collectible.Attributes["damage"].AsFloat();
@@ -105,7 +105,7 @@ namespace MaltiezFSM.Systems
             projectile.FiredBy = player;
             projectile.Damage = damage;
             projectile.ProjectileStack = projectileStack;
-            projectile.DropOnImpactChance = projectileStack.Collectible.Attributes["breakChanceOnImpact"].AsFloat(0);
+            projectile.DropOnImpactChance = 1 - projectileStack.Collectible.Attributes["breakChanceOnImpact"].AsFloat(0);
             projectile.ServerPos.SetPos(position);
             projectile.ServerPos.Motion.Set(velocity);
             projectile.Pos.SetFrom(projectile.ServerPos);

@@ -19,7 +19,7 @@ namespace MaltiezFSM.Systems
         private readonly Dictionary<string, JsonObject> mFpAnimations = new();
         private readonly Dictionary<string, JsonObject> mTpAnimations = new();
         private readonly Dictionary<string, int> mDurations = new();
-        private TickBasedPlayerAnimation mTimer;
+        private readonly Dictionary<long, TickBasedPlayerAnimation> mTimers = new();
 
         public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
         {
@@ -33,8 +33,6 @@ namespace MaltiezFSM.Systems
                 mFpAnimations.Add(animationCode, animation[fpAnimationAttrName]);
                 mTpAnimations.Add(animationCode, animation[tpAnimationAttrName]);
             }
-
-            mTimer = new TickBasedPlayerAnimation();
         }
         public override bool Verify(ItemSlot slot, EntityAgent player, JsonObject parameters)
         {
@@ -57,8 +55,10 @@ namespace MaltiezFSM.Systems
 
             if (!mFpAnimations.ContainsKey(code)) return false;
 
-            mTimer?.Stop();
-            mTimer?.Init(mApi, duration, (float progress) => PlayAnimation(progress, code, player));
+            if (!mTimers.ContainsKey(player.EntityId)) mTimers[player.EntityId] = new();
+
+            mTimers[player.EntityId]?.Stop();
+            mTimers[player.EntityId]?.Init(mApi, duration, (float progress) => PlayAnimation(progress, code, player));
             
             switch (mode)
             {
@@ -67,10 +67,10 @@ namespace MaltiezFSM.Systems
                     modelTransform.EnsureDefaultValues();
                     player.Controls.UsingHeldItemTransformAfter = modelTransform.Clone();
                     player.Controls.UsingHeldItemTransformBefore = modelTransform.Clone();
-                    mTimer?.Play();
+                    mTimers[player.EntityId]?.Play();
                     break;
                 case "backward":
-                    mTimer?.Revert();
+                    mTimers[player.EntityId]?.Revert();
                     break;
                 case "cancel":
                     ModelTransform modelTransform2 = new ModelTransform(); // @TODO Crutch
@@ -79,7 +79,7 @@ namespace MaltiezFSM.Systems
                     player.Controls.UsingHeldItemTransformBefore = modelTransform2.Clone();
                     mCollectible.GetBehavior<FiniteStateMachineBehaviour>().tpTransform = modelTransform2;
                     mCollectible.GetBehavior<FiniteStateMachineBehaviour>().fpTransform = modelTransform2;
-                    mTimer?.Stop();
+                    mTimers[player.EntityId]?.Stop();
                     break;
                 default:
                     mApi.Logger.Error("[FSMlib] [BasicTransformAnimation] [Process] Mode does not exists: " + mode);

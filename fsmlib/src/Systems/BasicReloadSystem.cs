@@ -7,7 +7,7 @@ using Vintagestory.API.Server;
 
 namespace MaltiezFSM.Systems
 {  
-    internal class BasicReload : BaseSystem, IAmmoSelector
+    internal class BasicReload : BaseSystem, IAmmoSelector, IItemStackProvider
     {
         public const string ammoCodeAttrName = "ammoCode";
         public const string ammoNameAttrName = "ammoName";
@@ -96,6 +96,10 @@ namespace MaltiezFSM.Systems
         public ItemStack TakeSelectedAmmo(ItemSlot slot, int amount = -1)
         {
             return TakeAmmoStackFrom(slot, amount);
+        }
+        public ItemStack GetItemStack(ItemSlot slot, EntityAgent player)
+        {
+            return ReadAmmoStackFrom(slot);
         }
 
         private ItemSlot GetAmmoSlot(EntityAgent player, string ammoCode, bool offHand)

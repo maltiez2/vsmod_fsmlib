@@ -17,12 +17,12 @@ namespace MaltiezFSM.Operations
         public const string inputsToInterceptAttrName = "inputsToIntercept";
 
         private readonly Dictionary<string, string> mStatesInitialData = new();
-        private readonly Dictionary<string, JsonObject> mSystemsInitialData = new();
+        private readonly List<Tuple<string, JsonObject>> mSystemsInitialData = new();
         private readonly List<Tuple<string, string, string>> mTransitions = new();
         private readonly List<string> mInputsToPreventInitialData = new();
 
         private readonly Dictionary<IState, IState> mStates = new();
-        private readonly Dictionary<ISystem, JsonObject> mSystems = new();
+        private readonly List<Tuple<ISystem, JsonObject>> mSystems = new();
         private readonly List<IInput> mInputsToPrevent = new();
 
         public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
@@ -67,7 +67,7 @@ namespace MaltiezFSM.Operations
             JsonObject[] systems = definition[systemsAttrName].AsArray();
             foreach (JsonObject system in systems)
             {
-                mSystemsInitialData.Add(system["code"].AsString(), system);
+                mSystemsInitialData.Add(new (system["code"].AsString(), system));
             }
         }
 
@@ -86,7 +86,7 @@ namespace MaltiezFSM.Operations
 
             foreach (var entry in mSystemsInitialData)
             {
-                mSystems.Add(systems[entry.Key], entry.Value);
+                mSystems.Add(new(systems[entry.Item1], entry.Item2));
             }
             mSystemsInitialData.Clear();
 
@@ -103,7 +103,7 @@ namespace MaltiezFSM.Operations
             
             foreach (var entry in mSystems)
             {
-                if (!entry.Key.Verify(slot, player, entry.Value[attributesAttrName]))
+                if (!entry.Item1.Verify(slot, player, entry.Item2[attributesAttrName]))
                 {
                     return state;
                 }
@@ -111,7 +111,7 @@ namespace MaltiezFSM.Operations
 
             foreach (var entry in mSystems)
             {
-                entry.Key.Process(slot, player, entry.Value[attributesAttrName]);
+                entry.Item1.Process(slot, player, entry.Item2[attributesAttrName]);
             }
 
             return mStates[state];

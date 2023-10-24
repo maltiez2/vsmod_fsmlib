@@ -26,6 +26,11 @@ namespace MaltiezFSM.Systems
         ItemStack TakeSelectedAmmo(ItemSlot slot, int amount = -1);
     }
 
+    public interface IItemStackProvider
+    {
+        ItemStack GetItemStack(ItemSlot slot, EntityAgent player);
+    }
+
     public interface IAimingSystem
     {
         public struct DirectionOffset
@@ -38,7 +43,6 @@ namespace MaltiezFSM.Systems
                 return new DirectionOffset() { pitch = parameters.pitch, yaw = parameters.yaw };
             }
         }
-        DirectionOffset GetShootingDirectionOffset();
-
+        DirectionOffset GetShootingDirectionOffset(ItemSlot slot);
     }
 }

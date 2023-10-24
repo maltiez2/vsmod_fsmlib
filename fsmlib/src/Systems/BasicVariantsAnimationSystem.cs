@@ -24,7 +24,7 @@ namespace MaltiezFSM.Systems
         private readonly Dictionary<string, IAnimationPlayer.AnimationParameters> mAnimations = new();
         private readonly Dictionary<string, Dictionary<int, string>> mAnimationsSounds = new();
         private readonly Dictionary<string, string> mDescriptions = new();
-        private TAnimationPlayer mTimer;
+        private Dictionary<long, TAnimationPlayer> mTimers = new();
         private ISoundSystem mSoundSystem;
         private string mSoundSystemId = "";
 
@@ -105,10 +105,12 @@ namespace MaltiezFSM.Systems
 
             IAnimationPlayer.AnimationParameters animation = mAnimations[code];
 
-            mTimer?.Stop();
-            mTimer = new TAnimationPlayer();
-            mTimer.Init(mApi, animation, (int variant) => SetRenderVariant(variant, slot, player, mAnimationsSounds[code]));
-            mTimer.Play();
+            if (!mTimers.ContainsKey(player.EntityId)) mTimers[player.EntityId] = new();
+
+            mTimers[player.EntityId]?.Stop();
+            mTimers[player.EntityId] = new TAnimationPlayer();
+            mTimers[player.EntityId].Init(mApi, animation, (int variant) => SetRenderVariant(variant, slot, player, mAnimationsSounds[code]));
+            mTimers[player.EntityId].Play();
 
             return true;
         }

@@ -1,6 +1,7 @@
 ﻿using Vintagestory.API.Common;
 using MaltiezFSM.API;
 using Vintagestory.API.Client;
+using MaltiezFSM.BullseyeCompatibility;
 
 namespace MaltiezFSM
 {
@@ -12,10 +13,15 @@ namespace MaltiezFSM
         private IInputManager mInputManager;
 
         public override void Start(ICoreAPI api)
-        {  
+        {
             base.Start(api);
             api.RegisterItemClass("NoMelee", typeof(NoMelee));
             api.RegisterCollectibleBehaviorClass("FiniteStateMachine", typeof(Framework.FiniteStateMachineBehaviour));
+
+            if (api.ModLoader.IsModEnabled("bullseye"))
+            {
+                api.RegisterCollectibleBehaviorClass("SmoothAnimationAttachable", typeof(SmoothAnimationAttachableBehavior));
+            }
 
             mOperationFactory = new Framework.Factory<IOperation, Framework.UniqueIdGeneratorForFactory>(api);
             mSystemFactory = new Framework.Factory<ISystem, Framework.UniqueIdGeneratorForFactory>(api);
@@ -50,6 +56,7 @@ namespace MaltiezFSM
             mSystemFactory.RegisterType<Systems.BasicDurabilityDamage>("DurabilityDamage");
             mSystemFactory.RegisterType<Systems.BasicDurability>("Durability");
             mSystemFactory.RegisterType<Systems.ItemStackGiver>("ItemStackGiver");
+            mSystemFactory.RegisterType<Systems.SmoothAnimation>("SmoothAnimation");
         }
         public void RegisterOperations()
         {

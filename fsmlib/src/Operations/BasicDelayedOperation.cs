@@ -30,14 +30,14 @@ namespace MaltiezFSM.Operations
 
         // Initial data for operation's logic
         private readonly List<Tuple<string, string>> mStatesInitialData = new();
-        private readonly Dictionary<Tuple<string, string>, Tuple<string, Dictionary<string, JsonObject>>> mTransitionsInitialData = new();
+        private readonly Dictionary<Tuple<string, string>, Tuple<string, List<Tuple<string, JsonObject>>>> mTransitionsInitialData = new();
         private readonly Dictionary<Tuple<string, string>, int?> mTimersInitialData = new();
         private readonly List<string> mInputsInitialData = new();
         private readonly List<Tuple<string, string, string>> mTriggerConditions = new();
         private readonly List<string> mInputsToPreventInitialData = new();
 
         // Final data for operation's logic
-        private readonly Dictionary<Tuple<IState, IInput>, Tuple<IState, Dictionary<ISystem, JsonObject>>> mTransitions = new();
+        private readonly Dictionary<Tuple<IState, IInput>, Tuple<IState, List<Tuple<ISystem, JsonObject>>>> mTransitions = new();
         private readonly Dictionary<Tuple<IState, IInput>, int?> mTimers = new();
         private readonly List<IInput> mInputsToPrevent = new();
 
@@ -53,24 +53,24 @@ namespace MaltiezFSM.Operations
 
             mApi = api;
 
-            Dictionary<string, JsonObject> systemsInitial = new();
-            Dictionary<string, JsonObject> systemsCancel = new();
-            Dictionary<string, JsonObject> systemsFinal = new();
+            List<Tuple<string, JsonObject>> systemsInitial = new();
+            List<Tuple<string, JsonObject>> systemsCancel = new();
+            List<Tuple<string, JsonObject>> systemsFinal = new();
 
             JsonObject[] systems = definition[systemsAttrName][initialName].AsArray();
             foreach (JsonObject system in systems)
             {
-                systemsInitial.Add(system["code"].AsString(), system[attributesAttrName]);
+                systemsInitial.Add(new (system["code"].AsString(), system[attributesAttrName]));
             }
             systems = definition[systemsAttrName][cancelAttrName].AsArray();
             foreach (JsonObject system in systems)
             {
-                systemsCancel.Add(system["code"].AsString(), system[attributesAttrName]);
+                systemsCancel.Add(new(system["code"].AsString(), system[attributesAttrName]));
             }
             systems = definition[systemsAttrName][finalAttrName].AsArray();
             foreach (JsonObject system in systems)
             {
-                systemsFinal.Add(system["code"].AsString(), system[attributesAttrName]);
+                systemsFinal.Add(new(system["code"].AsString(), system[attributesAttrName]));
             }
 
             List<string> cancelInputs = new();
@@ -115,9 +115,9 @@ namespace MaltiezFSM.Operations
                 mStatesInitialData.Add(new Tuple<string, string>(intermediateState, finalState));
                 mStatesInitialData.Add(new Tuple<string, string>(intermediateState, cancelState));
 
-                foreach (string inputInitial in inputsInitial)  mTransitionsInitialData.Add(new Tuple<string, string>(initialState, inputInitial), new Tuple<string, Dictionary<string, JsonObject>>(intermediateState,  systemsInitial));
-                foreach (string inputInitial in inputsInitial) mTransitionsInitialData.Add(new Tuple<string, string>(intermediateState, inputInitial), new Tuple<string, Dictionary<string, JsonObject>>(finalState, systemsFinal));
-                foreach (string inputCancel in cancelInputs) mTransitionsInitialData.Add(new Tuple<string, string>(intermediateState, inputCancel), new Tuple<string, Dictionary<string, JsonObject>>(cancelState, systemsCancel));
+                foreach (string inputInitial in inputsInitial)  mTransitionsInitialData.Add(new Tuple<string, string>(initialState, inputInitial), new Tuple<string, List<Tuple<string, JsonObject>>>(intermediateState,  systemsInitial));
+                foreach (string inputInitial in inputsInitial) mTransitionsInitialData.Add(new Tuple<string, string>(intermediateState, inputInitial), new Tuple<string, List<Tuple<string, JsonObject>>>(finalState, systemsFinal));
+                foreach (string inputCancel in cancelInputs) mTransitionsInitialData.Add(new Tuple<string, string>(intermediateState, inputCancel), new Tuple<string, List<Tuple<string, JsonObject>>>(cancelState, systemsCancel));
 
                 foreach (string inputInitial in inputsInitial) mTimersInitialData.Add(new Tuple<string, string>(initialState, inputInitial), timerDelay);
 
@@ -129,7 +129,7 @@ namespace MaltiezFSM.Operations
                 {
                     mTriggerConditions.Add(new(input, intermediateState, intermediateState));
                     mStatesInitialData.Add(new Tuple<string, string>(intermediateState, intermediateState));
-                    mTransitionsInitialData.Add(new Tuple<string, string>(intermediateState, input), new Tuple<string, Dictionary<string, JsonObject>>(intermediateState, new Dictionary<string, JsonObject>()));
+                    mTransitionsInitialData.Add(new Tuple<string, string>(intermediateState, input), new Tuple<string, List<Tuple<string, JsonObject>>>(intermediateState, new List<Tuple<string, JsonObject>>()));
                 }
             }
 
@@ -144,14 +144,14 @@ namespace MaltiezFSM.Operations
         {
             foreach (var entry in mTransitionsInitialData)
             {
-                Dictionary<ISystem, JsonObject> transitionSystems = new();
+                List<Tuple<ISystem, JsonObject>> transitionSystems = new();
                 foreach (var systemEntry in entry.Value.Item2)
                 {
-                    transitionSystems.Add(systems[systemEntry.Key], systemEntry.Value);
+                    transitionSystems.Add(new (systems[systemEntry.Item1], systemEntry.Item2));
                 }
 
                 Tuple<IState, IInput> transitionFrom = new(states[entry.Key.Item1], inputs[entry.Key.Item2]);
-                Tuple<IState, Dictionary<ISystem, JsonObject>> transitionTo = new(states[entry.Value.Item1], transitionSystems);
+                Tuple<IState, List<Tuple<ISystem, JsonObject>>> transitionTo = new(states[entry.Value.Item1], transitionSystems);
 
                 mTransitions.Add(transitionFrom, transitionTo);
             }
@@ -187,12 +187,12 @@ namespace MaltiezFSM.Operations
 
             if (!mTransitions.ContainsKey(transitionId)) return state;
             
-            (IState newState, Dictionary<ISystem, JsonObject> systems) = mTransitions[transitionId];
+            (IState newState, List<Tuple<ISystem, JsonObject>> systems) = mTransitions[transitionId];
 
 
             foreach (var entry in systems)
             {
-                if (!entry.Key.Verify(weaponSlot, player, entry.Value))
+                if (!entry.Item1.Verify(weaponSlot, player, entry.Item2))
                 {
                     return state;
                 }
@@ -200,7 +200,7 @@ namespace MaltiezFSM.Operations
 
             foreach (var entry in systems)
             {
-                entry.Key.Process(weaponSlot, player, entry.Value);
+                entry.Item1.Process(weaponSlot, player, entry.Item2);
             }
 
             return newState;
