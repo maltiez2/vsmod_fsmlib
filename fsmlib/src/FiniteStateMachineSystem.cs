@@ -51,12 +51,14 @@ namespace MaltiezFSM
             mSystemFactory.RegisterType<Systems.BasicParticles>("Particles");
             mSystemFactory.RegisterType<Systems.BasicAim>("Aiming");
             mSystemFactory.RegisterType<Systems.NoSway>("NoSway");
+            mSystemFactory.RegisterType<Systems.NoSprint>("NoSprint");
             mSystemFactory.RegisterType<Systems.ChangeGroup>("ChangeGroup");
             mSystemFactory.RegisterType<Systems.BasicMelee>("BasicMelee");
             mSystemFactory.RegisterType<Systems.BasicDurabilityDamage>("DurabilityDamage");
             mSystemFactory.RegisterType<Systems.BasicDurability>("Durability");
             mSystemFactory.RegisterType<Systems.ItemStackGiver>("ItemStackGiver");
             mSystemFactory.RegisterType<Systems.SmoothAnimation>("SmoothAnimation");
+            mSystemFactory.RegisterType<Systems.BullseyeAiming>("BullseyeAiming");
         }
         public void RegisterOperations()
         {

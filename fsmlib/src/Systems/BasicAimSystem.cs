@@ -51,7 +51,7 @@ namespace MaltiezFSM.Systems
             return true;
         }
 
-        DirectionOffset IAimingSystem.GetShootingDirectionOffset(ItemSlot slot)
+        DirectionOffset IAimingSystem.GetShootingDirectionOffset(ItemSlot slot, EntityAgent player)
         {
             long currentTime = mApi.World.ElapsedMilliseconds;
             float aimProgress = mIsAiming ? Math.Clamp((float)(currentTime - ReadStartTimeFrom(slot)) / mAimTime_ms, 0, 1) : 0;

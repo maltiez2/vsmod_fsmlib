@@ -1,4 +1,5 @@
 ﻿using MaltiezFSM.API;
+using MaltiezFSM.Framework;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -59,7 +60,7 @@ namespace MaltiezFSM.Systems
             if (ammoStack == null) return false;
 
             Vec3d projectilePosition = ProjectilePosition(player, new Vec3f(0.0f, 0.0f, 0.0f));
-            Vec3d projectileVelocity = ProjectileVelocity(player, mAimingSystem.GetShootingDirectionOffset(slot));
+            Vec3d projectileVelocity = ProjectileVelocity(player, mAimingSystem.GetShootingDirectionOffset(slot, player));
 
             float damage = mProjectileDamage;
             if (ammoStack.Collectible != null) damage += mProjectileDamageMultiplier * ammoStack.Collectible.Attributes["damage"].AsFloat();
@@ -78,23 +79,14 @@ namespace MaltiezFSM.Systems
 
         private Vec3d ProjectilePosition(EntityAgent player, Vec3f muzzlePosition)
         {
-            Vec3f worldPosition = FromCameraReferenceFrame(player, muzzlePosition);
+            Vec3f worldPosition = Utils.FromCameraReferenceFrame(player, muzzlePosition);
             return player.SidedPos.AheadCopy(0).XYZ.Add(worldPosition.X, player.LocalEyePos.Y + worldPosition.Y, worldPosition.Z);
         }
         private Vec3d ProjectileVelocity(EntityAgent player, IAimingSystem.DirectionOffset dispersion)
         {
             Vec3d pos = player.ServerPos.XYZ.Add(0, player.LocalEyePos.Y, 0);
             Vec3d aheadPos = pos.AheadCopy(1, player.SidedPos.Pitch + dispersion.pitch, player.SidedPos.Yaw + dispersion.yaw);
-            return (aheadPos - pos) * mProjectileVelocity;
-        }
-        private Vec3f FromCameraReferenceFrame(EntityAgent player, Vec3f position)
-        {
-            Vec3f viewVector = player.SidedPos.GetViewVector();
-            Vec3f vertical = new Vec3f(0, 1, 0);
-            Vec3f localZ = viewVector.Normalize();
-            Vec3f localX = viewVector.Cross(vertical).Normalize();
-            Vec3f localY = localX.Cross(localZ);
-            return localX * position.X + localY * position.Y + localZ * position.Z;
+            return (aheadPos - pos).Normalize() * mProjectileVelocity;
         }
         private void SpawnProjectile(ItemStack projectileStack, EntityAgent player, Vec3d position, Vec3d velocity, float damage)
         {

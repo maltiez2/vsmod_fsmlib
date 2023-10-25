@@ -35,14 +35,14 @@ namespace MaltiezFSM.Systems
     {
         public struct DirectionOffset
         {
-            public float pitch { get; set; }
-            public float yaw { get; set; }
+            public float pitch { get; set; } // radian
+            public float yaw { get; set; } // radian
 
             public static implicit operator DirectionOffset((float pitch, float yaw) parameters)
             {
                 return new DirectionOffset() { pitch = parameters.pitch, yaw = parameters.yaw };
             }
         }
-        DirectionOffset GetShootingDirectionOffset(ItemSlot slot);
+        DirectionOffset GetShootingDirectionOffset(ItemSlot slot, EntityAgent player);
     }
 }

@@ -1,7 +1,7 @@
 ﻿using Vintagestory.API.Datastructures;
 using Vintagestory.API.Common;
-using System.Collections.Generic;
 using Vintagestory.API.MathTools;
+using System;
 
 namespace MaltiezFSM.Framework
 {
@@ -47,6 +47,114 @@ namespace MaltiezFSM.Framework
         static public Vec3f TransitionVector(Vec3f from, Vec3f to, float progress)
         {
             return from + (to - from) * progress;
+        }
+
+        static public Vec3f FromCameraReferenceFrame(EntityAgent player, Vec3f position)
+        {
+            Vec3f viewVector = player.SidedPos.GetViewVector();
+            Vec3f vertical = new Vec3f(0, 1, 0);
+            Vec3f localZ = viewVector.Normalize();
+            Vec3f localX = viewVector.Cross(vertical).Normalize();
+            Vec3f localY = localX.Cross(localZ);
+            return localX * position.X + localY * position.Y + localZ * position.Z;
+        }
+        static public Vec3d FromCameraReferenceFrame(EntityAgent player, Vec3d position)
+        {
+            Vec3f viewVectorF = player.SidedPos.GetViewVector();
+            Vec3d viewVector = new Vec3d(viewVectorF.X, viewVectorF.Y, viewVectorF.Z);
+            Vec3d vertical = new Vec3d(0, 1, 0);
+            Vec3d localZ = viewVector.Normalize();
+            Vec3d localX = viewVector.Cross(vertical).Normalize();
+            Vec3d localY = localX.Cross(localZ);
+            return localX * position.X + localY * position.Y + localZ * position.Z;
+        }
+        static public Vec3d ToCameraReferenceFrame(EntityAgent player, Vec3d position)
+        {
+            Vec3f viewVectorF = player.SidedPos.GetViewVector();
+            Vec3d viewVector = new Vec3d(viewVectorF.X, viewVectorF.Y, viewVectorF.Z);
+            Vec3d vertical = new Vec3d(0, 1, 0);
+            Vec3d localZ = viewVector.Normalize();
+            Vec3d localX = viewVector.Cross(vertical).Normalize();
+            Vec3d localY = localX.Cross(localZ);
+
+            InverseMatrix(localX, localY, localZ);
+
+            return localX * position.X + localY * position.Y + localZ * position.Z;
+        }
+        static public void InverseMatrix(Vec3d X, Vec3d Y, Vec3d Z)
+        {
+            double[] matrix = { X.X, X.Y, X.Z, Y.X, Y.Y, Y.Z, Z.X, Z.Y, Z.Z };
+            Mat3d.Invert(matrix, matrix);
+            X.X = matrix[0];
+            X.Y = matrix[1];
+            X.Z = matrix[2];
+            Y.X = matrix[3];
+            Y.Y = matrix[4];
+            Y.Z = matrix[5];
+            Z.X = matrix[6];
+            Z.Y = matrix[7];
+            Z.Z = matrix[8];
+        }
+    }
+
+    public class TickBasedTimer
+    {
+        private readonly ICoreAPI mApi;
+        private readonly Action<float> mCallback;
+        private readonly float mDuration_ms;
+
+        private long? mCallbackId;
+        private float mCurrentDuration = 0;
+        private float mCurrentProgress = 0;
+        private bool mForward = true;
+        private bool mAutoStop;
+
+        public TickBasedTimer(ICoreAPI api, int duration_ms, Action<float> callback, bool autoStop = true)
+        {
+            mApi = api;
+            mDuration_ms = (float)duration_ms / 1000;
+            mCallback = callback;
+            mAutoStop = autoStop;
+            StartListener();
+        }
+        public void Stop()
+        {
+            StopListener();
+        }
+        public void Resume()
+        {
+            mCurrentDuration = mDuration_ms * mCurrentProgress;
+            mForward = true;
+            StartListener();
+        }
+        public void Revert()
+        {
+            mCurrentDuration = mDuration_ms * (1 - mCurrentProgress);
+            mForward = false;
+            StartListener();
+        }
+
+        private void Handler(float time)
+        {
+            mCurrentDuration += time;
+            mCallback(CalculateProgress(mCurrentDuration));
+            if (mAutoStop && mCurrentDuration >= mDuration_ms) StopListener();
+        }
+        private float CalculateProgress(float time)
+        {
+            float progress = GameMath.Clamp(time / mDuration_ms, 0, 1);
+            mCurrentProgress = mForward ? progress : 1 - progress;
+            return mCurrentProgress;
+        }
+        private void StartListener()
+        {
+            StopListener();
+            mCallbackId = mApi.World.RegisterGameTickListener(Handler, 0);
+        }
+        private void StopListener()
+        {
+            if (mCallbackId != null) mApi.World.UnregisterGameTickListener((long)mCallbackId);
+            mCallbackId = null;
         }
     }
 }
