@@ -13,6 +13,7 @@ namespace MaltiezFSM.Systems
         private BullseyeSystemClientAiming CoreClientSystem;
         private BullseyeSystemRangedWeapon RangedWeaponSystem;
         private BullseyeRangedWeaponStats WeaponStats;
+        private TransformsManager mTransformsManager;
 
         private ModelTransform DefaultFpHandTransform;
         private LoadedTexture AimTexPartCharge;
@@ -21,11 +22,14 @@ namespace MaltiezFSM.Systems
 
         private float mAimDuration;
         private readonly Dictionary<long, Vec3d> mAimDirections = new();
-        private readonly Dictionary<long, TickBasedTimer> mAimTimers = new();
+        private readonly Dictionary<long, Utils.TickBasedTimer> mAimTimers = new();
+        private readonly Dictionary<long, ModelTransform> mAimTransforms = new();
 
         public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
         {
             base.Init(code, definition, collectible, api);
+
+            mTransformsManager = mCollectible.GetBehavior<FiniteStateMachineBehaviour>().transformsManager;
 
             RangedWeaponSystem = api.ModLoader.GetModSystem<BullseyeSystemRangedWeapon>();
 
@@ -55,16 +59,15 @@ namespace MaltiezFSM.Systems
         {
             if (!base.Process(slot, player, parameters)) return false;
             if (!mAimDirections.ContainsKey(player.EntityId)) mAimDirections.Add(player.EntityId, new Vec3d(0, 0, 0));
+            if (!mAimTransforms.ContainsKey(player.EntityId)) mAimTransforms.Add(player.EntityId, Utils.IdentityTransform());
 
             string action = parameters["action"].AsString();
             switch (action)
             {
                 case "start":
                     StartAiming(slot, player);
-                    StartTimer(player);
                     break;
                 case "stop":
-                    StopTimer(player);
                     CancelAiming(player);
                     break;
                 default:
@@ -75,9 +78,7 @@ namespace MaltiezFSM.Systems
         }
         IAimingSystem.DirectionOffset IAimingSystem.GetShootingDirectionOffset(ItemSlot slot, EntityAgent player)
         {
-            IAimingSystem.DirectionOffset offset = GetOffset(mAimDirections[player.EntityId], player);
-            mApi.Logger.Notification("[FSMlib] [GetShootingDirectionOffset()] pitch: {0}, yaw: {1}", offset.pitch, offset.yaw);
-            return offset;
+            return GetOffset(mAimDirections[player.EntityId], player);
         }
 
         private IAimingSystem.DirectionOffset GetOffset(Vec3d directionAbs, EntityAgent player)
@@ -92,6 +93,9 @@ namespace MaltiezFSM.Systems
         }
         private void StartAiming(ItemSlot slot, EntityAgent player)
         {
+            if (mAimTimers.ContainsKey(player.EntityId)) mAimTimers[player.EntityId]?.Stop();
+            mAimTimers[player.EntityId] = new(mApi, (int)(mAimDuration * 1000), (float progress) => ProceedAiming(progress, player), false);
+
             if (player.World is IClientWorldAccessor)
             {
                 CoreClientSystem.SetRangedWeaponStats(WeaponStats);
@@ -105,33 +109,40 @@ namespace MaltiezFSM.Systems
             player.Attributes.SetInt("bullseyeAiming", 1);
             player.Attributes.SetInt("bullseyeAimingCancel", 0);
         }
-        private void ProceedAiming(float secondsUsed, EntityAgent byEntity)
+        private void ProceedAiming(float progress, EntityAgent byEntity)
         {
-            if (mApi.Side != EnumAppSide.Client || byEntity.Attributes.GetInt("bullseyeAiming") != 1) return;
+            if (mApi.Side != EnumAppSide.Client) return;
 
-            SetReticle(secondsUsed, byEntity);
+            if (byEntity.Attributes.GetInt("bullseyeAiming") == 0)
+            {
+                mApi.Logger.Notification("[FSMlib] mAimTransforms revert: {0}", mAimTransforms[byEntity.EntityId].Rotation);
+                mTransformsManager.SetTransform(byEntity.EntityId, mCode, EnumItemRenderTarget.HandFp, Utils.TransitionTransform(Utils.IdentityTransform(), mAimTransforms[byEntity.EntityId], progress));
+                return;
+            }
+
+            SetReticle(progress, byEntity);
 
             Vec3d direction = CoreClientSystem.TargetVec;
             mAimDirections[byEntity.EntityId] = direction;
             RangedWeaponSystem.SendRangedWeaponFirePacket(mCollectible.Id, direction);
 
-            mCollectible.GetBehavior<FiniteStateMachineBehaviour>().fpTransform = AimTransform(); // Utils.CombineTransforms(mCollectible.GetBehavior<FiniteStateMachineBehaviour>().fpTransform, AimTransform());
+            mAimTransforms[byEntity.EntityId] = Utils.TransitionTransform(Utils.IdentityTransform(), AimTransform(), progress * progress);
+            mApi.Logger.Notification("[FSMlib] mAimTransforms: {0}", mAimTransforms[byEntity.EntityId].Rotation);
+            mTransformsManager.SetTransform(byEntity.EntityId, mCode, EnumItemRenderTarget.HandFp, mAimTransforms[byEntity.EntityId]);
         }
-        private void SetReticle(float secondsUsed, EntityAgent byEntity)
+        private void SetReticle(float progress, EntityAgent byEntity)
         {
-            // Show different reticle if we are ready to shoot
-            // - Show white "full charge" reticle if the accuracy is fully calmed down, + a little leeway to let the reticle calm down fully
-            // - Show yellow "partial charge" reticle if the bow is ready for a snap shot, but accuracy is still poor
-            // --- OR if the weapon was held so long that accuracy is starting to get bad again, for weapons that have it
-            // - Show red "blocked" reticle if the weapon can't shoot yet
-            bool showBlocked = secondsUsed < mAimDuration;
-            bool showPartCharged = secondsUsed < WeaponStats.accuracyStartTime / byEntity.Stats.GetBlended("rangedWeaponsSpeed") + WeaponStats.aimFullChargeLeeway;
-            showPartCharged = showPartCharged || secondsUsed > WeaponStats.accuracyOvertimeStart + WeaponStats.accuracyStartTime && WeaponStats.accuracyOvertime > 0;
+            bool showBlocked = progress < 0.0;
+            bool showPartCharged = progress < 1.0;
 
             CoreClientSystem.WeaponReadiness = showBlocked ? BullseyeEnumWeaponReadiness.Blocked : showPartCharged ? BullseyeEnumWeaponReadiness.PartCharge : BullseyeEnumWeaponReadiness.FullCharge;
         }
         private void CancelAiming(EntityAgent byEntity)
         {
+            if (mAimTimers.ContainsKey(byEntity.EntityId)) mAimTimers[byEntity.EntityId]?.Revert(true);
+
+            mTransformsManager.ResetTransform(byEntity.EntityId, mCode, EnumItemRenderTarget.HandFp);
+
             if (byEntity.Attributes.GetInt("bullseyeAimingCancel") == 1) return;
             byEntity.Attributes.SetInt("bullseyeAimingCancel", 1);
             byEntity.Attributes.SetInt("bullseyeAiming", 0);
@@ -157,8 +168,7 @@ namespace MaltiezFSM.Systems
         }
         private ModelTransform AimTransform()
         {
-            ModelTransform fpTransform = new();
-            fpTransform.EnsureDefaultValues();
+            ModelTransform fpTransform = Utils.IdentityTransform();
 
             float transformFraction;
 
@@ -190,16 +200,9 @@ namespace MaltiezFSM.Systems
                 fpTransform.Rotation.Set(DefaultFpHandTransform.Rotation);
             }
 
+            fpTransform.Translation.Y -= 0.5f; // @TODO
+
             return fpTransform;
-        }
-        private void StartTimer(EntityAgent player)
-        {
-            StopTimer(player);
-            mAimTimers[player.EntityId] = new TickBasedTimer(mApi, (int)(mAimDuration * 1000), (float progress) => ProceedAiming(mAimDuration * progress, player), false);
-        }
-        private void StopTimer(EntityAgent player)
-        {
-            if (mAimTimers.ContainsKey(player.EntityId)) mAimTimers[player.EntityId]?.Stop();
         }
     }
 }

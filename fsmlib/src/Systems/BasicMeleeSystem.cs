@@ -35,8 +35,7 @@ namespace MaltiezFSM.Systems
             JsonObject origin = transform["origin"];
             
 
-            ModelTransform modelTransform = new ModelTransform();
-            modelTransform.EnsureDefaultValues();
+            ModelTransform modelTransform = Utils.IdentityTransform();
             if (!flipAxles)
             {
                 modelTransform.Translation.Set(translation["x"].AsFloat(), translation["y"].AsFloat(), translation["z"].AsFloat());
@@ -60,13 +59,15 @@ namespace MaltiezFSM.Systems
         private AnimationData mAnimation;
         private ModelTransform mFpInitial;
         private ModelTransform mTpInitial;
+        private TransformsManager mTransformsManager;
 
         public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
         {
             base.Init(code, definition, collectible, api);
 
             mTimer = new();
-            mAnimation = new AnimationData(definition);                                                                 
+            mAnimation = new AnimationData(definition);
+            mTransformsManager = mCollectible.GetBehavior<FiniteStateMachineBehaviour>().transformsManager;
         }
 
         public override bool Process(ItemSlot slot, EntityAgent player, JsonObject parameters)
@@ -79,8 +80,8 @@ namespace MaltiezFSM.Systems
                 case "start":
                     if (mApi is ICoreClientAPI)
                     {
-                        mFpInitial = mCollectible.GetBehavior<FiniteStateMachineBehaviour>().fpTransform?.Clone();
-                        mTpInitial = mCollectible.GetBehavior<FiniteStateMachineBehaviour>().tpTransform?.Clone();
+                        mFpInitial = mTransformsManager.GetTransform(player.EntityId, mCode, EnumItemRenderTarget.HandFp).Clone();
+                        mTpInitial = mTransformsManager.GetTransform(player.EntityId, mCode, EnumItemRenderTarget.HandTp).Clone();
 
                         if (mFpInitial == null) mFpInitial = GetIdentityTransform();
                         if (mTpInitial == null) mTpInitial = GetIdentityTransform();
@@ -96,8 +97,8 @@ namespace MaltiezFSM.Systems
                     break;
                 case "stop":
                     if (mApi is ICoreClientAPI) mTimer.Stop();
-                    mCollectible.GetBehavior<FiniteStateMachineBehaviour>().tpTransform = null;
-                    mCollectible.GetBehavior<FiniteStateMachineBehaviour>().fpTransform = null;
+                    mTransformsManager.ResetTransform(player.EntityId, mCode, EnumItemRenderTarget.HandFp);
+                    mTransformsManager.ResetTransform(player.EntityId, mCode, EnumItemRenderTarget.HandTp);
                     break;
                 default:
                     mApi.Logger.Error("[FSMlib] [BasicMelee] [Process] Action does not exists: " + action);
@@ -108,7 +109,7 @@ namespace MaltiezFSM.Systems
 
         private ModelTransform GetIdentityTransform()
         {
-            ModelTransform modelTransform = new ModelTransform();
+            ModelTransform modelTransform = Utils.IdentityTransform();
             modelTransform.EnsureDefaultValues();
             modelTransform.Translation.Set(0, 0, 0);
             modelTransform.Rotation.Set(0, 0, 0);
@@ -121,7 +122,7 @@ namespace MaltiezFSM.Systems
         {
             if (secondsPassed > mAnimation.windUp + mAnimation.strike + mAnimation.easeOff) return false;
 
-            PlayAnimation(secondsPassed);
+            PlayAnimation(secondsPassed, byEntity.EntityId);
 
             if (mAnimation.windUp < secondsPassed && secondsPassed < mAnimation.windUp + mAnimation.strike && byEntity.Attributes.GetInt("didattack") == 0)
             {
@@ -136,19 +137,19 @@ namespace MaltiezFSM.Systems
             return true;
         }
 
-        private bool PlayAnimation(float secondsPassed)
+        private bool PlayAnimation(float secondsPassed, long entityId)
         {
             if (secondsPassed < mAnimation.windUp)
             {
-                PlayWindUp(secondsPassed / mAnimation.windUp);
+                PlayWindUp(secondsPassed / mAnimation.windUp, entityId);
             }
             else if (secondsPassed < mAnimation.strike + mAnimation.windUp)
             {
-                PlayStrike((secondsPassed - mAnimation.strike) / mAnimation.windUp);
+                PlayStrike((secondsPassed - mAnimation.strike) / mAnimation.windUp, entityId);
             }
             else if (secondsPassed < mAnimation.strike + mAnimation.windUp + mAnimation.easeOff)
             {
-                PlayEaseOff((secondsPassed - mAnimation.strike - mAnimation.windUp) / mAnimation.easeOff);
+                PlayEaseOff((secondsPassed - mAnimation.strike - mAnimation.windUp) / mAnimation.easeOff, entityId);
             }
             else
             {
@@ -158,33 +159,22 @@ namespace MaltiezFSM.Systems
             return true;
         }
 
-        private void PlayWindUp(float progress)
+        private void PlayWindUp(float progress, long entityId)
         {
-            mCollectible.GetBehavior<FiniteStateMachineBehaviour>().fpTransform = ApplyProgress(MathF.Sqrt(progress), mFpInitial, mAnimation.fpWindUp);
-            mCollectible.GetBehavior<FiniteStateMachineBehaviour>().tpTransform = ApplyProgress(MathF.Sqrt(progress), mTpInitial, mAnimation.tpWindUp);
+            mTransformsManager.SetTransform(entityId, mCode, EnumItemRenderTarget.HandFp, Utils.TransitionTransform(mFpInitial, mAnimation.fpWindUp, MathF.Sqrt(progress)));
+            mTransformsManager.SetTransform(entityId, mCode, EnumItemRenderTarget.HandTp, Utils.TransitionTransform(mTpInitial, mAnimation.tpWindUp, MathF.Sqrt(progress)));
         }
 
-        private void PlayStrike(float progress)
+        private void PlayStrike(float progress, long entityId)
         {
-            mCollectible.GetBehavior<FiniteStateMachineBehaviour>().fpTransform = ApplyProgress(progress * progress, mAnimation.fpWindUp, mAnimation.fpStrike);
-            mCollectible.GetBehavior<FiniteStateMachineBehaviour>().tpTransform = ApplyProgress(progress * progress, mAnimation.tpWindUp, mAnimation.tpStrike);
+            mTransformsManager.SetTransform(entityId, mCode, EnumItemRenderTarget.HandFp, Utils.TransitionTransform(mAnimation.fpWindUp, mAnimation.fpStrike, progress * progress));
+            mTransformsManager.SetTransform(entityId, mCode, EnumItemRenderTarget.HandTp, Utils.TransitionTransform(mAnimation.tpWindUp, mAnimation.tpStrike, progress * progress));
         }
 
-        private void PlayEaseOff(float progress)
+        private void PlayEaseOff(float progress, long entityId)
         {
-            mCollectible.GetBehavior<FiniteStateMachineBehaviour>().fpTransform = ApplyProgress(progress, mAnimation.fpStrike, mFpInitial);
-            mCollectible.GetBehavior<FiniteStateMachineBehaviour>().tpTransform = ApplyProgress(progress, mAnimation.tpStrike, mTpInitial);
-        }
-
-        private ModelTransform ApplyProgress(float progress, ModelTransform startTransofrm, ModelTransform endTransform)
-        {
-            ModelTransform modelTransform = new ModelTransform();
-            modelTransform.EnsureDefaultValues();
-            modelTransform.Translation = startTransofrm.Translation + (endTransform.Translation - startTransofrm.Translation) * progress;
-            modelTransform.Rotation = startTransofrm.Rotation + (endTransform.Rotation - startTransofrm.Rotation) * progress;
-            modelTransform.Origin = startTransofrm.Origin + (endTransform.Origin - startTransofrm.Origin) * progress;
-            modelTransform.Scale = startTransofrm.ScaleXYZ.X + (endTransform.ScaleXYZ.X - startTransofrm.ScaleXYZ.X) * progress;
-            return modelTransform;
+            mTransformsManager.SetTransform(entityId, mCode, EnumItemRenderTarget.HandFp, Utils.TransitionTransform(mAnimation.fpStrike, mFpInitial, progress * progress));
+            mTransformsManager.SetTransform(entityId, mCode, EnumItemRenderTarget.HandTp, Utils.TransitionTransform(mAnimation.tpStrike, mTpInitial, progress * progress));
         }
     }
 

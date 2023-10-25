@@ -5,6 +5,8 @@ using System;
 using MaltiezFSM.Framework;
 using Vintagestory.API.Common.Entities;
 using System.Diagnostics;
+using HarmonyLib;
+using Vintagestory.API.Client;
 
 namespace MaltiezFSM.Systems
 {
@@ -17,14 +19,11 @@ namespace MaltiezFSM.Systems
         public const string fpAnimationAttrName = "fpTransform";
         public const string tpAnimationAttrName = "tpTransform";
 
-        private readonly Dictionary<string, JsonObject> mFpAnimations = new();
-        private readonly Dictionary<string, JsonObject> mTpAnimations = new();
+        private readonly Dictionary<string, ModelTransform> mFpAnimations = new();
+        private readonly Dictionary<string, ModelTransform> mTpAnimations = new();
         private readonly Dictionary<string, int> mDurations = new();
-        private readonly Dictionary<long, TickBasedPlayerAnimation> mTimers = new();
-        private ModelTransform mFpInitialTransform;
-        private ModelTransform mTpInitialTransform;
-        private ModelTransform mFpTargetTransform;
-        private ModelTransform mTpTargetTransform;
+        private readonly Dictionary<long, Utils.TickBasedTimer> mTimers = new();
+        private readonly Dictionary<long, PlayerHeldItemTransformManager> mTransformManagers = new();
 
         public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
         {
@@ -35,8 +34,8 @@ namespace MaltiezFSM.Systems
             {
                 string animationCode = animation[codeAttrName].AsString();
                 mDurations.Add(animationCode, animation[durationAttrName].AsInt());
-                mFpAnimations.Add(animationCode, animation[fpAnimationAttrName]);
-                mTpAnimations.Add(animationCode, animation[tpAnimationAttrName]);
+                mFpAnimations.Add(animationCode, Utils.ToTransformFrom(animation[fpAnimationAttrName]));
+                mTpAnimations.Add(animationCode, Utils.ToTransformFrom(animation[tpAnimationAttrName]));
             }
         }
         public override bool Verify(ItemSlot slot, EntityAgent player, JsonObject parameters)
@@ -60,38 +59,23 @@ namespace MaltiezFSM.Systems
 
             if (!mFpAnimations.ContainsKey(code)) return false;
 
-            if (!mTimers.ContainsKey(player.EntityId)) mTimers[player.EntityId] = new();
+            if (!mTimers.ContainsKey(player.EntityId)) mTimers[player.EntityId] = null;
+            if (!mTransformManagers.ContainsKey(player.EntityId)) mTransformManagers[player.EntityId] = new(player.EntityId, mCode, mCollectible);
 
             mTimers[player.EntityId]?.Stop();
-            mTimers[player.EntityId]?.Init(mApi, duration, (float progress) => PlayAnimation(progress, player));
-
-            ModelTransform fpLastTransform = mCollectible.GetBehavior<FiniteStateMachineBehaviour>().fpTransform;
-            ModelTransform tpLastTransform = mCollectible.GetBehavior<FiniteStateMachineBehaviour>().tpTransform;
-            ModelTransform modelTransform = new ModelTransform();
-            modelTransform.EnsureDefaultValues();
 
             switch (mode)
             {
                 case "forward":
-                    mFpInitialTransform = fpLastTransform != null ? fpLastTransform.Clone() : modelTransform.Clone();
-                    mTpInitialTransform = tpLastTransform != null ? tpLastTransform.Clone() : modelTransform.Clone();
-                    mFpTargetTransform = Utils.ToTransformFrom(mFpAnimations[code]);
-                    mTpTargetTransform = Utils.ToTransformFrom(mTpAnimations[code]);
-                    mTimers[player.EntityId]?.Play();
+                    mTransformManagers[player.EntityId].StartForward(mFpAnimations[code], mTpAnimations[code]);
+                    mTimers[player.EntityId] = new(mApi, duration, (float progress) => PlayAnimation(progress, player));
                     break;
                 case "backward":
-                    mFpInitialTransform = mFpTargetTransform.Clone();
-                    mTpInitialTransform = mTpTargetTransform.Clone();
-                    mFpTargetTransform = modelTransform.Clone();
-                    mTpTargetTransform = modelTransform.Clone();
-                    mTimers[player.EntityId]?.Play();
+                    mTransformManagers[player.EntityId].StartBackward();
+                    mTimers[player.EntityId]?.Revert();
                     break;
                 case "cancel":
-                    player.Controls.UsingHeldItemTransformAfter = modelTransform.Clone();
-                    player.Controls.UsingHeldItemTransformBefore = modelTransform.Clone();
-                    mCollectible.GetBehavior<FiniteStateMachineBehaviour>().tpTransform = modelTransform.Clone();
-                    mCollectible.GetBehavior<FiniteStateMachineBehaviour>().fpTransform = modelTransform.Clone();
-                    mTimers[player.EntityId]?.Stop();
+                    mTransformManagers[player.EntityId].Cancel(player);
                     break;
                 default:
                     mApi.Logger.Error("[FSMlib] [BasicTransformAnimation] [Process] Mode does not exists: " + mode);
@@ -103,85 +87,66 @@ namespace MaltiezFSM.Systems
 
         private void PlayAnimation(float progress, EntityAgent player)
         {
-            mCollectible.GetBehavior<FiniteStateMachineBehaviour>().fpTransform = Utils.TransitionTransform(mFpInitialTransform, mFpTargetTransform, progress);
-            mCollectible.GetBehavior<FiniteStateMachineBehaviour>().tpTransform = Utils.TransitionTransform(mTpInitialTransform, mTpInitialTransform, progress);
-            ResetUsingTransforms(player);
-        }
-
-        private void ResetUsingTransforms(EntityAgent player)
-        {
-            ModelTransform modelTransform = new ModelTransform();
-            modelTransform.EnsureDefaultValues();
-            player.Controls.UsingHeldItemTransformAfter = modelTransform.Clone();
-            player.Controls.UsingHeldItemTransformBefore = modelTransform.Clone();
+            mTransformManagers[player.EntityId].Play(progress, player);
         }
     }
 
-    public class TickBasedPlayerAnimation
+    public class PlayerHeldItemTransformManager
     {
-        public const int listenerDelay = 0;
+        private readonly TransformsManager mTransformsManager;
+        private readonly long mEntityId;
+        private readonly string mCode;
 
-        private ICoreAPI mApi;
-        private long? mCallbackId;
-        private bool mForward = true;
-        private Action<float> mCallback;
-        private float mDuration_ms;
-        private float mCurrentDuration;
+        private ModelTransform mFpInitialTransform;
+        private ModelTransform mTpInitialTransform;
+        private ModelTransform mFpTargetTransform;
+        private ModelTransform mTpTargetTransform;
         private float mCurrentProgress;
+        
 
-        public void Init(ICoreAPI api, int duration_ms, Action<float> callback)
+        public PlayerHeldItemTransformManager(long entityId, string code, CollectibleObject collectible)
         {
-            mDuration_ms = (float)duration_ms / 1000;
-            mApi = api;
-            mCallback = callback;
-        }
-        public void Play()
-        {
-            mCurrentDuration = 0;
-            mCurrentProgress = 0;
-            mForward = true;
-            SetAnimation(0);
-            SetListener();
-        }
-        public void Handler(float time)
-        {
-            mCurrentDuration += time;
-            SetAnimation(CalculateProgress(mCurrentDuration));
-            if (mCurrentDuration >= mDuration_ms) StopListener();
-        }
-        public void Stop()
-        {
-            StopListener();
-        }
-        public void Revert()
-        {
-            mCurrentDuration = mDuration_ms * (1 - mCurrentProgress);
-            mForward = false;
-            SetAnimation(CalculateProgress(mCurrentDuration));
-            SetListener();
+            mEntityId = entityId;
+            mCode = code;
+            mTransformsManager = collectible.GetBehavior<FiniteStateMachineBehaviour>().transformsManager;
         }
 
-        private float CalculateProgress(float time)
+        public void StartForward(ModelTransform fpTransform, ModelTransform tpTransform)
         {
-            float progress = time / mDuration_ms;
-            progress = progress > 1 ? 1 : progress;
-            mCurrentProgress = mForward ? progress : 1 - progress;
-            return mCurrentProgress;
+            ModelTransform fpLastTransform = mTransformsManager.GetTransform(mEntityId, mCode, EnumItemRenderTarget.HandFp);
+            ModelTransform tpLastTransform = mTransformsManager.GetTransform(mEntityId, mCode, EnumItemRenderTarget.HandTp);
+            mFpInitialTransform = fpLastTransform != null ? fpLastTransform.Clone() : Utils.IdentityTransform();
+            mTpInitialTransform = tpLastTransform != null ? tpLastTransform.Clone() : Utils.IdentityTransform();
+            mFpTargetTransform = fpTransform;
+            mTpTargetTransform = tpTransform;
         }
-        private void SetAnimation(float progress)
+
+        public void StartBackward()
         {
-            mCallback(progress);
-        }
-        private void SetListener()
-        {
-            StopListener();
+            ModelTransform currentFpTransform = Utils.TransitionTransform(mFpInitialTransform, mFpTargetTransform, mCurrentProgress);
             
-            mCallbackId = mApi.World.RegisterGameTickListener(Handler, listenerDelay);
+            mFpInitialTransform = Utils.IdentityTransform();
+            mTpInitialTransform = Utils.IdentityTransform();
+
+            if (mCurrentProgress <= 0) return;
+            mFpTargetTransform = Utils.TransitionTransform(mFpInitialTransform, currentFpTransform, 1 / mCurrentProgress);
         }
-        private void StopListener()
+
+        public void Cancel(EntityAgent player)
         {
-            if (mCallbackId != null) mApi.World.UnregisterGameTickListener((long)mCallbackId);
-            mCallbackId = null;
+            player.Controls.UsingHeldItemTransformAfter = Utils.IdentityTransform();
+            player.Controls.UsingHeldItemTransformBefore = Utils.IdentityTransform();
+            mTransformsManager.ResetTransform(mEntityId, mCode, EnumItemRenderTarget.HandFp);
+            mTransformsManager.ResetTransform(mEntityId, mCode, EnumItemRenderTarget.HandTp);
+        }
+
+        public void Play(float progress, EntityAgent player)
+        {
+            mCurrentProgress = progress;
+            mTransformsManager.SetTransform(mEntityId, mCode, EnumItemRenderTarget.HandFp, Utils.TransitionTransform(mFpInitialTransform, mFpTargetTransform, progress));
+            mTransformsManager.SetTransform(mEntityId, mCode, EnumItemRenderTarget.HandTp, Utils.TransitionTransform(mTpInitialTransform, mTpTargetTransform, progress));
+            player.Controls.UsingHeldItemTransformAfter = Utils.IdentityTransform();
+            player.Controls.UsingHeldItemTransformBefore = Utils.IdentityTransform();
         }
     }
 }

@@ -13,8 +13,7 @@ namespace MaltiezFSM.Framework
             JsonObject rotation = transform["rotation"];
             JsonObject origin = transform["origin"];
 
-            ModelTransform modelTransform = new ModelTransform();
-            modelTransform.EnsureDefaultValues();
+            ModelTransform modelTransform = IdentityTransform();
             modelTransform.Translation.Set(multiplier * translation["x"].AsFloat(), multiplier * translation["y"].AsFloat(), multiplier * translation["z"].AsFloat());
             modelTransform.Rotation.Set(multiplier * rotation["x"].AsFloat(), multiplier * rotation["y"].AsFloat(), multiplier * rotation["z"].AsFloat());
             modelTransform.Origin.Set(multiplier * origin["x"].AsFloat(), multiplier * origin["y"].AsFloat(), multiplier * origin["z"].AsFloat());
@@ -25,12 +24,10 @@ namespace MaltiezFSM.Framework
         static public ModelTransform CombineTransforms(ModelTransform first, ModelTransform second)
         {
             ModelTransform output = first.Clone();
-            output.Translation = first.Translation + second.Translation;
-            output.Rotation = first.Rotation + second.Rotation;
-            output.Origin = first.Origin + second.Origin;
-            output.ScaleXYZ.X = first.ScaleXYZ.X * second.ScaleXYZ.X;
-            output.ScaleXYZ.Y = first.ScaleXYZ.Y * second.ScaleXYZ.Y;
-            output.ScaleXYZ.Z = first.ScaleXYZ.Z * second.ScaleXYZ.Z;
+            SumVectors(output.Translation, first.Translation, second.Translation);
+            SumVectors(output.Rotation, first.Rotation, second.Rotation);
+            SumVectors(output.Origin, first.Origin, second.Origin);
+            MultVectorsByComponent(output.ScaleXYZ, first.ScaleXYZ, second.ScaleXYZ);
             return output;
         }
 
@@ -47,6 +44,29 @@ namespace MaltiezFSM.Framework
         static public Vec3f TransitionVector(Vec3f from, Vec3f to, float progress)
         {
             return from + (to - from) * progress;
+        }
+
+        static public void SumVectors(Vec3f output, Vec3f first, Vec3f second)
+        {
+            output.X = first.X + second.X;
+            output.Y = first.Y + second.Y;
+            output.Z = first.Z + second.Z;
+        }
+        static public void MultVectorsByComponent(Vec3f output, Vec3f first, Vec3f second)
+        {
+            output.X = first.X * second.X;
+            output.Y = first.Y * second.Y;
+            output.Z = first.Z * second.Z;
+        }
+
+        static public ModelTransform IdentityTransform()
+        {
+            ModelTransform output = new();
+            output.Translation = new(0, 0, 0);
+            output.Rotation = new(0, 0, 0);
+            output.Origin = new(0, 0, 0);
+            output.ScaleXYZ = new(1, 1, 1);
+            return output;
         }
 
         static public Vec3f FromCameraReferenceFrame(EntityAgent player, Vec3f position)
@@ -95,66 +115,68 @@ namespace MaltiezFSM.Framework
             Z.Y = matrix[7];
             Z.Z = matrix[8];
         }
-    }
 
-    public class TickBasedTimer
-    {
-        private readonly ICoreAPI mApi;
-        private readonly Action<float> mCallback;
-        private readonly float mDuration_ms;
+        public class TickBasedTimer
+        {
+            private readonly ICoreAPI mApi;
+            private readonly Action<float> mCallback;
+            private readonly float mDuration_ms;
 
-        private long? mCallbackId;
-        private float mCurrentDuration = 0;
-        private float mCurrentProgress = 0;
-        private bool mForward = true;
-        private bool mAutoStop;
+            private long? mCallbackId;
+            private float mCurrentDuration = 0;
+            private float mCurrentProgress = 0;
+            private bool mForward = true;
+            private bool mAutoStop;
 
-        public TickBasedTimer(ICoreAPI api, int duration_ms, Action<float> callback, bool autoStop = true)
-        {
-            mApi = api;
-            mDuration_ms = (float)duration_ms / 1000;
-            mCallback = callback;
-            mAutoStop = autoStop;
-            StartListener();
-        }
-        public void Stop()
-        {
-            StopListener();
-        }
-        public void Resume()
-        {
-            mCurrentDuration = mDuration_ms * mCurrentProgress;
-            mForward = true;
-            StartListener();
-        }
-        public void Revert()
-        {
-            mCurrentDuration = mDuration_ms * (1 - mCurrentProgress);
-            mForward = false;
-            StartListener();
-        }
+            public TickBasedTimer(ICoreAPI api, int duration_ms, Action<float> callback, bool autoStop = true)
+            {
+                mApi = api;
+                mDuration_ms = (float)duration_ms / 1000;
+                mCallback = callback;
+                mAutoStop = autoStop;
+                StartListener();
+            }
+            public void Stop()
+            {
+                StopListener();
+            }
+            public void Resume(bool? autoStop = null)
+            {
+                mCurrentDuration = mDuration_ms * mCurrentProgress;
+                mForward = true;
+                mAutoStop = autoStop == null ? mAutoStop : (bool)autoStop;
+                StartListener();
+            }
+            public void Revert(bool? autoStop = null)
+            {
+                mCurrentDuration = mDuration_ms * (1 - mCurrentProgress);
+                mForward = false;
+                mAutoStop = autoStop == null ? mAutoStop : (bool)autoStop;
+                StartListener();
+            }
 
-        private void Handler(float time)
-        {
-            mCurrentDuration += time;
-            mCallback(CalculateProgress(mCurrentDuration));
-            if (mAutoStop && mCurrentDuration >= mDuration_ms) StopListener();
-        }
-        private float CalculateProgress(float time)
-        {
-            float progress = GameMath.Clamp(time / mDuration_ms, 0, 1);
-            mCurrentProgress = mForward ? progress : 1 - progress;
-            return mCurrentProgress;
-        }
-        private void StartListener()
-        {
-            StopListener();
-            mCallbackId = mApi.World.RegisterGameTickListener(Handler, 0);
-        }
-        private void StopListener()
-        {
-            if (mCallbackId != null) mApi.World.UnregisterGameTickListener((long)mCallbackId);
-            mCallbackId = null;
+            private void Handler(float time)
+            {
+                mCurrentDuration += time;
+                mCallback(CalculateProgress(mCurrentDuration));
+                if (mAutoStop && mCurrentDuration >= mDuration_ms) StopListener();
+            }
+            private float CalculateProgress(float time)
+            {
+                float progress = GameMath.Clamp(time / mDuration_ms, 0, 1);
+                mCurrentProgress = mForward ? progress : 1 - progress;
+                return mCurrentProgress;
+            }
+            private void StartListener()
+            {
+                StopListener();
+                mCallbackId = mApi.World.RegisterGameTickListener(Handler, 0);
+            }
+            private void StopListener()
+            {
+                if (mCallbackId != null) mApi.World.UnregisterGameTickListener((long)mCallbackId);
+                mCallbackId = null;
+            }
         }
     }
 }

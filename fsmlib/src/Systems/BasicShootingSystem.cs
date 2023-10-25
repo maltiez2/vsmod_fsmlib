@@ -20,10 +20,10 @@ namespace MaltiezFSM.Systems
         public const string descriptionAttrName = "description";
 
         private string mReloadSystemName;
-        private string mAimingSystemName;
+        private readonly List<string> mAimingSystemsName = new();
         private string mDescription;
         private IAmmoSelector mReloadSystem;
-        private IAimingSystem mAimingSystem;
+        private readonly List<IAimingSystem> mAimingSystems = new();
         private float mProjectileVelocity;
         private float mProjectileDamage;
         private float mProjectileDamageMultiplier;
@@ -33,16 +33,30 @@ namespace MaltiezFSM.Systems
             base.Init(code, definition, collectible, api);
 
             mReloadSystemName = definition[ammoSelectorSystemAttrName].AsString();
-            mAimingSystemName = definition[aimingSystemAttrName].AsString();
             mProjectileVelocity = definition[velocityAttrName].AsFloat(1);
             mProjectileDamage = definition[damageAttrName].AsFloat(0);
             mProjectileDamageMultiplier = definition[damageMultiplierAttrName].AsFloat(0);
             mDescription = definition[descriptionAttrName].AsString();
+            
+            if (definition[aimingSystemAttrName].IsArray())
+            {
+                foreach (var item in definition[aimingSystemAttrName].AsArray())
+                {
+                    mAimingSystemsName.Add(item.AsString());
+                }
+            }
+            else
+            {
+                mAimingSystemsName.Add(definition[aimingSystemAttrName].AsString());
+            }
         }
         public override void SetSystems(Dictionary<string, ISystem> systems)
         {
             mReloadSystem = systems[mReloadSystemName] as IAmmoSelector;
-            mAimingSystem = systems[mAimingSystemName] as IAimingSystem;
+            foreach (var item in mAimingSystemsName)
+            {
+                mAimingSystems.Add(systems[item] as IAimingSystem);
+            }
         }
 
         public override bool Verify(ItemSlot slot, EntityAgent player, JsonObject parameters)
@@ -60,7 +74,14 @@ namespace MaltiezFSM.Systems
             if (ammoStack == null) return false;
 
             Vec3d projectilePosition = ProjectilePosition(player, new Vec3f(0.0f, 0.0f, 0.0f));
-            Vec3d projectileVelocity = ProjectileVelocity(player, mAimingSystem.GetShootingDirectionOffset(slot, player));
+            IAimingSystem.DirectionOffset dispersion = (0f, 0f);
+            foreach (var item in mAimingSystems) 
+            {
+                IAimingSystem.DirectionOffset offset = item.GetShootingDirectionOffset(slot, player);
+                dispersion.pitch += offset.pitch;
+                dispersion.yaw += offset.yaw;
+            }
+            Vec3d projectileVelocity = ProjectileVelocity(player, dispersion);
 
             float damage = mProjectileDamage;
             if (ammoStack.Collectible != null) damage += mProjectileDamageMultiplier * ammoStack.Collectible.Attributes["damage"].AsFloat();
