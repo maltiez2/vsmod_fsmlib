@@ -97,10 +97,10 @@ namespace MaltiezFSM.Systems
         private readonly long mEntityId;
         private readonly string mCode;
 
-        private ModelTransform mFpInitialTransform;
-        private ModelTransform mTpInitialTransform;
-        private ModelTransform mFpTargetTransform;
-        private ModelTransform mTpTargetTransform;
+        private ModelTransform mFpInitialTransform = Utils.IdentityTransform();
+        private ModelTransform mTpInitialTransform = Utils.IdentityTransform();
+        private ModelTransform mFpTargetTransform = Utils.IdentityTransform();
+        private ModelTransform mTpTargetTransform = Utils.IdentityTransform();
         private float mCurrentProgress;
         
 

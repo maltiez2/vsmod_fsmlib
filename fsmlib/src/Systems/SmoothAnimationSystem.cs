@@ -77,12 +77,12 @@ namespace MaltiezFSM.Systems
             if (animationBehavior == null) return true;
 
             string action = parameters["action"].AsString();
-            string code = parameters["code"].AsString();
             switch (action)
             {
                 case "start":
                     if (mApi.Side == EnumAppSide.Client)
                     {
+                        string code = parameters["code"].AsString();
                         animationBehavior.ClearAttachments();
                         StartAnimation(slot, player, code, animationBehavior);
                     }
@@ -90,6 +90,7 @@ namespace MaltiezFSM.Systems
                 case "stop":
                     if (mApi.Side == EnumAppSide.Client)
                     {
+                        string code = parameters["code"].AsString();
                         animationBehavior.StopAnimation(mAnimations[code].Code, true);
                     }
                     break;
