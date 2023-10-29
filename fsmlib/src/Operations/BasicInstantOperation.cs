@@ -3,6 +3,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using MaltiezFSM.API;
 using System;
+using Vintagestory.API.Common.Entities;
 
 namespace MaltiezFSM.Operations
 {
@@ -25,8 +26,14 @@ namespace MaltiezFSM.Operations
         private readonly List<Tuple<ISystem, JsonObject>> mSystems = new();
         private readonly List<IInput> mInputsToPrevent = new();
 
+        private string mCode;
+        private ICoreAPI mApi;
+
         public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
         {
+            mCode = code;
+            mApi = api;
+
             List<string> inputs = new List<string>();
             if (definition[inputAttrName].IsArray())
             {
@@ -80,18 +87,42 @@ namespace MaltiezFSM.Operations
         {
             foreach (var entry in mStatesInitialData)
             {
+                if (!states.ContainsKey(entry.Key))
+                {
+                    mApi.Logger.Debug("[FSMlib] [BasicDelayed: {0}] State '{1}' not found.", mCode, entry.Key);
+                    continue;
+                }
+
+                if (!states.ContainsKey(entry.Value))
+                {
+                    mApi.Logger.Debug("[FSMlib] [BasicDelayed: {0}] State '{1}' not found.", mCode, entry.Value);
+                    continue;
+                }
+
                 mStates.Add(states[entry.Key], states[entry.Value]);
             }
             mStatesInitialData.Clear();
 
             foreach (var entry in mSystemsInitialData)
             {
+                if (!systems.ContainsKey(entry.Item1))
+                {
+                    mApi.Logger.Debug("[FSMlib] [BasicDelayed: {0}] State '{1}' not found.", mCode, entry.Item1);
+                    continue;
+                }
+
                 mSystems.Add(new(systems[entry.Item1], entry.Item2));
             }
             mSystemsInitialData.Clear();
 
             foreach (string input in mInputsToPreventInitialData)
             {
+                if (!systems.ContainsKey(input))
+                {
+                    mApi.Logger.Debug("[FSMlib] [BasicDelayed: {0}] State '{1}' not found.", mCode, input);
+                    continue;
+                }
+
                 mInputsToPrevent.Add(inputs[input]);
             }
             mInputsToPreventInitialData.Clear();

@@ -20,6 +20,7 @@ namespace MaltiezFSM.Inputs
             {"mouse", SlotTypes.MOUSE}
         };
 
+        private ICoreAPI mApi;
         private string mCode;
         private bool mHandled;
         private SlotTypes mSlotType;
@@ -27,6 +28,7 @@ namespace MaltiezFSM.Inputs
         public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
         {
             mCode = code;
+            mApi = api;
             mHandled = definition == null ? true : definition[handledAttrName].AsBool(true);
             mSlotType = definition == null ? SlotTypes.MAIN_HAND : slotTypes[definition[slotAttrName].AsString("mainhand")];
         }

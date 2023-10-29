@@ -8,24 +8,30 @@ namespace MaltiezFSM.Systems
 {
     public class AnimationData
     {
-        public float windUp { get; set; }
-        public float strike { get; set; }
-        public float easeOff { get; set; }
+        public int duration { get; set; }
+        public int windUp { get; set; }
+        public int strike { get; set; }
+        public int easeOff { get; set; }
         public ModelTransform fpWindUp { get; set; }
         public ModelTransform tpWindUp { get; set; }
         public ModelTransform fpStrike {  get; set; }
         public ModelTransform tpStrike { get; set; }
+        public int hitWindowStart { get; set; }
+        public int hitWindowEnd { get; set; }
 
         public AnimationData(JsonObject definition)
         {
             bool flipTpAxles = definition["flipTpAxles"].AsBool(false);
-            windUp = (float)definition["windUp_ms"].AsInt() / 1000;
-            strike = (float)definition["strike_ms"].AsInt() / 1000;
-            easeOff = (float)definition["easeOff_ms"].AsInt() / 1000;
+            windUp = definition["windUp_ms"].AsInt();
+            strike = definition["strike_ms"].AsInt();
+            easeOff = definition["easeOff_ms"].AsInt();
+            duration = windUp + strike + easeOff;
             fpWindUp = GetTransform(definition["fpWindUp"], false);
             tpWindUp = GetTransform(definition["tpWindUp"], flipTpAxles);
             fpStrike = GetTransform(definition["fpStrike"], false);
             tpStrike = GetTransform(definition["tpStrike"], flipTpAxles);
+            hitWindowStart = definition["hitWindowStart_ms"].AsInt(windUp);
+            hitWindowEnd = definition["hitWindowEnd_ms"].AsInt(windUp + strike);
         }
 
         private ModelTransform GetTransform(JsonObject transform, bool flipAxles)
@@ -55,7 +61,7 @@ namespace MaltiezFSM.Systems
     
     public class BasicMelee : BaseSystem
     {
-        private MeleeCallbackTimer mTimer;
+        private Utils.TickBasedTimer mTimer;
         private AnimationData mAnimation;
         private ModelTransform mFpInitial;
         private ModelTransform mTpInitial;
@@ -65,7 +71,6 @@ namespace MaltiezFSM.Systems
         {
             base.Init(code, definition, collectible, api);
 
-            mTimer = new();
             mAnimation = new AnimationData(definition);
             mTransformsManager = mCollectible.GetBehavior<FiniteStateMachineBehaviour>().transformsManager;
         }
@@ -91,8 +96,7 @@ namespace MaltiezFSM.Systems
 
                         player.Attributes.SetInt("didattack", 0);
 
-                        mTimer.Init(mApi, (float time) => TryAttack(time, slot, player));
-                        mTimer.Start();
+                        mTimer = new(mApi, mAnimation.duration, (float progress) => TryAttack(progress * mAnimation.duration, slot, player));
                     }
                     break;
                 case "stop":
@@ -124,7 +128,7 @@ namespace MaltiezFSM.Systems
 
             PlayAnimation(secondsPassed, byEntity.EntityId);
 
-            if (mAnimation.windUp < secondsPassed && secondsPassed < mAnimation.windUp + mAnimation.strike && byEntity.Attributes.GetInt("didattack") == 0)
+            if (mAnimation.hitWindowStart < secondsPassed && secondsPassed < mAnimation.hitWindowEnd && byEntity.Attributes.GetInt("didattack") == 0)
             {
                 EntitySelection entitySel = (byEntity as EntityPlayer)?.EntitySelection;
                 (byEntity.World as IClientWorldAccessor)?.TryAttackEntity(entitySel);
@@ -145,7 +149,7 @@ namespace MaltiezFSM.Systems
             }
             else if (secondsPassed < mAnimation.strike + mAnimation.windUp)
             {
-                PlayStrike((secondsPassed - mAnimation.strike) / mAnimation.windUp, entityId);
+                PlayStrike((secondsPassed - mAnimation.windUp) / mAnimation.strike, entityId);
             }
             else if (secondsPassed < mAnimation.strike + mAnimation.windUp + mAnimation.easeOff)
             {
@@ -175,53 +179,6 @@ namespace MaltiezFSM.Systems
         {
             mTransformsManager.SetTransform(entityId, mCode, EnumItemRenderTarget.HandFp, Utils.TransitionTransform(mAnimation.fpStrike, mFpInitial, progress * progress));
             mTransformsManager.SetTransform(entityId, mCode, EnumItemRenderTarget.HandTp, Utils.TransitionTransform(mAnimation.tpStrike, mTpInitial, progress * progress));
-        }
-    }
-
-    internal sealed class MeleeCallbackTimer
-    {
-        private System.Func<float, bool> mCallback;
-        private ICoreAPI mApi;
-        private long? mCallbackId;
-        private float mTime;
-
-        public void Init(ICoreAPI api, System.Func<float, bool> callback)
-        {
-            mCallback = callback;
-            mApi = api;
-        }
-        public void Start()
-        {
-            mCallback(0);
-            mTime = 0;
-            SetListener();
-        }
-        public void Handler(float time)
-        {
-            mTime += time;
-            if (mCallback(mTime))
-            {
-                SetListener();
-            }
-            else
-            {
-                StopListener();
-            }
-        }
-        public void Stop()
-        {
-            StopListener();
-        }
-
-        private void SetListener()
-        {
-            StopListener();
-            mCallbackId = mApi.World.RegisterGameTickListener(Handler, 0);
-        }
-        private void StopListener()
-        {
-            if (mCallbackId != null) mApi.World.UnregisterGameTickListener((long)mCallbackId);
-            mCallbackId = null;
         }
     }
 }

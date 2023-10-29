@@ -33,6 +33,11 @@ namespace MaltiezFSM.Framework
         }
         public TProductClass Instantiate(string code, string name, JsonObject definition, CollectibleObject collectible)
         {
+            if (!mProducts.ContainsKey(name))
+            {
+                mApi.Logger.Warning("[FSMlib] [Factory<{0}>] Type '{1}' (code: '{2}') is not registered, will skip it.", typeof(TProductClass), name, code);
+                return default;
+            }
             TProductClass producedInstance = (TProductClass)Activator.CreateInstance(mProducts[name]);
             producedInstance.Init(code, definition, collectible, mApi);
             producedInstance.SetId(mIdGenerator.GenerateInstanceId());

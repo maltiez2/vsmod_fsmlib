@@ -4,7 +4,6 @@ using static MaltiezFSM.API.IKeyInput;
 using MaltiezFSM.API;
 using Vintagestory.API.Client;
 using System;
-using HarmonyLib;
 using System.Linq;
 
 namespace MaltiezFSM.Inputs

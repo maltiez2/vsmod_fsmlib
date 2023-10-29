@@ -54,7 +54,7 @@ namespace MaltiezFSM.Framework
             JsonObject attributes = null;
             if (definition.KeyExists(attributesAttrName)) attributes = definition[attributesAttrName];
             TObjectInterface objectInstance = factory.Instantiate(objectCode, objectClass, attributes, collectible);
-            container.Add(objectCode, objectInstance);
+            if (objectInstance != null) container.Add(objectCode, objectInstance);
         }
     }
 }

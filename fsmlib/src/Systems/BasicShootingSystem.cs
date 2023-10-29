@@ -1,6 +1,7 @@
 ﻿using MaltiezFSM.API;
 using MaltiezFSM.Framework;
 using System.Collections.Generic;
+using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
@@ -53,7 +54,7 @@ namespace MaltiezFSM.Systems
         public override void SetSystems(Dictionary<string, ISystem> systems)
         {
             mReloadSystem = systems[mReloadSystemName] as IAmmoSelector;
-            foreach (var item in mAimingSystemsName)
+            foreach (var item in mAimingSystemsName.Where(item => systems.ContainsKey(item)))
             {
                 mAimingSystems.Add(systems[item] as IAimingSystem);
             }

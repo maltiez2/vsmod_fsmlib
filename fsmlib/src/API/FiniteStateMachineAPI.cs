@@ -177,6 +177,10 @@ namespace MaltiezFSM.API
     {
 
     }
+    public interface ISlotModified : ISlotInput
+    {
+
+    }
     public interface ISlotChangedAfter : ISlotInput
     {
         enum SlotEventType

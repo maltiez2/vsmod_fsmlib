@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 
 namespace MaltiezFSM.Operations
@@ -27,6 +28,7 @@ namespace MaltiezFSM.Operations
         private const string cTimerInput = "";
         
         private ICoreAPI mApi;
+        private string mCode;
 
         // Initial data for operation's logic
         private readonly List<Tuple<string, string>> mStatesInitialData = new();
@@ -43,6 +45,8 @@ namespace MaltiezFSM.Operations
 
         public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
         {
+            mCode = code;
+
             if (definition.KeyExists(inputsToInterceptAttrName))
             {
                 foreach (JsonObject input in definition[inputsToInterceptAttrName].AsArray())
@@ -144,9 +148,27 @@ namespace MaltiezFSM.Operations
         {
             foreach (var entry in mTransitionsInitialData)
             {
+                if (!states.ContainsKey(entry.Key.Item1))
+                {
+                    mApi.Logger.Debug("[FSMlib] [BasicDelayed: {0}] State '{1}' not found.", mCode, entry.Key.Item1);
+                    continue;
+                }
+
+                if (!inputs.ContainsKey(entry.Key.Item2))
+                {
+                    mApi.Logger.Debug("[FSMlib] [BasicDelayed: {0}] Input '{1}' not found.", mCode, entry.Key.Item2);
+                    continue;
+                }
+
                 List<Tuple<ISystem, JsonObject>> transitionSystems = new();
                 foreach (var systemEntry in entry.Value.Item2)
                 {
+                    if (!systems.ContainsKey(systemEntry.Item1))
+                    {
+                        mApi.Logger.Debug("[FSMlib] [BasicDelayed: {0}] System '{1}' not found.", mCode, systemEntry.Item1);
+                        continue;
+                    }
+
                     transitionSystems.Add(new (systems[systemEntry.Item1], systemEntry.Item2));
                 }
 
@@ -158,12 +180,30 @@ namespace MaltiezFSM.Operations
 
             foreach (var entry in mTimersInitialData)
             {
+                if (!states.ContainsKey(entry.Key.Item1))
+                {
+                    mApi.Logger.Debug("[FSMlib] [BasicDelayed: {0}] State '{1}' not found.", mCode, entry.Key.Item1);
+                    continue;
+                }
+
+                if (!inputs.ContainsKey(entry.Key.Item2))
+                {
+                    mApi.Logger.Debug("[FSMlib] [BasicDelayed: {0}] Input '{1}' not found.", mCode, entry.Key.Item2);
+                    continue;
+                }
+
                 Tuple<IState, IInput> transition = new(states[entry.Key.Item1], inputs[entry.Key.Item2]);
                 mTimers.Add(transition, entry.Value);
             }
 
             foreach (string input in mInputsToPreventInitialData)
             {
+                if (!inputs.ContainsKey(input))
+                {
+                    mApi.Logger.Debug("[FSMlib] [BasicDelayed: {0}] Input '{1}' not found.", mCode, input);
+                    continue;
+                }
+
                 mInputsToPrevent.Add(inputs[input]);
             }
 

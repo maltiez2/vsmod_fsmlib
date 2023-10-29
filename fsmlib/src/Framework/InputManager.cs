@@ -103,6 +103,10 @@ namespace MaltiezFSM.Framework
                     break;
             }
 
+            if (input is ISlotModified)
+            {
+                throw new NotImplementedException();
+            }
             if (input is ISlotChangedAfter)
             {
                  mClientApi.Event.AfterActiveSlotChanged += (ActiveSlotChangeEventArgs ev) => ClientSlotInputProxyHandler(inputIndex, ev.FromSlot, ev.ToSlot);
@@ -114,37 +118,6 @@ namespace MaltiezFSM.Framework
             if (input is ISlotEvent)
             {
                 mSlotListener.RegisterListener((input as ISlotEvent).GetEventType(), (int slotId) => ClientInputProxyHandler(inputIndex, slotId));
-            }
-        }
-
-        private ItemSlot GetSlotById(int? slotId, IServerPlayer serverPlayer, int inputIndex)
-        {
-            IPlayer player;
-            
-            if (serverPlayer != null)
-            {
-                player = serverPlayer;
-            }
-            else
-            {
-                player = mClientApi?.World?.Player;
-            }
-            
-            if (slotId != null)
-            {
-                return player?.InventoryManager.GetHotbarInventory()[(int)slotId];
-            }
-            else
-            {
-                switch (mInputs[inputIndex].SlotType())
-                {
-                    case IInput.SlotTypes.MAIN_HAND:
-                        return player?.Entity.RightHandItemSlot;
-                    case IInput.SlotTypes.OFF_HAND:
-                        return player?.Entity.LeftHandItemSlot;
-                    default:
-                        return player?.Entity.ActiveHandItemSlot;
-                }
             }
         }
 
