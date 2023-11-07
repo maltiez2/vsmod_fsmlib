@@ -21,7 +21,7 @@ namespace MaltiezFSM.Framework
         private ICoreAPI mApi;
         private IFactoryProvider mFactories;
         private IFiniteStateMachine mFsm;
-        private IInputManager mInputIterceptor;
+        private IInputManager mInputManager;
         private JsonObject mProperties;
         private readonly List<ISystem> mSystems = new();
         
@@ -33,7 +33,7 @@ namespace MaltiezFSM.Framework
 
             mApi = api;
             mFactories = mApi.ModLoader.GetModSystem<FiniteStateMachineSystem>();
-            mInputIterceptor = mApi.ModLoader.GetModSystem<FiniteStateMachineSystem>().GetInputInterceptor();
+            mInputManager = mApi.ModLoader.GetModSystem<FiniteStateMachineSystem>().GetInputInterceptor();
             transformsManager = new(api);
 
             IBehaviourAttributesParser parser = new BehaviourAttributesParser();
@@ -44,7 +44,7 @@ namespace MaltiezFSM.Framework
 
             foreach (var inputEntry in parser.GetInputs())
             {
-                mInputIterceptor.RegisterInput(inputEntry.Value, mFsm.Process, collObj);
+                mInputManager.RegisterInput(inputEntry.Value, mFsm.Process, collObj);
             }
 
             foreach (var systemEntry in parser.GetSystems())
@@ -59,7 +59,7 @@ namespace MaltiezFSM.Framework
 
             mFactories = null;
             mFsm = null;
-            mInputIterceptor = null;
+            mInputManager = null;
             mProperties = null;
         }
 
@@ -73,8 +73,8 @@ namespace MaltiezFSM.Framework
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
             transformsManager.CalcCurrentTransform(capi.World.Player.Entity.EntityId, target);
+            
             renderinfo.Transform = Utils.CombineTransforms(renderinfo.Transform, transformsManager.currentTransform);
-
             base.OnBeforeRender(capi, itemstack, target, ref renderinfo);
         }
 

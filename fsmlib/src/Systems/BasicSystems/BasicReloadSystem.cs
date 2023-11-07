@@ -4,6 +4,7 @@ using MaltiezFSM.API;
 using System.Collections.Generic;
 using Vintagestory.API.Config;
 using Vintagestory.API.Server;
+using MaltiezFSM.Framework;
 
 namespace MaltiezFSM.Systems
 {  
@@ -41,7 +42,8 @@ namespace MaltiezFSM.Systems
 
                     string ammoCode = parameters[ammoCodeAttrName].AsString();
                     string ammoName = parameters[ammoNameAttrName].AsString(ammoCode);
-                    ItemSlot ammoSlot = GetAmmoSlot(player, ammoCode, offHand);
+                    AssetLocation[] location = Utils.GetAssetLocations(parameters[ammoCodeAttrName]);
+                    ItemSlot ammoSlot = GetAmmoSlot(player, location, offHand);
                     bool verified = ammoSlot != null && ammoSlot != slot && ammoSlot.Itemstack?.StackSize >= amount;
                     if (!verified)
                     {
@@ -75,7 +77,8 @@ namespace MaltiezFSM.Systems
                     if (parameters.KeyExists(amountAttrName)) amount = parameters[amountAttrName].AsInt(1);
 
                     string ammoCode = parameters[ammoCodeAttrName].AsString();
-                    ItemSlot ammoSlot = GetAmmoSlot(player, ammoCode, offHand);
+                    AssetLocation[] location = Utils.GetAssetLocations(parameters[ammoCodeAttrName]);
+                    ItemSlot ammoSlot = GetAmmoSlot(player, location, offHand);
                     if (ammoSlot == null || ammoSlot == slot) return false;
 
                     WriteAmmoStackTo(slot, ammoSlot.TakeOut(amount));
@@ -102,12 +105,13 @@ namespace MaltiezFSM.Systems
             return ReadAmmoStackFrom(slot);
         }
 
-        private ItemSlot GetAmmoSlot(EntityAgent player, string ammoCode, bool offHand)
+        private ItemSlot GetAmmoSlot(EntityAgent player, AssetLocation[] location, bool offHand)
         {
             if (offHand)
             {
                 ItemSlot offHandSlot = player?.LeftHandItemSlot;
-                if (offHandSlot?.Itemstack?.Collectible?.Code?.Path?.StartsWith(ammoCode) == true)
+
+                if (offHandSlot?.Itemstack?.Collectible?.WildCardMatch(location) == true)
                 {
                     return offHandSlot;
                 }
@@ -121,7 +125,7 @@ namespace MaltiezFSM.Systems
             {
                 if (inventorySlot is ItemSlotCreative) return true;
 
-                if (inventorySlot?.Itemstack?.Collectible?.Code?.Path?.StartsWith(ammoCode) == true)
+                if (inventorySlot?.Itemstack?.Collectible?.WildCardMatch(location) == true)
                 {
                     slot = inventorySlot;
                     return false;

@@ -139,7 +139,7 @@ namespace MaltiezFSM.Systems
             bool requirementsFulfilled = true;
             foreach (OperationRequirement requirement in requirements)
             {
-                if ((GetNextRequirement(byEntity, requirement) == null) != (requirement.slotType == OperationRequirement.SlotType.offhand))
+                if (GetNextRequirement(byEntity, requirement) == null)
                 {
                     ((byEntity as EntityPlayer)?.Player as IServerPlayer)?.SendMessage(GlobalConstants.InfoLogChatGroup, Lang.Get("fsmlib:requirements-missing", requirement.ToString()), EnumChatType.Notification);
                     requirementsFulfilled = false;

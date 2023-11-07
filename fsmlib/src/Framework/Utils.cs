@@ -3,6 +3,11 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using System;
 using Vintagestory.API.Util;
+using System.Collections.Generic;
+using Vintagestory.API.Client;
+using Vintagestory.Server;
+using HarmonyLib;
+using System.Linq;
 
 namespace MaltiezFSM.Framework
 {
@@ -21,13 +26,21 @@ namespace MaltiezFSM.Framework
             modelTransform.Scale = transform["scale"].AsFloat(1);
             return modelTransform;
         }
-        static public ModelTransform CombineTransforms(ModelTransform first, ModelTransform second)
+        static public ModelTransform CombineTransforms(ModelTransform first, ModelTransform second, float secondMultiple = 1)
         {
             ModelTransform output = first.Clone();
-            SumVectors(output.Translation, first.Translation, second.Translation);
-            SumVectors(output.Rotation, first.Rotation, second.Rotation);
-            SumVectors(output.Origin, first.Origin, second.Origin);
+            SumVectors(output.Translation, first.Translation, second.Translation, secondMultiple);
+            SumVectors(output.Rotation, first.Rotation, second.Rotation, secondMultiple);
+            SumVectors(output.Origin, first.Origin, second.Origin, secondMultiple);
             MultVectorsByComponent(output.ScaleXYZ, first.ScaleXYZ, second.ScaleXYZ);
+            return output;
+        }
+        static public ModelTransform SubtractTransformsNoScale(ModelTransform first, ModelTransform second)
+        {
+            ModelTransform output = first.Clone();
+            SumVectors(output.Translation, first.Translation, second.Translation, -1);
+            SumVectors(output.Rotation, first.Rotation, second.Rotation, -1);
+            SumVectors(output.Origin, first.Origin, second.Origin, -1);
             return output;
         }
         static public ModelTransform TransitionTransform(ModelTransform fromTransform, ModelTransform toTransform, float progress)
@@ -53,11 +66,11 @@ namespace MaltiezFSM.Framework
         {
             return from + (to - from) * progress;
         }
-        static public void SumVectors(Vec3f output, Vec3f first, Vec3f second)
+        static public void SumVectors(Vec3f output, Vec3f first, Vec3f second, float secondMultiple = 1)
         {
-            output.X = first.X + second.X;
-            output.Y = first.Y + second.Y;
-            output.Z = first.Z + second.Z;
+            output.X = first.X + second.X * secondMultiple;
+            output.Y = first.Y + second.Y * secondMultiple;
+            output.Z = first.Z + second.Z * secondMultiple;
         }
         static public void MultVectorsByComponent(Vec3f output, Vec3f first, Vec3f second)
         {
@@ -130,13 +143,233 @@ namespace MaltiezFSM.Framework
         }
         // ***
 
+        public static AssetLocation[] GetAssetLocations(JsonObject definition)
+        {
+            if (definition.IsArray())
+            {
+                List<AssetLocation> locations = new();
+                foreach (JsonObject location in definition.AsArray())
+                {
+                    locations.Add(new(location.AsString()));
+                }
+                return locations.ToArray();
+            }
+            else
+            {
+                return new AssetLocation[] { new AssetLocation(definition.AsString()) };
+            }
+        }
+        
+        public enum RequirementSlotType
+        {
+            mainhand,
+            offhand,
+            inventory
+        }
+
+        public enum RequirementSearchMode
+        {
+            whitelist,
+            blacklist
+        }
+
+        public enum RequirementItemProcessMode
+        {
+            none,
+            durabilityChange,
+            durabilityDamage,
+            consumeAmount
+        }
+
+        public class ItemRequirement
+        {
+            public RequirementSlotType slot { get; set; }
+            public RequirementSearchMode mode { get; set; }
+            public RequirementItemProcessMode process {  get; set; }
+            public AssetLocation[] locations { get; set; }
+            public int processParameter { get; set; }
+
+            public ItemRequirement(JsonObject definition)
+            {
+                slot = (RequirementSlotType)Enum.Parse(typeof(RequirementSlotType), definition["slot"].AsString("inventory"));
+                mode = (RequirementSearchMode)Enum.Parse(typeof(RequirementSearchMode), definition["mode"].AsString("whitelist"));
+                process = (RequirementItemProcessMode)Enum.Parse(typeof(RequirementItemProcessMode), definition["process"].AsString("none"));
+                locations = definition.KeyExists("location") ? GetAssetLocations(definition["location"]) : Array.Empty<AssetLocation>();
+                processParameter = definition["amount"].AsInt(0);
+            }
+
+            public ItemSlot GetSlot(EntityAgent entity)
+            {
+                ItemSlot itemSlot = null;
+                switch (slot)
+                {
+                    case RequirementSlotType.mainhand:
+                        itemSlot = entity.RightHandItemSlot;
+                        break;
+                    case RequirementSlotType.offhand:
+                        itemSlot = entity.LeftHandItemSlot;
+                        break;
+                    case RequirementSlotType.inventory:
+                        List<ItemSlot> slots = CheckInventory(entity, false);
+                        if (slots.Count == 0)
+                        {
+                            return null;
+                        }
+                        else
+                        {
+                            return slots[0];
+                        }
+                }
+
+                if (!CheckSlot(itemSlot)) return null;
+
+                return itemSlot;
+            }
+
+            public List<ItemSlot> GetSlots(EntityAgent entity)
+            {
+                List<ItemSlot> itemSlots = new();
+                switch (slot)
+                {
+                    case RequirementSlotType.mainhand:
+                        if (!CheckSlot(entity.RightHandItemSlot)) itemSlots.Add(entity.RightHandItemSlot);
+                        break;
+                    case RequirementSlotType.offhand:
+                        if (!CheckSlot(entity.LeftHandItemSlot)) itemSlots.Add(entity.LeftHandItemSlot);
+                        break;
+                    case RequirementSlotType.inventory:
+                        List<ItemSlot> slots = CheckInventory(entity);
+                        return slots;
+                }
+
+                return itemSlots;
+            }
+
+            public void Process(List<ItemSlot> slots, EntityAgent byEntity)
+            {
+                foreach (ItemSlot slot in slots)
+                {
+                    Process(slot, byEntity);
+                }
+            }
+
+            public void Process(ItemSlot slot, EntityAgent byEntity)
+            {
+                switch (process)
+                {
+                    case RequirementItemProcessMode.none:
+                        break;
+                    case RequirementItemProcessMode.durabilityChange:
+                        ChangeDurability(slot.Itemstack, processParameter);
+                        break;
+                    case RequirementItemProcessMode.durabilityDamage:
+                        if (processParameter > 0)
+                        {
+                            slot.Itemstack.Item.DamageItem(byEntity.World, byEntity, slot, processParameter);
+                        }
+                        else if (processParameter < 0)
+                        {
+                            int currentDurability = slot.Itemstack.Collectible.GetRemainingDurability(slot.Itemstack);
+                            int maxDurability = slot.Itemstack.Collectible.GetMaxDurability(slot.Itemstack);
+                            int newDurability = Math.Clamp(currentDurability - processParameter, 0, maxDurability);
+                            slot.Itemstack.Attributes.SetInt("durability", newDurability);
+                        }
+                        break;
+                    case RequirementItemProcessMode.consumeAmount:
+                        slot.TakeOut(processParameter);
+                        break;
+                }
+            }
+
+            public bool CheckSlot(ItemSlot slot)
+            {
+                CollectibleObject collectible = slot?.Itemstack?.Collectible;
+
+                bool match = collectible?.WildCardMatch(locations) == true;
+                
+                if (match)
+                {
+                    switch (process)
+                    {
+                        case RequirementItemProcessMode.none:
+                            break;
+                        case RequirementItemProcessMode.durabilityChange:
+                            if (processParameter > 0)
+                            {
+                                int durabilityMissing = collectible.GetMaxDurability(slot.Itemstack) - slot.Itemstack.Attributes.GetInt("durability"); ;
+                                match = durabilityMissing >= processParameter;
+                            }
+                            else if (processParameter < 0)
+                            {
+                                match = -processParameter >= slot.Itemstack.Attributes.GetInt("durability");
+                            }
+                            break;
+                        case RequirementItemProcessMode.durabilityDamage:
+                            break;
+                        case RequirementItemProcessMode.consumeAmount:
+                            if (processParameter > 0)
+                            {
+                                match = processParameter >= slot.Itemstack.StackSize;
+                            }
+                            break;
+                    }
+                }
+
+                switch (mode)
+                {
+                    case RequirementSearchMode.whitelist:
+                        break;
+                    case RequirementSearchMode.blacklist:
+                        match = !match;
+                        break;
+                }
+
+                return match;
+            }
+
+            private void ChangeDurability(ItemStack itemstack, int amount)
+            {
+                if (amount >= 0 && itemstack.Collectible.GetRemainingDurability(itemstack) >= itemstack.Collectible.GetMaxDurability(itemstack))
+                {
+                    return;
+                }
+
+                int remainingDurability = itemstack.Collectible.GetRemainingDurability(itemstack) + amount;
+                remainingDurability = Math.Min(itemstack.Collectible.GetMaxDurability(itemstack), remainingDurability);
+
+                if (remainingDurability < 0)
+                {
+                    return;
+                }
+
+                itemstack.Attributes.SetInt("durability", Math.Max(remainingDurability, 0));
+            }
+
+            private List<ItemSlot> CheckInventory(EntityAgent byEntity, bool foundAll = true)
+            {
+                List<ItemSlot> slots = new();
+
+                byEntity.WalkInventory((inventorySlot) =>
+                {
+                    if (CheckSlot(inventorySlot))
+                    {
+                        slots.Add(inventorySlot);
+                        return foundAll;
+                    }
+
+                    return true;
+                });
+
+                return slots;
+            }
+        }
 
         public class TickBasedTimer
         {
             private readonly ICoreAPI mApi;
             private readonly Action<float> mCallback;
-            private readonly float mDuration_ms;
-
+            
+            private float mDuration_ms;
             private long? mCallbackId;
             private float mCurrentDuration = 0;
             private float mCurrentProgress = 0;
@@ -157,15 +390,17 @@ namespace MaltiezFSM.Framework
             {
                 StopListener();
             }
-            public void Resume(bool? autoStop = null)
+            public void Resume(int? duration_ms = null, bool? autoStop = null)
             {
+                if (duration_ms != null) mDuration_ms = (float)duration_ms / 1000;
                 mCurrentDuration = mDuration_ms * mCurrentProgress;
                 mForward = true;
                 mAutoStop = autoStop == null ? mAutoStop : (bool)autoStop;
                 StartListener();
             }
-            public void Revert(bool? autoStop = null)
+            public void Revert(int? duration_ms = null, bool? autoStop = null)
             {
+                if (duration_ms != null) mDuration_ms = (float)duration_ms / 1000;
                 mCurrentDuration = mDuration_ms * (1 - mCurrentProgress);
                 mForward = false;
                 mAutoStop = autoStop == null ? mAutoStop : (bool)autoStop;

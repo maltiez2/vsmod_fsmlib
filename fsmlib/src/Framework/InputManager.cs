@@ -9,8 +9,6 @@ using static MaltiezFSM.API.IKeyInput;
 using static MaltiezFSM.API.IMouseInput;
 using static MaltiezFSM.API.ISlotChangedAfter;
 using MaltiezFSM.API;
-using Vintagestory.GameContent;
-using System.Numerics;
 
 namespace MaltiezFSM.Framework
 {
