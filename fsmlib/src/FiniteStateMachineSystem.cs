@@ -1,7 +1,11 @@
 ﻿using Vintagestory.API.Common;
 using MaltiezFSM.API;
 using Vintagestory.API.Client;
+using Vintagestory.API.Server;
+using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Datastructures;
+using System.Linq;
 
 namespace MaltiezFSM
 {
@@ -15,11 +19,12 @@ namespace MaltiezFSM
         public override void Start(ICoreAPI api)
         {
             base.Start(api);
+
             api.RegisterItemClass("NoMelee", typeof(NoMelee));
             api.RegisterCollectibleBehaviorClass("FiniteStateMachine", typeof(Framework.FiniteStateMachineBehaviour));
 
-            api.RegisterEntityBehaviorClass("fsmlibresists", typeof(Additional.EntityBehaviorResists));
-            api.Event.OnEntitySpawn += AddBehaviorsToEntity;
+            api.RegisterEntityBehaviorClass("constresist", typeof(Additional.EntityBehaviorConstResists<Additional.ConstResistance>));
+            api.RegisterEntityBehaviorClass("tempresists", typeof(Additional.EntityBehaviorResists));
 
             mOperationFactory = new Framework.Factory<IOperation, Framework.UniqueIdGeneratorForFactory>(api);
             mSystemFactory = new Framework.Factory<ISystem, Framework.UniqueIdGeneratorForFactory>(api);
@@ -93,9 +98,48 @@ namespace MaltiezFSM
             return mInputManager;
         }
 
-        private void AddBehaviorsToEntity(Entity entity)
+        private struct BehaviorAsJsonObj
         {
-            if (entity is EntityPlayer) entity.AddBehavior(new Additional.EntityBehaviorResists(null, entity, "default"));
+            public string code;
+        }
+
+        public override void AssetsFinalize(ICoreAPI api)
+        {
+            BehaviorAsJsonObj newBehavior = new();
+            newBehavior.code = "tempresists";
+            JsonObject newBehaviorJson = new(JToken.FromObject(newBehavior));
+
+            foreach (EntityProperties entityType in api.World.EntityTypes)
+            {
+                //mApi.Logger.Notification("[FSMlib] AddPlayerBehavior to {0}", entityType.Class);
+                
+                if (api.Side.IsServer())
+                {
+                    bool alreadyHas = false;
+                    foreach (JsonObject behavior in entityType.Server.BehaviorsAsJsonObj)
+                    {
+                        if (behavior["code"].AsString() == newBehavior.code)
+                        {
+                            alreadyHas = true;
+                            break;
+                        }
+                    }
+                    if (!alreadyHas) entityType.Server.BehaviorsAsJsonObj = entityType.Server.BehaviorsAsJsonObj.Prepend(newBehaviorJson).ToArray();
+                }
+                if (api.Side.IsClient())
+                {
+                    bool alreadyHas = false;
+                    foreach (JsonObject behavior in entityType.Client.BehaviorsAsJsonObj)
+                    {
+                        if (behavior["code"].AsString() == newBehavior.code)
+                        {
+                            alreadyHas = true;
+                            break;
+                        }
+                    }
+                    if (!alreadyHas) entityType.Client.BehaviorsAsJsonObj = entityType.Client.BehaviorsAsJsonObj.Prepend(newBehaviorJson).ToArray();
+                }
+            }
         }
     }
 }

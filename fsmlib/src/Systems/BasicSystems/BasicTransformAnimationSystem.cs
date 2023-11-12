@@ -56,7 +56,9 @@ namespace MaltiezFSM.Systems
             string mode = parameters[modeAttrName].AsString();
             int duration = mDurations[code];
             if (parameters.KeyExists(durationAttrName)) duration = parameters[durationAttrName].AsInt();
-            
+
+            mApi.Logger.Notification("[FSMlib] duration: {0}", duration);
+
             return ProcessImpl(player, null, code, mode, duration, ProgressModifiers.Linear);
         }
 

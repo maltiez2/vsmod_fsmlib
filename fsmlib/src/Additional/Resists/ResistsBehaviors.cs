@@ -2,7 +2,6 @@
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
-using Vintagestory.GameContent;
 
 namespace MaltiezFSM.Additional
 {
@@ -52,11 +51,12 @@ namespace MaltiezFSM.Additional
 
         protected EntityProperties mProperties;
 
-        public EntityBehaviorResists(IResistSerializer serializer, Entity entity, string code = "0") : base(entity)
+        public EntityBehaviorResists(Entity entity) : base(entity)
         {
+            entity.World.Api.Logger.Notification("[FSMlib] [EntityBehaviorResists] new");
             mEntity = entity;
-            mSerializer = serializer;
-            mName = "fsmlibresists-" + code;
+            mSerializer = null;
+            mName = "fsmlibresists";
         }
 
         public override void Initialize(EntityProperties properties, JsonObject attributes)
@@ -71,14 +71,25 @@ namespace MaltiezFSM.Additional
 
         public override void OnEntityReceiveDamage(DamageSource damageSource, ref float damage)
         {
+            var logger = mEntity.Api.Logger;
+
+            logger.Notification("[FMSlib] OnEntityReceiveDamage, applied for: '{0}'", mEntity.GetName());
+
+            logger.Notification("[FMSlib] OnEntityReceiveDamage, BEFORE damage: {0}", damage);
             foreach (IResistance resist in mResists)
             {
+                logger.Notification("[FMSlib] OnEntityReceiveDamage, ApplyResist");
                 if ((damageSource as IResistibleDamage)?.Bypass(resist, damage) != true && resist.ApplyResist(damageSource, ref damage, mEntity))
                 {
                     resist.ResistCallback(damageSource, ref damage, mEntity, this);
                     (damageSource as IResistibleDamage)?.ResistCallback(resist, damageSource, ref damage, mEntity);
                 }
             }
+            logger.Notification("[FMSlib] OnEntityReceiveDamage, AFTER damage: {0}", damage);
+
+            base.OnEntityReceiveDamage(damageSource, ref damage);
+
+            logger.Notification("[FMSlib] OnEntityReceiveDamage, is damage 0: {0}", damage == 0);
         }
 
         void IResistEntityBehavior.AddResist(IResistance resist) => mResists.Add(resist);
