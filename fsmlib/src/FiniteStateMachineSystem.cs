@@ -26,9 +26,11 @@ namespace MaltiezFSM
             api.RegisterEntityBehaviorClass("constresist", typeof(Additional.EntityBehaviorConstResists<Additional.ConstResistance>));
             api.RegisterEntityBehaviorClass("tempresists", typeof(Additional.EntityBehaviorResists));
 
+            if (api.Side == EnumAppSide.Server) (api as ICoreServerAPI).Event.PlayerJoin += (byPlayer) => AddPlayerBehavior(byPlayer.Entity);
+
             mOperationFactory = new Framework.Factory<IOperation, Framework.UniqueIdGeneratorForFactory>(api);
             mSystemFactory = new Framework.Factory<ISystem, Framework.UniqueIdGeneratorForFactory>(api);
-            mInputFactory = new Framework.Factory<IInput, Framework.UniqueIdGeneratorForFactory>(api);
+            mInputFactory = new Framework.Factory<IInput, Framework.UniqueIdGeneratorForFactory>(api)
 
             RegisterSystems();
             RegisterOperations();
@@ -111,8 +113,6 @@ namespace MaltiezFSM
 
             foreach (EntityProperties entityType in api.World.EntityTypes)
             {
-                //mApi.Logger.Notification("[FSMlib] AddPlayerBehavior to {0}", entityType.Class);
-                
                 if (api.Side.IsServer())
                 {
                     bool alreadyHas = false;
@@ -124,11 +124,13 @@ namespace MaltiezFSM
                             break;
                         }
                     }
+                    if (!alreadyHas) api.Logger.VerboseDebug("[FSMlib] Adding behavior '{0}' to entity '{1}:{2}'", newBehavior.code, entityType.Class, entityType.Code);
                     if (!alreadyHas) entityType.Server.BehaviorsAsJsonObj = entityType.Server.BehaviorsAsJsonObj.Prepend(newBehaviorJson).ToArray();
                 }
                 if (api.Side.IsClient())
                 {
-                    bool alreadyHas = false;
+                    // Do not need this one on client side
+                    /*bool alreadyHas = false;
                     foreach (JsonObject behavior in entityType.Client.BehaviorsAsJsonObj)
                     {
                         if (behavior["code"].AsString() == newBehavior.code)
@@ -137,9 +139,15 @@ namespace MaltiezFSM
                             break;
                         }
                     }
-                    if (!alreadyHas) entityType.Client.BehaviorsAsJsonObj = entityType.Client.BehaviorsAsJsonObj.Prepend(newBehaviorJson).ToArray();
+                    if (!alreadyHas) entityType.Client.BehaviorsAsJsonObj = entityType.Client.BehaviorsAsJsonObj.Prepend(newBehaviorJson).ToArray();*/
                 }
             }
+        }
+
+        private void AddPlayerBehavior(EntityPlayer player)
+        {
+            // In case 'AssetsFinalize' method failed to add behavior to player.
+            if (!player.HasBehavior<Additional.EntityBehaviorResists>()) player.SidedProperties.Behaviors.Insert(0, new Additional.EntityBehaviorResists(player));
         }
     }
 }

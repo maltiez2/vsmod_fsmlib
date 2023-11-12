@@ -63,7 +63,7 @@ namespace MaltiezFSM.Additional
     }
 
 
-    public class SimpleParryResistance : IResistance
+    public class ParryResistance : IResistance
     {
         private DamageSourceCallback mCallback = null;
         private readonly HashSet<EnumDamageType> mDamageTypes;
@@ -73,7 +73,7 @@ namespace MaltiezFSM.Additional
         private long? mAttackerId = null;
         private int? mCapacity;
 
-        public SimpleParryResistance(IResistEntityBehavior receiver, ICoreAPI api, int timeout_ms, int? maxAttacksToBlock = null, HashSet<EnumDamageType> damageTypes = null)
+        public ParryResistance(IResistEntityBehavior receiver, ICoreAPI api, int timeout_ms, int? maxAttacksToBlock = null, HashSet<EnumDamageType> damageTypes = null)
         {
             mDamageTypes = damageTypes == null ? new() : damageTypes;
             mReceiver = receiver;
@@ -116,9 +116,8 @@ namespace MaltiezFSM.Additional
         }
     }
 
-    public class SimpleBlockResistance : IResistance
+    public class SimpleBlockResistance : BaseResistance
     {
-        private DamageSourceCallback mCallback = null;
         private readonly HashSet<EnumDamageType> mDamageTypes;
         private readonly ICoreAPI mApi;
         private readonly long mTimeoutTimer;
@@ -143,7 +142,7 @@ namespace MaltiezFSM.Additional
             mReceiver = null;
         }
 
-        public bool ApplyResist(DamageSource damageSource, ref float damage, Entity receiver)
+        public override bool ApplyResist(DamageSource damageSource, ref float damage, Entity receiver)
         {
             if (!mDamageTypes.Contains(damageSource.Type)) return false;
 
@@ -156,16 +155,6 @@ namespace MaltiezFSM.Additional
 
             damage = 0;
             return true;
-        }
-
-        public void ResistCallback(DamageSource damageSource, ref float damage, Entity receiver, IResistEntityBehavior resistHolder)
-        {
-            if (mCallback != null) mCallback(this, damageSource, ref damage, receiver);
-        }
-
-        public void SetResistCallback(DamageSourceCallback callback)
-        {
-            mCallback = callback;
         }
     }
 }

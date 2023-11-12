@@ -71,7 +71,7 @@ namespace MaltiezFSM.Systems
                 mApi.Logger.Error("[FSMlib] [BasicParry] No IResistEntityBehavior found");
                 return;
             }
-            SimpleParryResistance resist = new(behavior, mApi, timout, null, mDamageTypes);
+            ParryResistance resist = new(behavior, mApi, timout, null, mDamageTypes);
             if (sound != null) resist.SetResistCallback((IResistance resist, DamageSource damageSource, ref float damage, Entity receiver) => PlayParrySound(receiver, sound));
             behavior.AddResist(resist);
             mResists.Add(player.EntityId, resist);
