@@ -10,12 +10,12 @@ namespace MaltiezFSM.Framework
         public const string codeAttrName = "code";
         public const string classAttrName = "class";
         public const string attributesAttrName = "attributes";
-        
+
         private readonly Dictionary<string, IOperation> mOperations = new();
         private readonly Dictionary<string, ISystem> mSystems = new();
         private readonly Dictionary<string, IInput> mInputs = new();
 
-        public bool ParseDefinition(IFactory<IOperation> operationTypes, IFactory<ISystem> systemTypes, IFactory<IInput> inputTypes, JsonObject behaviourAttributes, CollectibleObject collectible)
+        bool IBehaviourAttributesParser.ParseDefinition(IFactory<IOperation> operationTypes, IFactory<ISystem> systemTypes, IFactory<IInput> inputTypes, JsonObject behaviourAttributes, CollectibleObject collectible)
         {
             foreach (JsonObject systemDefinition in behaviourAttributes["systems"].AsArray())
             {
@@ -34,18 +34,9 @@ namespace MaltiezFSM.Framework
 
             return true;
         }
-        public Dictionary<string, IOperation> GetOperations()
-        {
-            return mOperations;
-        }
-        public Dictionary<string, ISystem> GetSystems()
-        {
-            return mSystems;
-        }
-        public Dictionary<string, IInput> GetInputs()
-        {
-            return mInputs;
-        }
+        Dictionary<string, IOperation> IBehaviourAttributesParser.GetOperations() => mOperations;
+        Dictionary<string, ISystem> IBehaviourAttributesParser.GetSystems() => mSystems;
+        Dictionary<string, IInput> IBehaviourAttributesParser.GetInputs() => mInputs;
 
         static private void AddObject<TObjectInterface>(JsonObject definition, CollectibleObject collectible, IFactory<TObjectInterface> factory, Dictionary<string, TObjectInterface> container)
         {

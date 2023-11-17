@@ -126,7 +126,7 @@ namespace MaltiezFSM.Framework
 
             if (slotId != null)
             {
-                if (slotType == IInput.SlotTypes.OFF_HAND) return slots;
+                if (slotType == IInput.SlotTypes.offHand) return slots;
 
                 ItemSlot hotbarSlot = player?.Entity?.ActiveHandItemSlot?.Inventory[(int)slotId];
 
@@ -139,13 +139,13 @@ namespace MaltiezFSM.Framework
 
             switch (slotType)
             {
-                case IInput.SlotTypes.MAIN_HAND:
+                case IInput.SlotTypes.mainHand:
                     slots.Add(player.Entity.RightHandItemSlot);
                     return slots;
-                case IInput.SlotTypes.OFF_HAND:
+                case IInput.SlotTypes.offHand:
                     slots.Add(player.Entity.LeftHandItemSlot);
                     return slots;
-                case IInput.SlotTypes.MOUSE:
+                case IInput.SlotTypes.mouse:
                     slots.Add(player.InventoryManager.MouseItemSlot);
                     return slots;
                 default:

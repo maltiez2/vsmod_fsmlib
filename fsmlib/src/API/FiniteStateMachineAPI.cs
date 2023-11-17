@@ -1,10 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
-using static MaltiezFSM.API.IKeyInput;
 
 namespace MaltiezFSM.API
 {
@@ -121,10 +119,10 @@ namespace MaltiezFSM.API
     {
         enum SlotTypes
         {
-            MAIN_HAND,
-            OFF_HAND,
-            INVENTORY,
-            MOUSE
+            mainHand,
+            offHand,
+            inventory,
+            mouse
         }
         string GetName();
         bool Handled();
@@ -202,9 +200,9 @@ namespace MaltiezFSM.API
 
     public interface IFactory<TProductClass>
     {
-        Type GetType(string name);
-        void RegisterType<TObjectClass>(string name) where TObjectClass : TProductClass, new();
-        void SubstituteType<TObjectClass>(string name) where TObjectClass : TProductClass, new();
+        Type TypeOf(string name);
+        void Register<TObjectClass>(string name) where TObjectClass : TProductClass, new();
+        void SubstituteWith<TObjectClass>(string name) where TObjectClass : TProductClass, new();
         TProductClass Instantiate(string code, string name, JsonObject definition, CollectibleObject collectible);
     }
     public interface IBehaviourAttributesParser
@@ -261,5 +259,20 @@ namespace MaltiezFSM.API
 
         int RegisterListener(SlotEventType eventType, System.Func<int, bool> callback); // handled callback(item slot id)
         void UnregisterListener(int id);
+    }
+
+    public interface ITransformManager
+    {
+        void SetTransform(long entityId, string transformType, EnumItemRenderTarget target, ModelTransform transform);
+        void ResetTransform(long entityId, string transformType, EnumItemRenderTarget target);
+        ModelTransform GetTransform(long entityId, string transformType, EnumItemRenderTarget target);
+        ModelTransform CalcCurrentTransform(long entityId, EnumItemRenderTarget target);
+        void SetEntityId(long entityId, ItemStack item);
+        long? GetEntityId(ItemStack item);
+    }
+
+    public interface ITransformManagerProvider
+    {
+        ITransformManager GetTransformManager();
     }
 }

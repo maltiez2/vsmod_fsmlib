@@ -3,15 +3,16 @@ using Vintagestory.API.Datastructures;
 using MaltiezFSM.API;
 using Vintagestory.API.Client;
 using System.Text;
-using Vintagestory.API.Config;
 using System.Collections.Generic;
 using System.Linq;
-using Vintagestory.API.Common.Entities;
-using System.Reflection.Emit;
+using Vintagestory.API.Util;
+using Vintagestory.GameContent;
 
 namespace MaltiezFSM.Framework
 {
-    public class FiniteStateMachineBehaviour : CollectibleBehavior
+    public class FiniteStateMachineBehaviour<TAttributesFormat, TFiniteStateMachine> : CollectibleBehavior, ITransformManagerProvider
+        where TAttributesFormat : IBehaviourAttributesParser, new()
+        where TFiniteStateMachine : IFiniteStateMachine, new()
     {
         public FiniteStateMachineBehaviour(CollectibleObject collObj) : base(collObj)
         {
@@ -25,7 +26,7 @@ namespace MaltiezFSM.Framework
         private JsonObject mProperties;
         private readonly List<ISystem> mSystems = new();
         
-        public TransformsManager transformsManager { get; private set; }
+        public ITransformManager transformsManager { get; private set; }
 
         public override void OnLoaded(ICoreAPI api)
         {
@@ -33,13 +34,13 @@ namespace MaltiezFSM.Framework
 
             mApi = api;
             mFactories = mApi.ModLoader.GetModSystem<FiniteStateMachineSystem>();
-            mInputManager = mApi.ModLoader.GetModSystem<FiniteStateMachineSystem>().GetInputInterceptor();
-            transformsManager = new(api);
+            mInputManager = mApi.ModLoader.GetModSystem<FiniteStateMachineSystem>().GetInputManager();
+            transformsManager = mApi.ModLoader.GetModSystem<FiniteStateMachineSystem>().GetTransformManager();
 
-            IBehaviourAttributesParser parser = new BehaviourAttributesParser();
+            IBehaviourAttributesParser parser = new TAttributesFormat();
             parser.ParseDefinition(mFactories.GetOperationFactory(), mFactories.GetSystemFactory(), mFactories.GetInputFactory(), mProperties, collObj);
 
-            mFsm = new FiniteStateMachine();
+            mFsm = new TFiniteStateMachine();
             mFsm.Init(mApi, parser.GetOperations(), parser.GetSystems(), parser.GetInputs(), mProperties, collObj);
 
             foreach (var inputEntry in parser.GetInputs())
@@ -72,9 +73,13 @@ namespace MaltiezFSM.Framework
 
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
-            transformsManager.CalcCurrentTransform(capi.World.Player.Entity.EntityId, target);
+            long? entitiId = transformsManager?.GetEntityId(itemstack);
+            if (entitiId != null)
+            {
+                ModelTransform currentTransform = transformsManager.CalcCurrentTransform((long)entitiId, target);
+                renderinfo.Transform = Utils.CombineTransforms(renderinfo.Transform, currentTransform);
+            }
             
-            renderinfo.Transform = Utils.CombineTransforms(renderinfo.Transform, transformsManager.currentTransform);
             base.OnBeforeRender(capi, itemstack, target, ref renderinfo);
         }
 
@@ -105,6 +110,11 @@ namespace MaltiezFSM.Framework
             }
 
             return interactionsHelp.ToArray();
+        }
+
+        ITransformManager ITransformManagerProvider.GetTransformManager()
+        {
+            return transformsManager;
         }
     }
 }

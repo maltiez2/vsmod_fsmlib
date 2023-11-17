@@ -8,7 +8,7 @@ namespace MaltiezFSM.Framework
 {    
     public class FiniteStateMachine : IFiniteStateMachine
     {    
-        public class State : IState // @OPT Change base type to int
+        public class State : IState
         {
             private readonly string mState;
             private readonly int mHash;
@@ -63,8 +63,8 @@ namespace MaltiezFSM.Framework
             }
         }
         
-        private const string cStateAtributeName = "FMSlib.state";
-        private const string cInitialStateAtribute = "initialState";
+        private const string cStateAttributeName = "FSMlib.state";
+        private const string cInitialStateAttribute = "initialState";
 
         private string mInitialState;
         private readonly Dictionary<State, Dictionary<IInput, IOperation>> mOperationsByInputAndState = new();
@@ -78,7 +78,7 @@ namespace MaltiezFSM.Framework
         public void Init(ICoreAPI api, Dictionary<string, IOperation> operations, Dictionary<string, ISystem> systems, Dictionary<string, IInput> inputs, JsonObject behaviourAttributes, CollectibleObject collectible)
         {
             mCollectible = collectible;
-            mInitialState = behaviourAttributes[cInitialStateAtribute].AsString();
+            mInitialState = behaviourAttributes[cInitialStateAttribute].AsString();
             mApi = api;
 
             foreach (var entry in systems)
@@ -230,12 +230,12 @@ namespace MaltiezFSM.Framework
         }
         private State ReadStateFrom(ItemSlot slot)
         {
-            State state = new State(slot.Itemstack.Attributes.GetAsString(cStateAtributeName, mInitialState));
+            State state = new State(slot.Itemstack.Attributes.GetAsString(cStateAttributeName, mInitialState));
             return state;
         }
         private void WriteStateTo(ItemSlot slot, State state)
         {
-            slot?.Itemstack?.Attributes?.SetString(cStateAtributeName, state.ToString());
+            slot?.Itemstack?.Attributes?.SetString(cStateAttributeName, state.ToString());
             slot?.MarkDirty();
         }
     }

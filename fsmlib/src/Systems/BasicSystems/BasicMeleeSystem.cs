@@ -1,5 +1,7 @@
-﻿using MaltiezFSM.Framework;
+﻿using MaltiezFSM.API;
+using MaltiezFSM.Framework;
 using System;
+using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -66,14 +68,21 @@ namespace MaltiezFSM.Systems
         private AnimationData mAnimation;
         private ModelTransform mFpInitial;
         private ModelTransform mTpInitial;
-        private TransformsManager mTransformsManager;
+        private ITransformManager mTransformsManager;
 
         public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
         {
             base.Init(code, definition, collectible, api);
 
             mAnimation = new AnimationData(definition);
-            mTransformsManager = mCollectible.GetBehavior<FiniteStateMachineBehaviour>().transformsManager;
+            foreach (CollectibleBehavior behavior in mCollectible.CollectibleBehaviors)
+            {
+                if (behavior is ITransformManagerProvider)
+                {
+                    mTransformsManager = (behavior as ITransformManagerProvider).GetTransformManager();
+                    break;
+                }
+            }
         }
 
         public override bool Process(ItemSlot slot, EntityAgent player, JsonObject parameters)
@@ -84,24 +93,25 @@ namespace MaltiezFSM.Systems
             switch (action)
             {
                 case "start":
-                    if (mApi is ICoreClientAPI)
-                    {
-                        mFpInitial = mTransformsManager.GetTransform(player.EntityId, mCode, EnumItemRenderTarget.HandFp).Clone();
-                        mTpInitial = mTransformsManager.GetTransform(player.EntityId, mCode, EnumItemRenderTarget.HandTp).Clone();
+                    mTransformsManager.SetEntityId(player.EntityId, slot.Itemstack);
+                    slot.MarkDirty();
 
-                        if (mFpInitial == null) mFpInitial = GetIdentityTransform();
-                        if (mTpInitial == null) mTpInitial = GetIdentityTransform();
+                    mFpInitial = mTransformsManager.GetTransform(player.EntityId, mCode, EnumItemRenderTarget.HandFp).Clone();
+                    mTpInitial = mTransformsManager.GetTransform(player.EntityId, mCode, EnumItemRenderTarget.HandTp).Clone();
 
-                        player.Controls.UsingHeldItemTransformAfter = mFpInitial.Clone();
-                        player.Controls.UsingHeldItemTransformBefore = mTpInitial.Clone();
+                    if (mFpInitial == null) mFpInitial = GetIdentityTransform();
+                    if (mTpInitial == null) mTpInitial = GetIdentityTransform();
 
-                        player.Attributes.SetInt("didattack", 0);
+                    player.Controls.UsingHeldItemTransformAfter = mFpInitial.Clone();
+                    player.Controls.UsingHeldItemTransformBefore = mTpInitial.Clone();
 
-                        mTimer = new(mApi, mAnimation.duration, (float progress) => TryAttack(progress * mAnimation.duration, slot, player));
-                    }
+                    player.Attributes.SetInt("didattack", 0);
+
+                    mTimer = new(mApi, mAnimation.duration, (float progress) => TryAttack(progress * mAnimation.duration, slot, player));
+
                     break;
                 case "stop":
-                    if (mApi is ICoreClientAPI) mTimer.Stop();
+                    mTimer.Stop();
                     mTransformsManager.ResetTransform(player.EntityId, mCode, EnumItemRenderTarget.HandFp);
                     mTransformsManager.ResetTransform(player.EntityId, mCode, EnumItemRenderTarget.HandTp);
                     break;

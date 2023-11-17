@@ -19,15 +19,15 @@ namespace MaltiezFSM.Framework
         {
             mApi = api;
         }
-        public Type GetType(string name)
+        public Type TypeOf(string name)
         {
             return mProducts[name];
         }
-        public void RegisterType<TObjectClass>(string name) where TObjectClass : TProductClass, new()
+        public void Register<TObjectClass>(string name) where TObjectClass : TProductClass, new()
         {
             mProducts.Add(name, typeof(TObjectClass));
         }
-        public void SubstituteType<TObjectClass>(string name) where TObjectClass : TProductClass, new()
+        public void SubstituteWith<TObjectClass>(string name) where TObjectClass : TProductClass, new()
         {
             mProducts[name] = typeof(TObjectClass);
         }
@@ -35,7 +35,7 @@ namespace MaltiezFSM.Framework
         {
             if (!mProducts.ContainsKey(name))
             {
-                mApi.Logger.Warning("[FSMlib] [Factory<{0}>] Type '{1}' (code: '{2}') is not registered, will skip it.", typeof(TProductClass), name, code);
+                Utils.Logger.Warn(this, "Type '{1}' (code: '{2}') is not registered, will skip it.", name, code);
                 return default;
             }
             TProductClass producedInstance = (TProductClass)Activator.CreateInstance(mProducts[name]);

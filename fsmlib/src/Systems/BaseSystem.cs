@@ -5,7 +5,7 @@ using Vintagestory.API.Datastructures;
 
 namespace MaltiezFSM.Systems
 {
-    public class BaseSystem : UniqueIdFactoryObject, ISystem
+    public class BaseSystem : UniqueId, ISystem
     {
         protected ICoreAPI mApi;
         protected CollectibleObject mCollectible;

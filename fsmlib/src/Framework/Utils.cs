@@ -8,11 +8,42 @@ using Vintagestory.API.Client;
 using Vintagestory.Server;
 using HarmonyLib;
 using System.Linq;
+using System.Linq.Expressions;
 
 namespace MaltiezFSM.Framework
 {
     public static class Utils
     {
+        internal class Logger
+        {
+            private static ICoreAPI sApi;
+            private static bool sDebugLogging;
+            private const string cPrefix = "[FSMlib] ";
+            
+            private Logger()
+            {
+
+            }
+
+            public static void Init(ICoreAPI api, bool debugLogging = true)
+            {
+                if (sApi == null)
+                {
+                    sApi = api;
+                    sDebugLogging = debugLogging;
+                }
+            }
+
+            public static void Notify(object caller, string format, params object[] arguments) => sApi?.Logger.Notification(Format(caller, format), arguments);
+            public static void Warn(object caller, string format, params object[] arguments) => sApi?.Logger.Warning(Format(caller, format), arguments);
+            public static void Error(object caller, string format, params object[] arguments) => sApi?.Logger.Error(Format(caller, format), arguments);
+            public static void Debug(object caller, string format, params object[] arguments)
+            {
+                if (sDebugLogging) sApi?.Logger.Debug(Format(caller, format), arguments);
+            }
+            private static string Format(object caller, string format) => cPrefix + " [" + caller.GetType().Name + "] " + format;
+        }
+        
         static public ModelTransform ToTransformFrom(JsonObject transform, float multiplier = 1)
         {
             JsonObject translation = transform["translation"];
@@ -111,10 +142,46 @@ namespace MaltiezFSM.Framework
 
             return localX * position.X + localY * position.Y + localZ * position.Z;
         }
+        static public Vec3d ToReferenceFrame(Vec3d reference, Vec3d position)
+        {
+            Vec3d vertical = new Vec3d(0, 1, 0);
+            Vec3d localZ = reference.Normalize();
+            Vec3d localX = reference.Cross(vertical).Normalize();
+            Vec3d localY = localX.Cross(localZ);
+
+            InverseMatrix(localX, localY, localZ);
+
+            return localX * position.X + localY * position.Y + localZ * position.Z;
+        }
+        static public Vec3f ToReferenceFrame(Vec3f reference, Vec3f position)
+        {
+            Vec3f vertical = new Vec3f(0, 1, 0);
+            Vec3f localZ = reference.Normalize();
+            Vec3f localX = reference.Cross(vertical).Normalize();
+            Vec3f localY = localX.Cross(localZ);
+
+            InverseMatrix(localX, localY, localZ);
+
+            return localX * position.X + localY * position.Y + localZ * position.Z;
+        }
         static public void InverseMatrix(Vec3d X, Vec3d Y, Vec3d Z)
         {
             double[] matrix = { X.X, X.Y, X.Z, Y.X, Y.Y, Y.Z, Z.X, Z.Y, Z.Z };
             Mat3d.Invert(matrix, matrix);
+            X.X = matrix[0];
+            X.Y = matrix[1];
+            X.Z = matrix[2];
+            Y.X = matrix[3];
+            Y.Y = matrix[4];
+            Y.Z = matrix[5];
+            Z.X = matrix[6];
+            Z.Y = matrix[7];
+            Z.Z = matrix[8];
+        }
+        static public void InverseMatrix(Vec3f X, Vec3f Y, Vec3f Z)
+        {
+            float[] matrix = { X.X, X.Y, X.Z, Y.X, Y.Y, Y.Z, Z.X, Z.Y, Z.Z };
+            Mat3f.Invert(matrix, matrix);
             X.X = matrix[0];
             X.Y = matrix[1];
             X.Z = matrix[2];
@@ -142,6 +209,129 @@ namespace MaltiezFSM.Framework
             return SerializerUtil.Deserialize<TArray>(array);
         }
         // ***
+
+        public struct DirectionOffset
+        {
+            /// <summary>
+            /// In radians. Positive direction: top.
+            /// </summary>
+            public float pitch { get; set; }
+            /// <summary>
+            /// In radians. Positive direction: right.
+            /// </summary>
+            public float yaw { get; set; }
+
+            public static implicit operator DirectionOffset((float pitch, float yaw) parameters)
+            {
+                return new DirectionOffset() { pitch = parameters.pitch, yaw = parameters.yaw };
+            }
+
+            public DirectionOffset(Vec3d direction, Vec3d reference)
+            {
+                float[] from = new[] { (float)reference.X, (float)reference.Y, (float)reference.Z };
+                float[] to = new[] { (float)direction.X, (float)direction.Y, (float)direction.Z };
+
+                float yawSin = (from[2] * to[0] - from[0] * to[2]) / MathF.Sqrt((from[0] * from[0] + from[2] * from[2]) * (to[0] * to[0] + to[2] * to[2]));
+                float pitchSin = (from[2] * to[1] - from[1] * to[2]) / MathF.Sqrt((from[1] * from[1] + from[2] * from[2]) * (to[1] * to[1] + to[2] * to[2]));
+                yaw = MathF.Asin(yawSin);
+                pitch = MathF.Asin(pitchSin);
+            }
+
+            public DirectionOffset(Vec3f direction, Vec3f reference)
+            {
+                float yawSin = (reference.Z * direction.X - reference.X * direction.Z) / MathF.Sqrt((reference.X * reference.X + reference.Z * reference.Z) * (direction.X * direction.X + direction.Z * direction.Z));
+                float pitchSin = (reference.Z * direction.Y - reference.Y * direction.Z) / MathF.Sqrt((reference.Y * reference.Y + reference.Z * reference.Z) * (direction.Y * direction.Y + direction.Z * direction.Z));
+                yaw = MathF.Asin(yawSin);
+                pitch = MathF.Asin(pitchSin);
+            }
+        }
+        public class DirectionConstrain
+        {
+            /// <summary>
+            /// In radians. Positive direction: top.
+            /// </summary>
+            public float pitchTop { get; set; }
+            /// <summary>
+            /// In radians. Positive direction: top.
+            /// </summary>
+            public float pitchBottom { get; set; }
+            /// <summary>
+            /// In radians. Positive direction: right.
+            /// </summary>
+            public float yawLeft { get; set; }
+            /// <summary>
+            /// In radians. Positive direction: right.
+            /// </summary>
+            public float yawRight { get; set; }
+
+            public static implicit operator DirectionConstrain((float pitchTop, float pitchBottom, float yawLeft, float yawRight) parameters)
+            {
+                return new DirectionConstrain() { pitchTop = parameters.pitchTop, pitchBottom = parameters.pitchBottom, yawLeft = parameters.yawLeft, yawRight = parameters.yawRight };
+            }
+
+            public bool Check(DirectionOffset offset)
+            {
+                if (
+                    offset.pitch > pitchTop ||
+                    offset.pitch < pitchBottom ||
+                    offset.yaw < yawLeft ||
+                    offset.yaw > yawRight
+
+                ) return false;
+
+                return true;
+            }
+        }
+
+        static public class DamageModifiers
+        {
+            public delegate void Modifier(ref float damage, float value);
+            public delegate void TieredModifier(ref float damage, ref int tier);
+
+            public readonly static Modifier Multiply = (ref float damage, float value) => damage *= value;
+            public readonly static Modifier Divide = (ref float damage, float value) => damage = value == 0 ? damage : damage / value;
+            public readonly static Modifier Add = (ref float damage, float value) => damage += value;
+            public readonly static Modifier Subtract = (ref float damage, float value) => damage -= value;
+
+            public static Modifier Get(string name)
+            {
+                switch (name)
+                {
+                    case "Multiply": return Multiply;
+                    case "Divide": return Divide;
+                    case "Add": return Add;
+                    case "Subtract": return Subtract;
+                    default: throw new NotImplementedException();
+                }
+            }
+
+            public static TieredModifier GetTiered(JsonObject definition)
+            {
+                string modifierType = definition["type"].AsString("Multiply");
+                float defaultModifier = definition["default"].AsFloat(1);
+                List<int> thresholds = new();
+                List<float> modifiers = new();
+
+                foreach (JsonObject threshold in definition["thresholds"].AsArray())
+                {
+                    thresholds.Add(threshold.AsInt());
+                }
+
+                foreach (JsonObject threshold in definition["modifiers"].AsArray())
+                {
+                    modifiers.Add(threshold.AsFloat());
+                }
+
+                return (ref float damage, ref int tier) => Get(modifierType)(ref damage, CalcModifier(tier, 0, thresholds, modifiers, defaultModifier));
+            }
+
+            private static float CalcModifier(float tier, int depth, List<int> thresholds, List<float> modifiers, float defaultModifier)
+            {
+                if (depth >= thresholds.Count) return defaultModifier;
+                if (tier <= thresholds[depth]) return modifiers[depth];
+                return CalcModifier(tier, depth + 1, thresholds, modifiers, defaultModifier);
+            }
+        }
 
         public static AssetLocation[] GetAssetLocations(JsonObject definition)
         {

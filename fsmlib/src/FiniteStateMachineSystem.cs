@@ -15,22 +15,27 @@ namespace MaltiezFSM
         private IFactory<ISystem> mSystemFactory;
         private IFactory<IInput> mInputFactory;
         private IInputManager mInputManager;
+        private ITransformManager mTransformManager;
 
         public override void Start(ICoreAPI api)
         {
             base.Start(api);
 
-            api.RegisterItemClass("NoMelee", typeof(NoMelee));
-            api.RegisterCollectibleBehaviorClass("FiniteStateMachine", typeof(Framework.FiniteStateMachineBehaviour));
+            Framework.Utils.Logger.Init(api);
 
-            api.RegisterEntityBehaviorClass("constresist", typeof(Additional.EntityBehaviorConstResists<Additional.ConstResistance>));
+            mTransformManager = new Framework.TransformsManager(api);
+
+            api.RegisterItemClass("NoMelee", typeof(NoMelee));
+            api.RegisterCollectibleBehaviorClass("FiniteStateMachine", typeof(Framework.FiniteStateMachineBehaviour<Framework.BehaviourAttributesParser, Framework.FiniteStateMachine>));
+
+            api.RegisterEntityBehaviorClass("constresist", typeof(Additional.EntityBehaviorConstResists<Additional.ConstResist>));
             api.RegisterEntityBehaviorClass("tempresists", typeof(Additional.EntityBehaviorResists));
 
             if (api.Side == EnumAppSide.Server) (api as ICoreServerAPI).Event.PlayerJoin += (byPlayer) => AddPlayerBehavior(byPlayer.Entity);
 
             mOperationFactory = new Framework.Factory<IOperation, Framework.UniqueIdGeneratorForFactory>(api);
             mSystemFactory = new Framework.Factory<ISystem, Framework.UniqueIdGeneratorForFactory>(api);
-            mInputFactory = new Framework.Factory<IInput, Framework.UniqueIdGeneratorForFactory>(api)
+            mInputFactory = new Framework.Factory<IInput, Framework.UniqueIdGeneratorForFactory>(api);
 
             RegisterSystems();
             RegisterOperations();
@@ -45,42 +50,42 @@ namespace MaltiezFSM
 
         public void RegisterSystems()
         {  
-            mSystemFactory.RegisterType<Systems.BasicSoundSystem>("Sound");
-            mSystemFactory.RegisterType<Systems.BasicReload>("Reload");
-            mSystemFactory.RegisterType<Systems.BasicShooting>("Shooting");
-            mSystemFactory.RegisterType<Systems.BasicVariantsAnimation<Systems.TickBasedAnimation>>("VariantsAnimation");
-            mSystemFactory.RegisterType<Systems.BasicRequirements>("Requirements");
-            mSystemFactory.RegisterType<Systems.BasicTransformAnimation>("TransformAnimation");
-            mSystemFactory.RegisterType<Systems.BasicPlayerAnimation>("PlayerAnimation");
-            mSystemFactory.RegisterType<Systems.BasicPlayerStats>("PlayerStats");
-            mSystemFactory.RegisterType<Systems.BasicParticles>("Particles");
-            mSystemFactory.RegisterType<Systems.BasicAim>("Aiming");
-            mSystemFactory.RegisterType<Systems.NoSway>("NoSway");
-            mSystemFactory.RegisterType<Systems.NoSprint>("NoSprint");
-            mSystemFactory.RegisterType<Systems.ChangeGroup>("ChangeGroup");
-            mSystemFactory.RegisterType<Systems.BasicMelee>("BasicMelee");
-            mSystemFactory.RegisterType<Systems.BasicDurabilityDamage>("DurabilityDamage");
-            mSystemFactory.RegisterType<Systems.BasicDurability>("Durability");
-            mSystemFactory.RegisterType<Systems.ItemStackGiver>("ItemStackGiver");
-            mSystemFactory.RegisterType<Systems.SimpleMelee>("SimpleMelee");
-            mSystemFactory.RegisterType<Systems.BasicParry<Additional.EntityBehaviorResists>>("BasicParry");
+            mSystemFactory.Register<Systems.BasicSoundSystem>("Sound");
+            mSystemFactory.Register<Systems.BasicReload>("Reload");
+            mSystemFactory.Register<Systems.BasicShooting>("Shooting");
+            mSystemFactory.Register<Systems.BasicVariantsAnimation<Systems.TickBasedAnimation>>("VariantsAnimation");
+            mSystemFactory.Register<Systems.BasicRequirements>("Requirements");
+            mSystemFactory.Register<Systems.BasicTransformAnimation>("TransformAnimation");
+            mSystemFactory.Register<Systems.BasicPlayerAnimation>("PlayerAnimation");
+            mSystemFactory.Register<Systems.BasicPlayerStats>("PlayerStats");
+            mSystemFactory.Register<Systems.BasicParticles>("Particles");
+            mSystemFactory.Register<Systems.BasicAim>("Aiming");
+            mSystemFactory.Register<Systems.NoSway>("NoSway");
+            mSystemFactory.Register<Systems.NoSprint>("NoSprint");
+            mSystemFactory.Register<Systems.ChangeGroup>("ChangeGroup");
+            mSystemFactory.Register<Systems.BasicMelee>("BasicMelee");
+            mSystemFactory.Register<Systems.BasicDurabilityDamage>("DurabilityDamage");
+            mSystemFactory.Register<Systems.BasicDurability>("Durability");
+            mSystemFactory.Register<Systems.ItemStackGiver>("ItemStackGiver");
+            mSystemFactory.Register<Systems.SimpleMelee>("SimpleMelee");
+            mSystemFactory.Register<Systems.BasicParry<Additional.EntityBehaviorResists>>("BasicParry");
         }
         public void RegisterOperations()
         {
-            mOperationFactory.RegisterType<Operations.BasicInstant>("Instant");
-            mOperationFactory.RegisterType<Operations.BasicDelayed>("Delayed");
+            mOperationFactory.Register<Operations.BasicInstant>("Instant");
+            mOperationFactory.Register<Operations.BasicDelayed>("Delayed");
         }
 
         public void RegisterInputs()
         {
-            mInputFactory.RegisterType<Inputs.BasicKey>("Key");
-            mInputFactory.RegisterType<Inputs.BasicMouse>("MouseKey");
-            mInputFactory.RegisterType<Inputs.BasicHotkey>("Hotkey");
-            mInputFactory.RegisterType<Inputs.SlotModified>("SlotModified");
-            mInputFactory.RegisterType<Inputs.BasicSlotBefore>("SlotChange");
-            mInputFactory.RegisterType<Inputs.BasicSlotAfter>("SlotSelected");
-            mInputFactory.RegisterType<Inputs.ItemDropped>("ItemDropped");
-            mInputFactory.RegisterType<Inputs.Swimming>("Swimming");
+            mInputFactory.Register<Inputs.BasicKey>("Key");
+            mInputFactory.Register<Inputs.BasicMouse>("MouseKey");
+            mInputFactory.Register<Inputs.BasicHotkey>("Hotkey");
+            mInputFactory.Register<Inputs.SlotModified>("SlotModified");
+            mInputFactory.Register<Inputs.BasicSlotBefore>("SlotChange");
+            mInputFactory.Register<Inputs.BasicSlotAfter>("SlotSelected");
+            mInputFactory.Register<Inputs.ItemDropped>("ItemDropped");
+            mInputFactory.Register<Inputs.Swimming>("Swimming");
         }
 
         public IFactory<IOperation> GetOperationFactory()
@@ -95,9 +100,13 @@ namespace MaltiezFSM
         {
             return mInputFactory;
         }
-        public IInputManager GetInputInterceptor()
+        public IInputManager GetInputManager()
         {
             return mInputManager;
+        }
+        public ITransformManager GetTransformManager()
+        {
+            return mTransformManager;
         }
 
         private struct BehaviorAsJsonObj

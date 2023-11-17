@@ -8,14 +8,14 @@ namespace MaltiezFSM.Additional
     public class ExtendedDamageSource : DamageSource, IResistibleDamage
     {
         public DamageSourceCallback callback = null;
-        public HashSet<IResistance> resistancesToBypass = new();
+        public HashSet<IResist> resistancesToBypass = new();
 
-        bool IResistibleDamage.Bypass(IResistance resist, float damage)
+        bool IResistibleDamage.Bypass(IResist resist, float damage)
         {
             return resistancesToBypass.Contains(resist);
         }
 
-        void IResistibleDamage.ResistCallback(IResistance resist, DamageSource damageSource, ref float damage, Entity receiver)
+        void IResistibleDamage.ResistCallback(IResist resist, DamageSource damageSource, ref float damage, Entity receiver)
         {
             if (callback != null) callback(resist, damageSource, ref damage, receiver);
         }

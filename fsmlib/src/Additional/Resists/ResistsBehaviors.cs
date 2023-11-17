@@ -42,21 +42,18 @@ namespace MaltiezFSM.Additional
     }
 
 
-    public class EntityBehaviorResists : EntityBehavior, IResistEntityBehavior
+    public class EntityBehaviorResists : EntityBehavior, ITempResistEntityBehavior
     {
         protected readonly Entity mEntity;
-        protected readonly List<IResistance> mResists = new();
+        protected readonly List<IResist> mResists = new();
         protected readonly string mName;
-        protected readonly IResistSerializer mSerializer;
 
         protected EntityProperties mProperties;
 
         public EntityBehaviorResists(Entity entity) : base(entity)
         {
-            entity.World.Api.Logger.Notification("[FSMlib] [EntityBehaviorResists] new");
             mEntity = entity;
-            mSerializer = null;
-            mName = "fsmlibresists";
+            mName = "fsmlibtempresists";
         }
 
         public override void Initialize(EntityProperties properties, JsonObject attributes)
@@ -76,7 +73,7 @@ namespace MaltiezFSM.Additional
             logger.Notification("[FMSlib] OnEntityReceiveDamage, applied for: '{0}'", mEntity.GetName());
 
             logger.Notification("[FMSlib] OnEntityReceiveDamage, BEFORE damage: {0}", damage);
-            foreach (IResistance resist in mResists)
+            foreach (IResist resist in mResists)
             {
                 logger.Notification("[FMSlib] OnEntityReceiveDamage, ApplyResist");
                 if ((damageSource as IResistibleDamage)?.Bypass(resist, damage) != true && resist.ApplyResist(damageSource, ref damage, mEntity))
@@ -92,13 +89,13 @@ namespace MaltiezFSM.Additional
             logger.Notification("[FMSlib] OnEntityReceiveDamage, is damage 0: {0}", damage == 0);
         }
 
-        void IResistEntityBehavior.AddResist(IResistance resist) => mResists.Add(resist);
+        void IResistEntityBehavior.AddResist(IResist resist) => mResists.Add(resist);
         void IResistEntityBehavior.ClearResists() => mResists.Clear();
-        bool IResistEntityBehavior.RemoveResist(IResistance resist) => mResists.Remove(resist);
-
-        public override void OnEntityLoaded()
+        bool IResistEntityBehavior.RemoveResist(IResist resist) => mResists.Remove(resist);
+        void ITempResistEntityBehavior.AddResist(ITempResist resist, int? timeout_ms, int? attacksThreshold, float? damageThreshold)
         {
-            // @TODO add serialisation of persistant resists in 1.19
+            mResists.Add(resist);
+            resist?.Start(this, mEntity.World.Api, timeout_ms, attacksThreshold, attacksThreshold);
         }
     }
 }

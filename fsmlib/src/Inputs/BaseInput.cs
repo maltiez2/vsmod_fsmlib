@@ -4,53 +4,40 @@ using MaltiezFSM.API;
 using static MaltiezFSM.API.IInput;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
+using System;
+using MaltiezFSM.Framework;
 
 namespace MaltiezFSM.Inputs
 {
-    public class BaseInput : UniqueIdFactoryObject, IInput
+    public class BaseInput : UniqueId, IInput
     {
-        public const string handledAttrName = "handle";
-        public const string slotAttrName = "slot";
-
-        public readonly Dictionary<string, SlotTypes> slotTypes = new Dictionary<string, IInput.SlotTypes>
-        {
-            {"mainhand", SlotTypes.MAIN_HAND},
-            {"offhand", SlotTypes.OFF_HAND},
-            {"all", SlotTypes.INVENTORY},
-            {"mouse", SlotTypes.MOUSE}
-        };
-
-        private ICoreAPI mApi;
+        protected ICoreAPI mApi;
+        protected CollectibleObject mCollectible;
+        
         private string mCode;
         private bool mHandled;
         private SlotTypes mSlotType;
 
         public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
         {
+            if (definition == null)
+            {
+                Utils.Logger.Error(this, "Input '{0}' got empty definition");
+                return;
+            }
+
+            mCollectible = collectible;
             mCode = code;
             mApi = api;
-            mHandled = definition == null ? true : definition[handledAttrName].AsBool(true);
-            mSlotType = definition == null ? SlotTypes.MAIN_HAND : slotTypes[definition[slotAttrName].AsString("mainhand")];
+            mHandled = definition["handle"].AsBool(true);
+            mSlotType = (SlotTypes)Enum.Parse(typeof(SlotTypes), definition["slot"].AsString("mainHand"));
         }
 
-        public string GetName()
-        {
-            return mCode;
-        }
-        public bool Handled()
-        {
-            return mHandled;
-        }
+        string IInput.GetName() => mCode;
+        SlotTypes IInput.SlotType() => mSlotType;
 
-        public SlotTypes SlotType()
-        {
-            return mSlotType;
-        }
-
-        public virtual WorldInteraction GetInteractionInfo(ItemSlot slot)
-        {
-            return null;
-        }
+        public virtual bool Handled() => mHandled;
+        public virtual WorldInteraction GetInteractionInfo(ItemSlot slot) => null;
     }
 }
 

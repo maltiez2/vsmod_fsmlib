@@ -13,7 +13,7 @@ namespace MaltiezFSM.Operations
 
     }
     
-    public class BasicDelayed : UniqueIdFactoryObject, IOperation
+    public class BasicDelayed : UniqueId, IOperation
     {
         public const string mainTransitionsAttrName = "states";
         public const string systemsAttrName = "systems";

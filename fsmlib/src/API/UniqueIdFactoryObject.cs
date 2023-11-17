@@ -9,12 +9,11 @@ namespace MaltiezFSM.API
     /// It is recommended to use this class as a base for classes that implement <see cref="ISystem"/>, <see cref="IOperation"/> or <see cref="IInput"/>.<br/>
     /// It is also recommended to use it with <see cref="Framework.UniqueIdGeneratorForFactory"/>, as it provides unique id for objects produced by <see cref="IFactory{ProductClass}"/>.
     /// </summary>
-    public abstract class UniqueIdFactoryObject : IFactoryObject // @TODO May be move to dependency injection instead of inheritance
+    public abstract class UniqueId : IFactoryObject // @TODO May be move to dependency injection instead of inheritance
     {
         private int? mId = null;
 
         public abstract void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api);
-
         /// <summary>
         /// For setting object unique id after <see cref="Init"/> call.<br/>
         /// Id can be assigned <b>only once!</b> Subsequent assignment will not change the id.<br/>
@@ -33,7 +32,7 @@ namespace MaltiezFSM.API
         /// If id was no assigned by <see cref="SetId"/> throws an exception while casting null to int.
         /// </summary>
         /// <exception cref="System.InvalidOperationException">Id was not assigned</exception>
-        public override bool Equals(object obj) => (obj as UniqueIdFactoryObject)?.GetId() == (int)mId;
+        public override bool Equals(object obj) => (obj as UniqueId)?.GetId() == (int)mId;
         /// <summary>
         /// Hash is equal to object's id.<br/>
         /// If id was no assigned by <see cref="SetId"/> throws an exception while casting null to int.

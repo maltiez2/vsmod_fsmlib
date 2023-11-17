@@ -4,20 +4,17 @@ using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
 
 namespace MaltiezFSM.Systems
 {
     public class BasicParry<TResistBehavior> : BaseSystem
-        where TResistBehavior : EntityBehavior, IResistEntityBehavior
+        where TResistBehavior : EntityBehavior, ITempResistEntityBehavior
     {
-        private readonly Dictionary<long, IResistance> mResists = new();
+        private readonly Dictionary<long, IResist> mResists = new();
         private readonly Dictionary<long, long> mCallbacks = new();
-        private readonly HashSet<EnumDamageType> mDamageTypes = new()
-        {
-            EnumDamageType.BluntAttack,
-            EnumDamageType.PiercingAttack,
-            EnumDamageType.SlashingAttack
-        };
+        private readonly Dictionary<string, ParryData> mParries = new();
+        private readonly Dictionary<string, string> mSounds = new();
         private string mSoundSystemCode;
         private ISoundSystem mSoundSystem;
 
@@ -25,6 +22,13 @@ namespace MaltiezFSM.Systems
         {
             base.Init(code, definition, collectible, api);
             mSoundSystemCode = definition["soundSystem"].AsString();
+
+            foreach (JsonObject parry in definition["parries"].AsArray())
+            {
+                string parryCode = parry["code"].AsString();
+                mParries.Add(parryCode, new(parry));
+                mSounds.Add(parryCode, parry["sound"].AsString());
+            }
         }
 
         public override void SetSystems(Dictionary<string, ISystem> systems)
@@ -40,10 +44,8 @@ namespace MaltiezFSM.Systems
             switch (action)
             {
                 case "start":
-                    int parryStart = parameters["parryWindowStart"].AsInt();
-                    int parryEnd = parameters["parryWindowEnd"].AsInt();
-                    string sound = parameters["sound"].AsString();
-                    ScheduleParry(player, parryStart, parryEnd, sound);
+                    string code = parameters["code"].AsString();
+                    ScheduleParry(player, code);
                     break;
                 case "stop":
                     StopParry(player);
@@ -55,25 +57,24 @@ namespace MaltiezFSM.Systems
             return true;
         }
 
-        private void ScheduleParry(EntityAgent player, int start, int finish, string sound)
+        private void ScheduleParry(EntityAgent player, string code)
         {
             long entityId = player.EntityId;
             if (mCallbacks.ContainsKey(entityId)) mApi.World.UnregisterCallback(mCallbacks[entityId]);
-            mCallbacks[entityId] = mApi.World.RegisterCallback(_ => StartParry(player, finish - start, sound), start);
+            mCallbacks[entityId] = mApi.World.RegisterCallback(_ => StartParry(player, code), mParries[code].windowStart);
         }
         
-        private void StartParry(EntityAgent player, int timout, string sound)
+        private void StartParry(EntityAgent player, string code)
         {
             if (mResists.ContainsKey(player.EntityId)) StopParry(player);
-            IResistEntityBehavior behavior = player.GetBehavior<TResistBehavior>();
+            ITempResistEntityBehavior behavior = player.GetBehavior<TResistBehavior>();
             if (behavior == null)
             {
                 mApi.Logger.Error("[FSMlib] [BasicParry] No IResistEntityBehavior found");
                 return;
             }
-            ParryResistance resist = new(behavior, mApi, timout, null, mDamageTypes);
-            if (sound != null) resist.SetResistCallback((IResistance resist, DamageSource damageSource, ref float damage, Entity receiver) => PlayParrySound(receiver, sound));
-            behavior.AddResist(resist);
+            IResist resist = mParries[code].AddToBehavior(behavior);
+            if (mSounds[code] != null) resist.SetResistCallback((IResist resist, DamageSource damageSource, ref float damage, Entity receiver) => PlayParrySound(receiver, mSounds[code]));
             mResists.Add(player.EntityId, resist);
         }
 
@@ -94,6 +95,35 @@ namespace MaltiezFSM.Systems
         private void PlayParrySound(Entity player, string sound)
         {
             mSoundSystem?.PlaySound(sound, null, player as EntityAgent);
+        }
+    }
+
+    internal class ParryData
+    {
+        public int windowStart;
+        public int windowEnd;
+        public float yawLeft;
+        public float yawRight;
+        public float pitchBottom;
+        public float pitchTop;
+
+        public ParryData(JsonObject definition)
+        {
+            JsonObject window = definition["window"];
+            JsonObject direction = definition["direction"];
+            windowStart = window["start"].AsInt();
+            windowEnd = window["end"].AsInt();
+            yawLeft = direction["left"].AsFloat() * GameMath.DEG2RAD;
+            yawRight = direction["right"].AsFloat() * GameMath.DEG2RAD;
+            pitchBottom = direction["bottom"].AsFloat() * GameMath.DEG2RAD;
+            pitchTop = direction["top"].AsFloat() * GameMath.DEG2RAD;
+        }
+
+        public IResist AddToBehavior(ITempResistEntityBehavior behavior)
+        {
+            BlockOrParryResist resist = new((pitchTop, pitchBottom, yawLeft, yawRight));
+            behavior.AddResist(resist, windowEnd - windowStart);
+            return resist;
         }
     }
 }

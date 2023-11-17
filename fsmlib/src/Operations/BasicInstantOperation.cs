@@ -7,7 +7,7 @@ using Vintagestory.API.Common.Entities;
 
 namespace MaltiezFSM.Operations
 {
-    public class BasicInstant : UniqueIdFactoryObject, IOperation
+    public class BasicInstant : UniqueId, IOperation
     {
         public const string mainTransitionsAttrName = "states";
         public const string systemsAttrName = "systems";
@@ -89,13 +89,13 @@ namespace MaltiezFSM.Operations
             {
                 if (!states.ContainsKey(entry.Key))
                 {
-                    mApi.Logger.Debug("[FSMlib] [BasicDelayed: {0}] State '{1}' not found.", mCode, entry.Key);
+                    mApi.Logger.Debug("[FSMlib] [BasicInstant: {0}] State '{1}' not found.", mCode, entry.Key);
                     continue;
                 }
 
                 if (!states.ContainsKey(entry.Value))
                 {
-                    mApi.Logger.Debug("[FSMlib] [BasicDelayed: {0}] State '{1}' not found.", mCode, entry.Value);
+                    mApi.Logger.Debug("[FSMlib] [BasicInstant: {0}] State '{1}' not found.", mCode, entry.Value);
                     continue;
                 }
 
@@ -107,7 +107,7 @@ namespace MaltiezFSM.Operations
             {
                 if (!systems.ContainsKey(entry.Item1))
                 {
-                    mApi.Logger.Debug("[FSMlib] [BasicDelayed: {0}] State '{1}' not found.", mCode, entry.Item1);
+                    mApi.Logger.Debug("[FSMlib] [BasicInstant: {0}] State '{1}' not found.", mCode, entry.Item1);
                     continue;
                 }
 
@@ -119,7 +119,7 @@ namespace MaltiezFSM.Operations
             {
                 if (!systems.ContainsKey(input))
                 {
-                    mApi.Logger.Debug("[FSMlib] [BasicDelayed: {0}] State '{1}' not found.", mCode, input);
+                    mApi.Logger.Debug("[FSMlib] [BasicInstant: {0}] State '{1}' not found.", mCode, input);
                     continue;
                 }
 

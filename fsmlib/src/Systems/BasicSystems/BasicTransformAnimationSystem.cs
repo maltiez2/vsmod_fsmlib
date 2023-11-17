@@ -7,6 +7,7 @@ using Vintagestory.API.Common.Entities;
 using System.Diagnostics;
 using HarmonyLib;
 using Vintagestory.API.Client;
+using MaltiezFSM.API;
 
 namespace MaltiezFSM.Systems
 {
@@ -57,12 +58,10 @@ namespace MaltiezFSM.Systems
             int duration = mDurations[code];
             if (parameters.KeyExists(durationAttrName)) duration = parameters[durationAttrName].AsInt();
 
-            mApi.Logger.Notification("[FSMlib] duration: {0}", duration);
-
-            return ProcessImpl(player, null, code, mode, duration, ProgressModifiers.Linear);
+            return ProcessImpl(slot, player, null, code, mode, duration, ProgressModifiers.Linear);
         }
 
-        private bool ProcessImpl(EntityAgent player, Action finishCallback, string code, string mode, int duration, ProgressModifiers.ProgressModifier progressModifier)
+        private bool ProcessImpl(ItemSlot slot, EntityAgent player, Action finishCallback, string code, string mode, int duration, ProgressModifiers.ProgressModifier progressModifier)
         {
             if (!mFpAnimations.ContainsKey(code)) return false;
             if (!mTimers.ContainsKey(player.EntityId)) mTimers[player.EntityId] = null;
@@ -73,11 +72,11 @@ namespace MaltiezFSM.Systems
             switch (mode)
             {
                 case "forward":
-                    mTransformManagers[player.EntityId].StartForward(mFpAnimations[code], mTpAnimations[code], mCollectible);
+                    mTransformManagers[player.EntityId].StartForward(slot, mFpAnimations[code], mTpAnimations[code], mCollectible);
                     mTimers[player.EntityId] = new(mApi, duration, (float progress) => PlayAnimation(progressModifier(progress), player, finishCallback));
                     break;
                 case "backward":
-                    mTransformManagers[player.EntityId].StartBackward();
+                    mTransformManagers[player.EntityId].StartBackward(slot);
                     mTimers[player.EntityId]?.Revert(duration);
                     break;
                 case "cancel":
@@ -101,13 +100,13 @@ namespace MaltiezFSM.Systems
         {
             int duration = mDurations[animationData.code];
             if (animationData.duration != null) duration = (int)animationData.duration;
-            ProcessImpl(player, finishCallback, animationData.code, mode, duration, animationData.dynamic);
+            ProcessImpl(slot, player, finishCallback, animationData.code, mode, duration, animationData.dynamic);
         }
     }
 
     public class PlayerHeldItemTransformManager
     {
-        private readonly TransformsManager mTransformsManager;
+        private readonly ITransformManager mTransformsManager;
         private readonly long mEntityId;
         private readonly string mCode;
 
@@ -122,11 +121,22 @@ namespace MaltiezFSM.Systems
         {
             mEntityId = entityId;
             mCode = code;
-            mTransformsManager = collectible.GetBehavior<FiniteStateMachineBehaviour>().transformsManager;
+
+            foreach (CollectibleBehavior behavior in collectible.CollectibleBehaviors)
+            {
+                if (behavior is ITransformManagerProvider)
+                {
+                    mTransformsManager = (behavior as ITransformManagerProvider).GetTransformManager();
+                    break;
+                }
+            }
         }
 
-        public void StartForward(ModelTransform fpTransform, ModelTransform tpTransform, CollectibleObject collectible)
+        public void StartForward(ItemSlot slot, ModelTransform fpTransform, ModelTransform tpTransform, CollectibleObject collectible)
         {
+            mTransformsManager.SetEntityId(mEntityId, slot.Itemstack);
+            slot.MarkDirty();
+
             ModelTransform fpLastTransform = mTransformsManager.GetTransform(mEntityId, mCode, EnumItemRenderTarget.HandFp);
             ModelTransform tpLastTransform = mTransformsManager.GetTransform(mEntityId, mCode, EnumItemRenderTarget.HandTp);
             mFpInitialTransform = fpLastTransform != null ? fpLastTransform : Utils.IdentityTransform();
@@ -135,8 +145,11 @@ namespace MaltiezFSM.Systems
             mTpTargetTransform = Utils.SubtractTransformsNoScale(tpTransform, collectible.TpHandTransform);
         }
 
-        public void StartBackward()
+        public void StartBackward(ItemSlot slot)
         {
+            mTransformsManager.SetEntityId(mEntityId, slot.Itemstack);
+            slot.MarkDirty();
+
             ModelTransform currentFpTransform = Utils.TransitionTransform(mFpInitialTransform, mFpTargetTransform, mCurrentProgress);
             
             mFpInitialTransform = Utils.IdentityTransform();
