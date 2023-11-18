@@ -3,9 +3,6 @@ using Vintagestory.API.Common;
 using System.Collections.Generic;
 using System;
 using MaltiezFSM.Framework;
-using Vintagestory.API.Common.Entities;
-using System.Diagnostics;
-using HarmonyLib;
 using Vintagestory.API.Client;
 using MaltiezFSM.API;
 
@@ -134,8 +131,11 @@ namespace MaltiezFSM.Systems
 
         public void StartForward(ItemSlot slot, ModelTransform fpTransform, ModelTransform tpTransform, CollectibleObject collectible)
         {
-            mTransformsManager.SetEntityId(mEntityId, slot.Itemstack);
-            slot.MarkDirty();
+            if (slot != null)
+            {
+                mTransformsManager.SetEntityId(mEntityId, slot.Itemstack);
+                slot.MarkDirty();
+            }
 
             ModelTransform fpLastTransform = mTransformsManager.GetTransform(mEntityId, mCode, EnumItemRenderTarget.HandFp);
             ModelTransform tpLastTransform = mTransformsManager.GetTransform(mEntityId, mCode, EnumItemRenderTarget.HandTp);
@@ -147,8 +147,11 @@ namespace MaltiezFSM.Systems
 
         public void StartBackward(ItemSlot slot)
         {
-            mTransformsManager.SetEntityId(mEntityId, slot.Itemstack);
-            slot.MarkDirty();
+            if (slot != null)
+            {
+                mTransformsManager.SetEntityId(mEntityId, slot.Itemstack);
+                slot.MarkDirty();
+            }
 
             ModelTransform currentFpTransform = Utils.TransitionTransform(mFpInitialTransform, mFpTargetTransform, mCurrentProgress);
             

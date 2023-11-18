@@ -92,7 +92,18 @@ namespace MaltiezFSM.API
         /// <returns>Time in <b>milliseconds</b>, timer will not be created if value is equal to <c>null</c></returns>
         int? Timer(ItemSlot slot, EntityAgent player, IState state, IInput input);
         
-        List<Tuple<string, string, string>> GetTransitions();
+        struct Transition
+        {
+            public string input { get; set; }
+            public string fromState { get; set; }
+            public string toState { get; set; }
+
+            public static implicit operator Transition((string input, string fromState, string toState) parameters)
+            {
+                return new Transition() { input = parameters.input, fromState = parameters.fromState, toState = parameters.toState };
+            }
+        }
+        List<Transition> GetTransitions();
 
         /// <summary>
         /// Called by FSM after calling <see cref="GetInitialStates"/> and <see cref="GetFinalStates"/> and <see cref="GetInputs"/>
@@ -128,6 +139,10 @@ namespace MaltiezFSM.API
         bool Handled();
         SlotTypes SlotType();
         WorldInteraction GetInteractionInfo(ItemSlot slot);
+    }
+    public interface ICustomInput : IInput
+    {
+
     }
     public interface IStatusInput : IInput
     {
@@ -224,6 +239,7 @@ namespace MaltiezFSM.API
     {
         public delegate bool InputCallback(ItemSlot slot, EntityAgent player, IInput input);
         void RegisterInput(IInput input, InputCallback callback, CollectibleObject collectible);
+        void InvokeCustomInput(ICustomInput input, long playerEntityId);
     }
     public interface IHotkeyInputManager
     {
@@ -239,6 +255,13 @@ namespace MaltiezFSM.API
         public delegate bool InputCallback(IStatusInput.StatusType statusType);
         void RegisterStatusInput(IStatusInput input, InputCallback callback);
     }
+    public interface ICustomInputManager
+    {
+        public delegate bool InputCallback(ICustomInput input);
+        void RegisterCustomInput(ICustomInput input, InputCallback callback);
+        void InvokeCustomInput(ICustomInput input, long playerEntityId);
+    }
+
     public interface IFactoryProvider
     {
         IFactory<IOperation> GetOperationFactory();

@@ -9,6 +9,7 @@ using Vintagestory.Server;
 using HarmonyLib;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Transactions;
 
 namespace MaltiezFSM.Framework
 {
@@ -193,6 +194,35 @@ namespace MaltiezFSM.Framework
             Z.Z = matrix[8];
         }
 
+        static public short[] FromModelTransform(ModelTransform transform)
+        {
+            return new short[]
+            {
+                SerializeFloatPreciseEnough(transform.Translation.X), SerializeFloatPreciseEnough(transform.Translation.Y), SerializeFloatPreciseEnough(transform.Translation.Z),
+                SerializeFloatPreciseEnough(transform.Rotation.X), SerializeFloatPreciseEnough(transform.Rotation.Y), SerializeFloatPreciseEnough(transform.Rotation.Z),
+                SerializeFloatPreciseEnough(transform.Origin.X), SerializeFloatPreciseEnough(transform.Origin.Y), SerializeFloatPreciseEnough(transform.Origin.Z),
+                SerializeFloatPreciseEnough(transform.ScaleXYZ.X), SerializeFloatPreciseEnough(transform.ScaleXYZ.Y), SerializeFloatPreciseEnough(transform.ScaleXYZ.Z)
+            };
+        }
+        static public ModelTransform ToModelTransform(short[] transform)
+        {
+            return new ModelTransform()
+            {
+                Translation = new Vec3f() { X = DeserializeFloatPreciseEnough(transform[0]), Y = DeserializeFloatPreciseEnough(transform[1]), Z = DeserializeFloatPreciseEnough(transform[2]) },
+                Rotation = new Vec3f() { X = DeserializeFloatPreciseEnough(transform[3]), Y = DeserializeFloatPreciseEnough(transform[4]), Z = DeserializeFloatPreciseEnough(transform[5]) },
+                Origin = new Vec3f() {X = DeserializeFloatPreciseEnough(transform[6]), Y = DeserializeFloatPreciseEnough(transform[7]), Z = DeserializeFloatPreciseEnough(transform[8]) },
+                ScaleXYZ = new Vec3f() {X = DeserializeFloatPreciseEnough(transform[9]), Y = DeserializeFloatPreciseEnough(transform[10]), Z = DeserializeFloatPreciseEnough(transform[11]) }
+            };
+        }
+
+        static public short SerializeFloatPreciseEnough(float value)
+        {
+            return (short)(value * 100);
+        }
+        static public float DeserializeFloatPreciseEnough(short value)
+        {
+            return (float)value / 100;
+        }
 
         // *** Based on code from Dana (https://github.com/Craluminum2413)
         public static void SetArray<TArray>(this ITreeAttribute tree, string key, TArray data) 

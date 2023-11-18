@@ -45,7 +45,8 @@ namespace MaltiezFSM
             IHotkeyInputManager hotkeyInputManager = (api.Side == EnumAppSide.Client) ? new Framework.HotkeyInputManager(api as ICoreClientAPI) : null;
             IStatusInputManager statusInputManager = (api.Side == EnumAppSide.Client) ? new Framework.StatusInputManager(api as ICoreClientAPI) : null;
             IKeyInputManager    keyInputManager    = (api.Side == EnumAppSide.Client) ? new Framework.KeyInputManager(api as ICoreClientAPI) : null;
-            mInputManager = new Framework.InputManager(api, activeSlotListener, hotkeyInputManager, statusInputManager, keyInputManager);
+            ICustomInputManager customInputManager = new Framework.CustomInputManager(api);
+            mInputManager = new Framework.InputManager(api, activeSlotListener, hotkeyInputManager, statusInputManager, keyInputManager, customInputManager);
         }
 
         public void RegisterSystems()
@@ -86,6 +87,7 @@ namespace MaltiezFSM
             mInputFactory.Register<Inputs.BasicSlotAfter>("SlotSelected");
             mInputFactory.Register<Inputs.ItemDropped>("ItemDropped");
             mInputFactory.Register<Inputs.Swimming>("Swimming");
+            mInputFactory.Register<Inputs.Blank>("Blank");
         }
 
         public IFactory<IOperation> GetOperationFactory()

@@ -1,4 +1,5 @@
-﻿using MaltiezFSM.API;
+﻿using HarmonyLib;
+using MaltiezFSM.API;
 using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
@@ -25,23 +26,66 @@ namespace MaltiezFSM.Operations
         public const string finalAttrName = "final";
         public const string delayAttrName = "delay_ms";
 
-        private const string cTimerInput = "";
-        
-        private ICoreAPI mApi;
+        protected const string cTimerInput = "";
+
+        protected ICoreAPI mApi;
         private string mCode;
 
+        protected struct TransitionTriggerInitial
+        {
+            public string state { get; set; }
+            public string input { get; set; }
+
+            public static implicit operator TransitionTriggerInitial((string state, string input) parameters)
+            {
+                return new TransitionTriggerInitial() { state = parameters.state, input = parameters.input };
+            }
+        }
+        protected struct TransitionResultInitial
+        {
+            public string state { get; set; }
+            public List<(string, JsonObject)> systemsRequests { get; set; }
+
+            public static implicit operator TransitionResultInitial((string state, List<(string, JsonObject)> systemsRequests) parameters)
+            {
+                return new TransitionResultInitial() { state = parameters.state, systemsRequests = parameters.systemsRequests };
+            }
+        }
+
+        protected struct TransitionTrigger
+        {
+            public IState state { get; set; }
+            public IInput input { get; set; }
+
+            public static implicit operator TransitionTrigger((IState state, IInput input) parameters)
+            {
+                return new TransitionTrigger() { state = parameters.state, input = parameters.input };
+            }
+        }
+        protected struct TransitionResult
+        {
+            public IState state { get; set; }
+            public List<(ISystem, JsonObject)> systemsRequests { get; set; }
+
+            public static implicit operator TransitionResult((IState state, List<(ISystem, JsonObject)> systemsRequests) parameters)
+            {
+                return new TransitionResult() { state = parameters.state, systemsRequests = parameters.systemsRequests };
+            }
+        }
+        
+
         // Initial data for operation's logic
-        private readonly List<Tuple<string, string>> mStatesInitialData = new();
-        private readonly Dictionary<Tuple<string, string>, Tuple<string, List<Tuple<string, JsonObject>>>> mTransitionsInitialData = new();
-        private readonly Dictionary<Tuple<string, string>, int?> mTimersInitialData = new();
-        private readonly List<string> mInputsInitialData = new();
-        private readonly List<Tuple<string, string, string>> mTriggerConditions = new();
-        private readonly List<string> mInputsToPreventInitialData = new();
+        protected readonly Dictionary<TransitionTriggerInitial, TransitionResultInitial> mTransitionsInitialData = new();
+        protected readonly Dictionary<TransitionTriggerInitial, int?> mTimersInitialData = new();
+        protected readonly List<IOperation.Transition> mTriggerConditions = new();
+        protected readonly List<(string, string)> mStatesInitialData = new();
+        protected readonly List<string> mInputsInitialData = new();
+        protected readonly List<string> mInputsToPreventInitialData = new();
 
         // Final data for operation's logic
-        private readonly Dictionary<Tuple<IState, IInput>, Tuple<IState, List<Tuple<ISystem, JsonObject>>>> mTransitions = new();
-        private readonly Dictionary<Tuple<IState, IInput>, int?> mTimers = new();
-        private readonly List<IInput> mInputsToPrevent = new();
+        protected readonly Dictionary<TransitionTrigger, TransitionResult> mTransitions = new();
+        protected readonly Dictionary<TransitionTrigger, int?> mTimers = new();
+        protected readonly List<IInput> mInputsToPrevent = new();
 
         public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
         {
@@ -57,9 +101,9 @@ namespace MaltiezFSM.Operations
 
             mApi = api;
 
-            List<Tuple<string, JsonObject>> systemsInitial = new();
-            List<Tuple<string, JsonObject>> systemsCancel = new();
-            List<Tuple<string, JsonObject>> systemsFinal = new();
+            List<(string, JsonObject)> systemsInitial = new();
+            List<(string, JsonObject)> systemsCancel = new();
+            List<(string, JsonObject)> systemsFinal = new();
 
             JsonObject[] systems = definition[systemsAttrName][initialName].AsArray();
             foreach (JsonObject system in systems)
@@ -115,85 +159,81 @@ namespace MaltiezFSM.Operations
                 string cancelState = transition[cancelAttrName].AsString();
                 string intermediateState = initialState + "_to_" + finalState + "_op." + code;
 
-                mStatesInitialData.Add(new Tuple<string, string>(initialState, intermediateState));
-                mStatesInitialData.Add(new Tuple<string, string>(intermediateState, finalState));
-                mStatesInitialData.Add(new Tuple<string, string>(intermediateState, cancelState));
+                mStatesInitialData.Add((initialState, intermediateState));
+                mStatesInitialData.Add((intermediateState, finalState));
+                mStatesInitialData.Add((intermediateState, cancelState));
 
-                foreach (string inputInitial in inputsInitial)  mTransitionsInitialData.Add(new Tuple<string, string>(initialState, inputInitial), new Tuple<string, List<Tuple<string, JsonObject>>>(intermediateState,  systemsInitial));
-                foreach (string inputInitial in inputsInitial) mTransitionsInitialData.Add(new Tuple<string, string>(intermediateState, inputInitial), new Tuple<string, List<Tuple<string, JsonObject>>>(finalState, systemsFinal));
-                foreach (string inputCancel in cancelInputs) mTransitionsInitialData.Add(new Tuple<string, string>(intermediateState, inputCancel), new Tuple<string, List<Tuple<string, JsonObject>>>(cancelState, systemsCancel));
+                foreach (string inputInitial in inputsInitial)  mTransitionsInitialData.Add((initialState, inputInitial), (intermediateState, systemsInitial));
+                foreach (string inputInitial in inputsInitial) mTransitionsInitialData.Add((intermediateState, inputInitial), (finalState, systemsFinal));
+                foreach (string inputCancel in cancelInputs) mTransitionsInitialData.Add((intermediateState, inputCancel), (inputCancel, systemsCancel));
 
-                foreach (string inputInitial in inputsInitial) mTimersInitialData.Add(new Tuple<string, string>(initialState, inputInitial), timerDelay);
+                foreach (string inputInitial in inputsInitial) mTimersInitialData.Add((initialState, inputInitial), timerDelay);
 
-                foreach (string inputInitial in inputsInitial) mTriggerConditions.Add(new(inputInitial, initialState, intermediateState));
-                mTriggerConditions.Add(new(cTimerInput, intermediateState, finalState));
-                foreach (string inputCancel in cancelInputs) mTriggerConditions.Add(new(inputCancel, intermediateState, cancelState));
+                foreach (string inputInitial in inputsInitial) mTriggerConditions.Add((initialState, inputInitial, intermediateState));
+                foreach (string inputCancel in cancelInputs) mTriggerConditions.Add((intermediateState, inputCancel, cancelState));
+                mTriggerConditions.Add((intermediateState, cTimerInput, finalState));
 
                 foreach (string input in mInputsToPreventInitialData)
                 {
-                    mTriggerConditions.Add(new(input, intermediateState, intermediateState));
-                    mStatesInitialData.Add(new Tuple<string, string>(intermediateState, intermediateState));
-                    mTransitionsInitialData.Add(new Tuple<string, string>(intermediateState, input), new Tuple<string, List<Tuple<string, JsonObject>>>(intermediateState, new List<Tuple<string, JsonObject>>()));
+                    mTriggerConditions.Add((intermediateState, input, intermediateState));
+                    mStatesInitialData.Add((intermediateState, intermediateState));
+                    mTransitionsInitialData.Add((intermediateState, input), (intermediateState, new()));
                 }
             }
 
         }
 
-        public List<Tuple<string, string, string>> GetTransitions()
+        public List<IOperation.Transition> GetTransitions()
         {
             return mTriggerConditions;
         }
 
         public void SetInputsStatesSystems(Dictionary<string, IInput> inputs, Dictionary<string, IState> states, Dictionary<string, ISystem> systems)
         {
-            foreach (var entry in mTransitionsInitialData)
+            foreach ((var trigger, var result) in mTransitionsInitialData)
             {
-                if (!states.ContainsKey(entry.Key.Item1))
+                if (!states.ContainsKey(trigger.state))
                 {
-                    mApi.Logger.Debug("[FSMlib] [BasicDelayed: {0}] State '{1}' not found.", mCode, entry.Key.Item1);
+                    mApi.Logger.Debug("[FSMlib] [BasicDelayed: {0}] State '{1}' not found.", mCode, trigger.state);
                     continue;
                 }
 
-                if (!inputs.ContainsKey(entry.Key.Item2))
+                if (!inputs.ContainsKey(trigger.input))
                 {
-                    mApi.Logger.Debug("[FSMlib] [BasicDelayed: {0}] Input '{1}' not found.", mCode, entry.Key.Item2);
+                    mApi.Logger.Debug("[FSMlib] [BasicDelayed: {0}] Input '{1}' not found.", mCode, trigger.input);
                     continue;
                 }
 
-                List<Tuple<ISystem, JsonObject>> transitionSystems = new();
-                foreach (var systemEntry in entry.Value.Item2)
+                List<(ISystem, JsonObject)> transitionSystems = new();
+                foreach ((string system, JsonObject request) in result.systemsRequests)
                 {
-                    if (!systems.ContainsKey(systemEntry.Item1))
+                    if (!systems.ContainsKey(system))
                     {
-                        mApi.Logger.Debug("[FSMlib] [BasicDelayed: {0}] System '{1}' not found.", mCode, systemEntry.Item1);
+                        mApi.Logger.Debug("[FSMlib] [BasicDelayed: {0}] System '{1}' not found.", mCode, system);
                         continue;
                     }
 
-                    transitionSystems.Add(new (systems[systemEntry.Item1], systemEntry.Item2));
+                    transitionSystems.Add(new (systems[system], request));
                 }
 
-                Tuple<IState, IInput> transitionFrom = new(states[entry.Key.Item1], inputs[entry.Key.Item2]);
-                Tuple<IState, List<Tuple<ISystem, JsonObject>>> transitionTo = new(states[entry.Value.Item1], transitionSystems);
-
-                mTransitions.Add(transitionFrom, transitionTo);
+                mTransitions.Add((states[trigger.state], inputs[trigger.input]), (states[result.state], transitionSystems));
             }
 
-            foreach (var entry in mTimersInitialData)
+            foreach ((var trigger, int? delay) in mTimersInitialData)
             {
-                if (!states.ContainsKey(entry.Key.Item1))
+                if (!states.ContainsKey(trigger.state))
                 {
-                    mApi.Logger.Debug("[FSMlib] [BasicDelayed: {0}] State '{1}' not found.", mCode, entry.Key.Item1);
+                    mApi.Logger.Debug("[FSMlib] [BasicDelayed: {0}] State '{1}' not found.", mCode, trigger.state);
                     continue;
                 }
 
-                if (!inputs.ContainsKey(entry.Key.Item2))
+                if (!inputs.ContainsKey(trigger.state))
                 {
-                    mApi.Logger.Debug("[FSMlib] [BasicDelayed: {0}] Input '{1}' not found.", mCode, entry.Key.Item2);
+                    mApi.Logger.Debug("[FSMlib] [BasicDelayed: {0}] Input '{1}' not found.", mCode, trigger.state);
                     continue;
                 }
 
-                Tuple<IState, IInput> transition = new(states[entry.Key.Item1], inputs[entry.Key.Item2]);
-                mTimers.Add(transition, entry.Value);
+                mTimers.Add((states[trigger.state], inputs[trigger.input]), delay);
             }
 
             foreach (string input in mInputsToPreventInitialData)
@@ -215,41 +255,34 @@ namespace MaltiezFSM.Operations
         }
         public bool StopTimer(ItemSlot slot, EntityAgent player, IState state, IInput input)
         {
-            Tuple<IState, IInput> transitionId = new Tuple<IState, IInput>(state, input);
-
-            if (!mTransitions.ContainsKey(transitionId)) return false;
+            if (!mTransitions.ContainsKey((state, input))) return false;
 
             return !mInputsToPrevent.Contains(input);
         }
-        public IState Perform(ItemSlot weaponSlot, EntityAgent player, IState state, IInput input)
+        public IState Perform(ItemSlot slot, EntityAgent player, IState state, IInput input)
         {
-            Tuple<IState, IInput> transitionId = new Tuple<IState, IInput>(state, input);
-
-            if (!mTransitions.ContainsKey(transitionId)) return state;
+            if (!mTransitions.ContainsKey((state, input))) return state;
             
-            (IState newState, List<Tuple<ISystem, JsonObject>> systems) = mTransitions[transitionId];
+            TransitionResult transitionResult = mTransitions[(state, input)];
 
-
-            foreach (var entry in systems)
+            foreach (var entry in transitionResult.systemsRequests)
             {
-                if (!entry.Item1.Verify(weaponSlot, player, entry.Item2))
+                if (!entry.Item1.Verify(slot, player, entry.Item2))
                 {
                     return state;
                 }
             }
 
-            foreach (var entry in systems)
+            foreach (var entry in transitionResult.systemsRequests)
             {
-                entry.Item1.Process(weaponSlot, player, entry.Item2);
+                entry.Item1.Process(slot, player, entry.Item2);
             }
 
-            return newState;
+            return transitionResult.state;
         }
-        public int? Timer(ItemSlot weaponSlot, EntityAgent player, IState state, IInput input)
+        public int? Timer(ItemSlot slot, EntityAgent player, IState state, IInput input)
         {
-            Tuple<IState, IInput> transitionId = new Tuple<IState, IInput>(state, input);
-
-            return mTimers.ContainsKey(transitionId) ? mTimers[transitionId] : null;
+            return mTimers.ContainsKey((state, input)) ? mTimers[(state, input)] : null;
         }
     }
 }

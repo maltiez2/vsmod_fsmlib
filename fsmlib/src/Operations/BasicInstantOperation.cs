@@ -19,7 +19,7 @@ namespace MaltiezFSM.Operations
 
         private readonly Dictionary<string, string> mStatesInitialData = new();
         private readonly List<Tuple<string, JsonObject>> mSystemsInitialData = new();
-        private readonly List<Tuple<string, string, string>> mTransitions = new();
+        private readonly List<IOperation.Transition> mTransitions = new();
         private readonly List<string> mInputsToPreventInitialData = new();
 
         private readonly Dictionary<IState, IState> mStates = new();
@@ -62,12 +62,12 @@ namespace MaltiezFSM.Operations
 
                 foreach (string input in inputs)
                 {
-                    mTransitions.Add(new(input, transition[initialStateAttrName].AsString(), transition[finalStateAttrName].AsString()));
+                    mTransitions.Add((input, transition[initialStateAttrName].AsString(), transition[finalStateAttrName].AsString()));
                 }
 
                 foreach (string input in mInputsToPreventInitialData)
                 {
-                    mTransitions.Add(new(input, transition[initialStateAttrName].AsString(), transition[initialStateAttrName].AsString()));
+                    mTransitions.Add((input, transition[initialStateAttrName].AsString(), transition[initialStateAttrName].AsString()));
                 }
             }
 
@@ -78,7 +78,7 @@ namespace MaltiezFSM.Operations
             }
         }
 
-        public List<Tuple<string, string, string>> GetTransitions()
+        public List<IOperation.Transition> GetTransitions()
         {
             return mTransitions;
         }

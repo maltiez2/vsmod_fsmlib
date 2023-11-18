@@ -19,6 +19,7 @@ namespace MaltiezFSM.Framework
         private readonly IHotkeyInputManager mHotkeyInputManager;
         private readonly IStatusInputManager mStatusInputManager;
         private readonly IKeyInputManager mKeyManager;
+        private readonly ICustomInputManager mCustomInputManager;
         private readonly List<IInput> mInputs = new();
         private readonly List<InputCallback> mCallbacks = new();
         private readonly List<CollectibleObject> mCollectibles = new();
@@ -30,7 +31,7 @@ namespace MaltiezFSM.Framework
         private readonly static Type rHudMouseToolsType = typeof(Vintagestory.Client.NoObf.ClientMain).Assembly.GetType("Vintagestory.Client.NoObf.HudMouseTools");
         private readonly HashSet<string> rBlockingGuiDialogs = new HashSet<string>();
 
-        public InputManager(ICoreAPI api, IActiveSlotListener slotListener, IHotkeyInputManager hotkeyManager, IStatusInputManager statusManager, IKeyInputManager keyManager)
+        public InputManager(ICoreAPI api, IActiveSlotListener slotListener, IHotkeyInputManager hotkeyManager, IStatusInputManager statusManager, IKeyInputManager keyManager, ICustomInputManager customInputManager)
         {
             mPacketSender = new InputPacketSender(api, ServerInputProxyHandler, cNetworkChannelName);
             mHotkeyInputManager = hotkeyManager;
@@ -42,6 +43,8 @@ namespace MaltiezFSM.Framework
                 mClientApi = api as ICoreClientAPI;
                 mSlotListener = slotListener;
             }
+
+            mCustomInputManager = customInputManager;
         }
 
         public void RegisterInput(IInput input, InputCallback callback, CollectibleObject collectible)
@@ -70,6 +73,11 @@ namespace MaltiezFSM.Framework
             if (input is IStatusInput && mClientApi != null)
             {
                 mStatusInputManager.RegisterStatusInput(input as IStatusInput, _ => ClientInputProxyHandler(inputIndex, null));
+            }
+
+            if (input is ICustomInput)
+            {
+                mCustomInputManager.RegisterCustomInput(input as ICustomInput, _ => ClientInputProxyHandler(inputIndex, null));
             }
         }
         private void ClientRegisterEventHandler(IEventInput input, int inputIndex)
@@ -252,6 +260,11 @@ namespace MaltiezFSM.Framework
             }
 
             return true;
+        }
+
+        void IInputManager.InvokeCustomInput(ICustomInput input, long playerEntityId)
+        {
+            mCustomInputManager.InvokeCustomInput(input, playerEntityId);
         }
     }
 

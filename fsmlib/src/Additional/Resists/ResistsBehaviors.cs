@@ -14,10 +14,10 @@ namespace MaltiezFSM.Additional
 
         protected EntityProperties mProperties;
 
-        public EntityBehaviorConstResists(Entity entity, string code = "0") : base(entity)
+        public EntityBehaviorConstResists(Entity entity) : base(entity)
         {
             mEntity = entity;
-            mName = "fsmlibconstresists-" + code;
+            mName = "fsmlibconstresists";
         }
 
         public override void Initialize(EntityProperties properties, JsonObject attributes)
@@ -68,25 +68,15 @@ namespace MaltiezFSM.Additional
 
         public override void OnEntityReceiveDamage(DamageSource damageSource, ref float damage)
         {
-            var logger = mEntity.Api.Logger;
-
-            logger.Notification("[FMSlib] OnEntityReceiveDamage, applied for: '{0}'", mEntity.GetName());
-
-            logger.Notification("[FMSlib] OnEntityReceiveDamage, BEFORE damage: {0}", damage);
             foreach (IResist resist in mResists)
             {
-                logger.Notification("[FMSlib] OnEntityReceiveDamage, ApplyResist");
                 if ((damageSource as IResistibleDamage)?.Bypass(resist, damage) != true && resist.ApplyResist(damageSource, ref damage, mEntity))
                 {
-                    resist.ResistCallback(damageSource, ref damage, mEntity, this);
+                    resist.ResistCallback(damageSource, ref damage, mEntity, this);                      
                     (damageSource as IResistibleDamage)?.ResistCallback(resist, damageSource, ref damage, mEntity);
                 }
             }
-            logger.Notification("[FMSlib] OnEntityReceiveDamage, AFTER damage: {0}", damage);
-
             base.OnEntityReceiveDamage(damageSource, ref damage);
-
-            logger.Notification("[FMSlib] OnEntityReceiveDamage, is damage 0: {0}", damage == 0);
         }
 
         void IResistEntityBehavior.AddResist(IResist resist) => mResists.Add(resist);

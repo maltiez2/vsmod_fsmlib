@@ -79,7 +79,7 @@ namespace MaltiezFSM.Framework
         [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
         public class InputPacket
         {
-            public ModelTransform transform;
+            public short[] transform;
             public EnumItemRenderTarget target;
             public string transformType;
             public long entityId;
@@ -115,7 +115,7 @@ namespace MaltiezFSM.Framework
         }
         private void OnClientPacket(InputPacket packet)
         {
-            mHandler(packet.entityId, packet.transformType, packet.target, packet.transform);
+            mHandler(packet.entityId, packet.transformType, packet.target, Utils.ToModelTransform(packet.transform));
         }
 
         // SERVER SIDE
@@ -130,13 +130,14 @@ namespace MaltiezFSM.Framework
         public void SendPacket(long entityId, string transformType, EnumItemRenderTarget target, ModelTransform transform)
         {
             if (mServerNetworkChannel == null) return;
+            if (target == EnumItemRenderTarget.HandFp || target == EnumItemRenderTarget.Gui) return;
             
             InputPacket packet = new InputPacket()
             {
                 entityId = entityId,
                 transformType = transformType,
                 target = target,
-                transform = transform
+                transform = Utils.FromModelTransform(transform)
             };
 
             IServerPlayer sender = ((mApi as ICoreServerAPI)?.World.GetEntityById(entityId) as EntityPlayer)?.Player as IServerPlayer;

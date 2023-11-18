@@ -5,6 +5,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 
 namespace MaltiezFSM.Systems
 {
@@ -44,10 +45,12 @@ namespace MaltiezFSM.Systems
             switch (action)
             {
                 case "start":
+                    if (mApi.Side != EnumAppSide.Server) return true;
                     string code = parameters["code"].AsString();
                     ScheduleParry(player, code);
                     break;
                 case "stop":
+                    if (mApi.Side != EnumAppSide.Server) return true;
                     StopParry(player);
                     break;
                 default:

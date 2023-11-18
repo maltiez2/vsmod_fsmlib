@@ -90,22 +90,21 @@ namespace MaltiezFSM.Framework
             {
                 IOperation operation = operationEntry.Value;
 
-                List<Tuple<string, string, string>> transitions = operation.GetTransitions();
+                List<IOperation.Transition> transitions = operation.GetTransitions();
 
                 Dictionary<string, IState> operationStateMapping = new Dictionary<string, IState>();
                 
                 foreach (var transition in transitions)
                 {
-                    string input = transition.Item1;
-                    State initialState = new State(transition.Item2);
-                    State finalState = new State(transition.Item3);
+                    string input = transition.input;
+                    State initialState = new State(transition.fromState);
+                    State finalState = new State(transition.toState);
 
-                    operationStateMapping.TryAdd(transition.Item2, initialState);
-                    operationStateMapping.TryAdd(transition.Item3, finalState);
+                    operationStateMapping.TryAdd(transition.fromState, initialState);
+                    operationStateMapping.TryAdd(transition.toState, finalState);
 
                     mOperationsByInputAndState.TryAdd(initialState, new());
                     mOperationsByInputAndState.TryAdd(finalState, new());
-
 
                     if (input == "")
                     {

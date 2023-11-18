@@ -1,6 +1,4 @@
-﻿using Vintagestory.API.Common;
-using Vintagestory.API.Datastructures;
-using MaltiezFSM.API;
+﻿using MaltiezFSM.API;
 
 namespace MaltiezFSM.Inputs
 {
