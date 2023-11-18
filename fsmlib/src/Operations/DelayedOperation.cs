@@ -1,33 +1,29 @@
-﻿using MaltiezFSM.API;
+﻿using HarmonyLib;
+using MaltiezFSM.API;
+using MaltiezFSM.Framework;
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
 namespace MaltiezFSM.Operations
 {
-    public interface ITransition
-    {
-        void Init(IState initial, IState final, Dictionary<ISystem, JsonObject> systems);
-
-    }
-    
-    public class BasicDelayed : UniqueId, IOperation
+    public class Delayed : UniqueId, IOperation
     {
         public const string mainTransitionsAttrName = "states";
         public const string systemsAttrName = "systems";
         public const string inputsAttrName = "inputsToHandle";
         public const string inputsToPreventAttrName = "inputsToIntercept";
         public const string attributesAttrName = "attributes";
-        public const string initialName = "initial";
+        public const string initialAttrName = "initial";
         public const string cancelAttrName = "cancel";
         public const string finalAttrName = "final";
         public const string delayAttrName = "delay_ms";
 
         protected const string cTimerInput = "";
-
         protected ICoreAPI mApi;
-        private string mCode;
+        protected string mCode;
 
         protected struct TransitionTriggerInitial
         {
@@ -49,7 +45,6 @@ namespace MaltiezFSM.Operations
                 return new TransitionResultInitial() { state = parameters.state, systemsRequests = parameters.systemsRequests };
             }
         }
-
         protected struct TransitionTrigger
         {
             public IState state { get; set; }
@@ -71,13 +66,31 @@ namespace MaltiezFSM.Operations
             }
         }
         
+        protected struct TransitionsBranchInitial
+        {
+            public string initial {  get; set; }
+            public string intermediate { get; set; }
+            public string timeout { get; set; }
+            public string[] final { get; set; }
+
+            public TransitionsBranchInitial(string initial, string intermediate, string timeout, params string[] final)
+            {
+                this.initial = initial;
+                this.timeout = timeout;
+                this.intermediate = intermediate;
+                this.final = final;
+            }
+
+            public static implicit operator TransitionsBranchInitial((string initial, string intermediate, string timeout, string[] final) parameters)
+            {
+                return new TransitionsBranchInitial() { initial = parameters.initial, intermediate = parameters.intermediate, timeout = parameters.timeout, final = parameters.final };
+            }
+        }
 
         protected readonly Dictionary<TransitionTriggerInitial, TransitionResultInitial> mTransitionsInitialData = new();
         protected readonly Dictionary<TransitionTriggerInitial, int?> mTimersInitialData = new();
         protected readonly List<IOperation.Transition> mTriggerConditions = new();
-        protected readonly List<(string, string)> mStatesInitialData = new();
         protected readonly List<string> mInputsToPreventInitialData = new();
-
 
         protected readonly Dictionary<TransitionTrigger, TransitionResult> mTransitions = new();
         protected readonly Dictionary<TransitionTrigger, int?> mTimers = new();
@@ -90,28 +103,41 @@ namespace MaltiezFSM.Operations
 
             ParseInputsToPrevent(definition);
 
-            List<(string, JsonObject)> systemsInitial = ParseSystems(definition, initialName);
+            List<(string, JsonObject)> systemsInitial = ParseSystems(definition, initialAttrName);
             List<(string, JsonObject)> systemsCancel = ParseSystems(definition, cancelAttrName);
             List<(string, JsonObject)> systemsFinal = ParseSystems(definition, finalAttrName);
 
             List<string> cancelInputs = ParseInputs(definition, cancelAttrName);
-            List<string> inputsInitial = ParseInputs(definition, initialName);
+            List<string> inputsInitial = ParseInputs(definition, initialAttrName);
 
             int? timeout = definition.KeyExists(delayAttrName) ? definition[delayAttrName].AsInt() : null;
+
+            List<TransitionsBranchInitial> transitions = ParseTransitions(definition);
+            foreach (TransitionsBranchInitial transition in transitions)
+            { 
+                AddTransition(transition.initial, transition.intermediate, inputsInitial, systemsInitial);
+                AddTransition(transition.intermediate, transition.final[0], cancelInputs, systemsCancel);
+                AddTransitionForTimeout(timeout, transition.intermediate, transition.timeout, inputsInitial, systemsFinal);
+                AddTransitionsForInputsToPrevent(transition.intermediate);    
+            }
+        }
+
+        private List<TransitionsBranchInitial> ParseTransitions(JsonObject definition)
+        {
+            List<TransitionsBranchInitial> transitions = new();
 
             JsonObject[] mainTransitions = definition[mainTransitionsAttrName].AsArray();
             foreach (JsonObject transition in mainTransitions)
             {
-                string initialState = transition[initialName].AsString();
-                string finalState = transition[finalAttrName].AsString();
-                string cancelState = transition[cancelAttrName].AsString();
-                string intermediateState = initialState + "_to_" + finalState + "_op." + code;
+                string initial = transition[initialAttrName].AsString();
+                string timeout = transition[finalAttrName].AsString();
+                string final = transition[cancelAttrName].AsString();
+                string intermediate = initial + "_to_" + timeout + "_op." + mCode;
 
-                AddTransition(initialState, intermediateState, inputsInitial, systemsInitial);
-                AddTransition(intermediateState, cancelState, cancelInputs, systemsCancel);
-                AddTransitionForTimeout(timeout, intermediateState, finalState, inputsInitial, systemsFinal);
-                AddTransitionsForInputsToPrevent(intermediateState);
+                transitions.Add(new TransitionsBranchInitial(initial, intermediate, timeout, final));
             }
+
+            return transitions;
         }
 
         protected void ParseInputsToPrevent(JsonObject definition)
@@ -151,7 +177,6 @@ namespace MaltiezFSM.Operations
         }
         protected void AddTransition(string stateFrom, string stateTo, List<string> inputs, List<(string, JsonObject)> systems)
         {
-            mStatesInitialData.Add((stateFrom, stateTo));
             foreach (string input in inputs)
             {
                 mTransitionsInitialData.Add((stateFrom, input), (input, systems));
@@ -160,7 +185,6 @@ namespace MaltiezFSM.Operations
         }
         protected void AddTransitionForTimeout(int? timeout, string stateFrom, string stateTo, List<string> inputs, List<(string, JsonObject)> systems)
         {
-            mStatesInitialData.Add((stateFrom, stateTo));
             foreach (string inputInitial in inputs) mTransitionsInitialData.Add((stateFrom, inputInitial), (stateTo, systems));
             foreach (string inputInitial in inputs) mTimersInitialData.Add((stateFrom, inputInitial), timeout);
             mTriggerConditions.Add((stateFrom, cTimerInput, stateTo));
@@ -170,17 +194,13 @@ namespace MaltiezFSM.Operations
             foreach (string input in mInputsToPreventInitialData)
             {
                 mTriggerConditions.Add((state, input, state));
-                mStatesInitialData.Add((state, state));
                 mTransitionsInitialData.Add((state, input), (state, new()));
             }
         }
 
-        public List<IOperation.Transition> GetTransitions()
-        {
-            return mTriggerConditions;
-        }
-
-        public void SetInputsStatesSystems(Dictionary<string, IInput> inputs, Dictionary<string, IState> states, Dictionary<string, ISystem> systems)
+        List<IOperation.Transition> IOperation.GetTransitions() => mTriggerConditions;
+        int? IOperation.Timer(ItemSlot slot, EntityAgent player, IState state, IInput input) => mTimers.ContainsKey((state, input)) ? mTimers[(state, input)] : null;
+        void IOperation.SetInputsStatesSystems(Dictionary<string, IInput> inputs, Dictionary<string, IState> states, Dictionary<string, ISystem> systems)
         {
             foreach ((var trigger, var result) in mTransitionsInitialData)
             {
@@ -239,18 +259,17 @@ namespace MaltiezFSM.Operations
                 mInputsToPrevent.Add(inputs[input]);
             }
 
-            mStatesInitialData.Clear();
             mTransitionsInitialData.Clear();
             mTimersInitialData.Clear();
             mInputsToPreventInitialData.Clear();
         }
-        public bool StopTimer(ItemSlot slot, EntityAgent player, IState state, IInput input)
+        bool IOperation.StopTimer(ItemSlot slot, EntityAgent player, IState state, IInput input)
         {
             if (!mTransitions.ContainsKey((state, input))) return false;
 
             return !mInputsToPrevent.Contains(input);
         }
-        public IState Perform(ItemSlot slot, EntityAgent player, IState state, IInput input)
+        IState IOperation.Perform(ItemSlot slot, EntityAgent player, IState state, IInput input)
         {
             if (!mTransitions.ContainsKey((state, input))) return state;
             
@@ -270,10 +289,6 @@ namespace MaltiezFSM.Operations
             }
 
             return transitionResult.state;
-        }
-        public int? Timer(ItemSlot slot, EntityAgent player, IState state, IInput input)
-        {
-            return mTimers.ContainsKey((state, input)) ? mTimers[(state, input)] : null;
         }
     }
 }

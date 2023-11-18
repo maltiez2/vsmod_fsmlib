@@ -7,7 +7,7 @@ using Vintagestory.API.Common.Entities;
 
 namespace MaltiezFSM.Operations
 {
-    public class BasicInstant : UniqueId, IOperation
+    public class Instant : UniqueId, IOperation
     {
         public const string mainTransitionsAttrName = "states";
         public const string systemsAttrName = "systems";

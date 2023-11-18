@@ -73,8 +73,8 @@ namespace MaltiezFSM
         }
         public void RegisterOperations()
         {
-            mOperationFactory.Register<Operations.BasicInstant>("Instant");
-            mOperationFactory.Register<Operations.BasicDelayed>("Delayed");
+            mOperationFactory.Register<Operations.Instant>("Instant");
+            mOperationFactory.Register<Operations.Delayed>("Delayed");
         }
 
         public void RegisterInputs()
