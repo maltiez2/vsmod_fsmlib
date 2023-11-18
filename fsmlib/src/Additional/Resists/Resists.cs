@@ -142,7 +142,7 @@ namespace MaltiezFSM.Additional
         {
             if (mApi == null || timeout_ms == null) return;
 
-            mTimeoutTimer = mApi.World.RegisterCallback(_ => StopTimer(), (int)timeout_ms);
+            mTimeoutTimer = mApi.World.RegisterCallback(_ => Stop(), (int)timeout_ms);
         }
         private void StopTimer()
         {

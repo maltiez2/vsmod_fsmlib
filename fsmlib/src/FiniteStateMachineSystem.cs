@@ -21,7 +21,9 @@ namespace MaltiezFSM
         {
             base.Start(api);
 
-            Framework.Utils.Logger.Init(api);
+            Framework.Utils.Logger.Init(api.Logger);
+
+            Framework.Utils.Logger.Notify(this, "Started");
 
             mTransformManager = new Framework.TransformsManager(api);
 
@@ -70,11 +72,13 @@ namespace MaltiezFSM
             mSystemFactory.Register<Systems.ItemStackGiver>("ItemStackGiver");
             mSystemFactory.Register<Systems.SimpleMelee>("SimpleMelee");
             mSystemFactory.Register<Systems.BasicParry<Additional.EntityBehaviorResists>>("BasicParry");
+            mSystemFactory.Register<Systems.BasicBlock<Additional.EntityBehaviorResists>>("BasicBlock");
         }
         public void RegisterOperations()
         {
             mOperationFactory.Register<Operations.Instant>("Instant");
             mOperationFactory.Register<Operations.Delayed>("Delayed");
+            mOperationFactory.Register<Operations.Branched>("Branched");
         }
 
         public void RegisterInputs()
@@ -141,7 +145,7 @@ namespace MaltiezFSM
                 if (api.Side.IsClient())
                 {
                     // Do not need this one on client side
-                    /*bool alreadyHas = false;
+                    bool alreadyHas = false;
                     foreach (JsonObject behavior in entityType.Client.BehaviorsAsJsonObj)
                     {
                         if (behavior["code"].AsString() == newBehavior.code)
@@ -150,7 +154,7 @@ namespace MaltiezFSM
                             break;
                         }
                     }
-                    if (!alreadyHas) entityType.Client.BehaviorsAsJsonObj = entityType.Client.BehaviorsAsJsonObj.Prepend(newBehaviorJson).ToArray();*/
+                    if (!alreadyHas) entityType.Client.BehaviorsAsJsonObj = entityType.Client.BehaviorsAsJsonObj.Prepend(newBehaviorJson).ToArray();
                 }
             }
         }

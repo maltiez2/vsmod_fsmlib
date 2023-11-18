@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Threading;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
+using static MaltiezFSM.Framework.FiniteStateMachine;
 
 namespace MaltiezFSM.Operations
 {
@@ -117,7 +118,7 @@ namespace MaltiezFSM.Operations
             { 
                 AddTransition(transition.initial, transition.intermediate, inputsInitial, systemsInitial);
                 AddTransition(transition.intermediate, transition.final[0], cancelInputs, systemsCancel);
-                AddTransitionForTimeout(timeout, transition.intermediate, transition.timeout, inputsInitial, systemsFinal);
+                AddTransitionForTimeout(timeout, transition.initial, transition.intermediate, transition.timeout, inputsInitial, systemsFinal);
                 AddTransitionsForInputsToPrevent(transition.intermediate);    
             }
         }
@@ -179,15 +180,18 @@ namespace MaltiezFSM.Operations
         {
             foreach (string input in inputs)
             {
-                mTransitionsInitialData.Add((stateFrom, input), (input, systems));
-                mTriggerConditions.Add((stateFrom, input, stateTo));
+                mTransitionsInitialData.Add((stateFrom, input), (stateTo, systems));
+                mTriggerConditions.Add((input, stateFrom, stateTo));
             }
         }
-        protected void AddTransitionForTimeout(int? timeout, string stateFrom, string stateTo, List<string> inputs, List<(string, JsonObject)> systems)
+        protected void AddTransitionForTimeout(int? timeout, string initialState, string intermediateState, string timeoutState, List<string> inputs, List<(string, JsonObject)> systems)
         {
-            foreach (string inputInitial in inputs) mTransitionsInitialData.Add((stateFrom, inputInitial), (stateTo, systems));
-            foreach (string inputInitial in inputs) mTimersInitialData.Add((stateFrom, inputInitial), timeout);
-            mTriggerConditions.Add((stateFrom, cTimerInput, stateTo));
+            foreach (string inputInitial in inputs)
+            {
+                mTransitionsInitialData.Add((intermediateState, inputInitial), (timeoutState, systems));
+                mTimersInitialData.Add((initialState, inputInitial), timeout);
+            }
+            mTriggerConditions.Add((cTimerInput, intermediateState, timeoutState));
         }
         protected void AddTransitionsForInputsToPrevent(string state)
         {
@@ -206,13 +210,13 @@ namespace MaltiezFSM.Operations
             {
                 if (!states.ContainsKey(trigger.state))
                 {
-                    mApi.Logger.Debug("[FSMlib] [BasicDelayed: {0}] State '{1}' not found.", mCode, trigger.state);
+                    mApi.Logger.Warning("[FSMlib] [BasicDelayed: {0}] State '{1}' not found.", mCode, trigger.state);
                     continue;
                 }
 
                 if (!inputs.ContainsKey(trigger.input))
                 {
-                    mApi.Logger.Debug("[FSMlib] [BasicDelayed: {0}] Input '{1}' not found.", mCode, trigger.input);
+                    mApi.Logger.Warning("[FSMlib] [BasicDelayed: {0}] Input '{1}' not found.", mCode, trigger.input);
                     continue;
                 }
 
@@ -221,7 +225,7 @@ namespace MaltiezFSM.Operations
                 {
                     if (!systems.ContainsKey(system))
                     {
-                        mApi.Logger.Debug("[FSMlib] [BasicDelayed: {0}] System '{1}' not found.", mCode, system);
+                        mApi.Logger.Warning("[FSMlib] [BasicDelayed: {0}] System '{1}' not found.", mCode, system);
                         continue;
                     }
 
@@ -235,13 +239,13 @@ namespace MaltiezFSM.Operations
             {
                 if (!states.ContainsKey(trigger.state))
                 {
-                    mApi.Logger.Debug("[FSMlib] [BasicDelayed: {0}] State '{1}' not found.", mCode, trigger.state);
+                    mApi.Logger.Warning("[FSMlib] [BasicDelayed: {0}] State '{1}' not found.", mCode, trigger.state);
                     continue;
                 }
 
-                if (!inputs.ContainsKey(trigger.state))
+                if (!inputs.ContainsKey(trigger.input))
                 {
-                    mApi.Logger.Debug("[FSMlib] [BasicDelayed: {0}] Input '{1}' not found.", mCode, trigger.state);
+                    mApi.Logger.Warning("[FSMlib] [BasicDelayed: {0}] Input '{1}' not found.", mCode, trigger.input);
                     continue;
                 }
 
@@ -252,7 +256,7 @@ namespace MaltiezFSM.Operations
             {
                 if (!inputs.ContainsKey(input))
                 {
-                    mApi.Logger.Debug("[FSMlib] [BasicDelayed: {0}] Input '{1}' not found.", mCode, input);
+                    mApi.Logger.Warning("[FSMlib] [BasicDelayed: {0}] Input '{1}' not found.", mCode, input);
                     continue;
                 }
 

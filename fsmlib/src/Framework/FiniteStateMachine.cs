@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using MaltiezFSM.API;
+using static MaltiezFSM.Framework.FiniteStateMachine;
 
 namespace MaltiezFSM.Framework
 {    
@@ -113,7 +114,7 @@ namespace MaltiezFSM.Framework
                         mStatesByOperationForTimer[operation].Add(initialState);
                         continue;
                     }
-
+                    
                     mOperationsByInputAndState[initialState].TryAdd(inputs[input], operation);
                 }
 

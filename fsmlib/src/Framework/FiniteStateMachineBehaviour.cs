@@ -32,6 +32,8 @@ namespace MaltiezFSM.Framework
         {
             base.OnLoaded(api);
 
+            Utils.Logger.Notify(this, "Started");
+
             mApi = api;
             mFactories = mApi.ModLoader.GetModSystem<FiniteStateMachineSystem>();
             mInputManager = mApi.ModLoader.GetModSystem<FiniteStateMachineSystem>().GetInputManager();

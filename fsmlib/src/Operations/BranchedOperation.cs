@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
@@ -13,10 +12,10 @@ namespace MaltiezFSM.Operations
             mCode = code;
             mApi = api;
 
+            ParseInputsToPrevent(definition);
+
             List<TransitionsBranchInitial> transitions = ParseTransitions(definition);
             HashSet<string> finalStates = CollectFinalStates(transitions);
-
-            ParseInputsToPrevent(definition);
 
             List<(string, JsonObject)> systemsInitial = ParseSystems(definition, "initial");
             List<(string, JsonObject)> systemsTimeout = ParseSystems(definition, "timeout");
@@ -36,7 +35,7 @@ namespace MaltiezFSM.Operations
             foreach (TransitionsBranchInitial transition in transitions)
             {
                 AddTransition(transition.initial, transition.intermediate, inputsInitial, systemsInitial);
-                AddTransitionForTimeout(timeout, transition.intermediate, transition.timeout, inputsInitial, systemsTimeout);
+                AddTransitionForTimeout(timeout, transition.initial, transition.intermediate, transition.timeout, inputsInitial, systemsTimeout);
                 AddTransitionsForInputsToPrevent(transition.intermediate);
 
                 foreach (string finalState in transition.final)

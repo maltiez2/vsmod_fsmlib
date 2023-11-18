@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using MaltiezFSM.Framework;
+using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
@@ -68,6 +69,7 @@ namespace MaltiezFSM.Additional
 
         public override void OnEntityReceiveDamage(DamageSource damageSource, ref float damage)
         {
+            Utils.Logger.Notify(this, "Damage before: {0}", damage);
             foreach (IResist resist in mResists)
             {
                 if ((damageSource as IResistibleDamage)?.Bypass(resist, damage) != true && resist.ApplyResist(damageSource, ref damage, mEntity))
@@ -77,6 +79,7 @@ namespace MaltiezFSM.Additional
                 }
             }
             base.OnEntityReceiveDamage(damageSource, ref damage);
+            Utils.Logger.Notify(this, "Damage after: {0}", damage);
         }
 
         void IResistEntityBehavior.AddResist(IResist resist) => mResists.Add(resist);

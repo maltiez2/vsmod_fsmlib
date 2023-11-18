@@ -1,6 +1,9 @@
-﻿using MaltiezFSM.Additional;
+﻿using HarmonyLib;
+using MaltiezFSM.Additional;
 using MaltiezFSM.API;
+using MaltiezFSM.Framework;
 using System.Collections.Generic;
+using System.Security.Cryptography.X509Certificates;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
@@ -8,12 +11,12 @@ using Vintagestory.API.MathTools;
 
 namespace MaltiezFSM.Systems
 {
-    public class BasicParry<TResistBehavior> : BaseSystem
+    public class BasicBlock<TResistBehavior> : BaseSystem
         where TResistBehavior : EntityBehavior, ITempResistEntityBehavior
     {
         private readonly Dictionary<long, IResist> mResists = new();
         private readonly Dictionary<long, long> mCallbacks = new();
-        private readonly Dictionary<string, ParryData> mParries = new();
+        private readonly Dictionary<string, BlockData> mParries = new();
         private readonly Dictionary<string, string> mSounds = new();
         private string mSoundSystemCode;
         private ISoundSystem mSoundSystem;
@@ -23,11 +26,11 @@ namespace MaltiezFSM.Systems
             base.Init(code, definition, collectible, api);
             mSoundSystemCode = definition["soundSystem"].AsString();
 
-            foreach (JsonObject parry in definition["parries"].AsArray())
+            foreach (JsonObject block in definition["blocks"].AsArray())
             {
-                string parryCode = parry["code"].AsString();
-                mParries.Add(parryCode, new(parry));
-                mSounds.Add(parryCode, parry["sound"].AsString());
+                string blockCode = block["code"].AsString();
+                mParries.Add(blockCode, new(block));
+                mSounds.Add(blockCode, block["sound"].AsString());
             }
         }
 
@@ -46,41 +49,48 @@ namespace MaltiezFSM.Systems
                 case "start":
                     if (mApi.Side != EnumAppSide.Server) return true;
                     string code = parameters["code"].AsString();
-                    ScheduleParry(player, code);
+                    ScheduleBlock(player, code);
                     break;
                 case "stop":
                     if (mApi.Side != EnumAppSide.Server) return true;
-                    StopParry(player);
+                    StopBlock(player);
                     break;
                 default:
-                    mApi.Logger.Error("[FSMlib] [BasicParry] [Process] Action does not exists: " + action);
+                    mApi.Logger.Error("[FSMlib] [BasicBlock] [Process] Action does not exists: " + action);
                     return false;
             }
             return true;
         }
 
-        private void ScheduleParry(EntityAgent player, string code)
+        private void ScheduleBlock(EntityAgent player, string code)
         {
             long entityId = player.EntityId;
             if (mCallbacks.ContainsKey(entityId)) mApi.World.UnregisterCallback(mCallbacks[entityId]);
-            mCallbacks[entityId] = mApi.World.RegisterCallback(_ => StartParry(player, code), mParries[code].windowStart);
+            if (mParries[code].delay > 0)
+            {
+                mCallbacks[entityId] = mApi.World.RegisterCallback(_ => StartBlock(player, code), mParries[code].delay);
+            }
+            else
+            {
+                StartBlock(player, code);
+            }
         }
-        
-        private void StartParry(EntityAgent player, string code)
+
+        private void StartBlock(EntityAgent player, string code)
         {
-            if (mResists.ContainsKey(player.EntityId)) StopParry(player);
+            if (mResists.ContainsKey(player.EntityId)) StopBlock(player);
             ITempResistEntityBehavior behavior = player.GetBehavior<TResistBehavior>();
             if (behavior == null)
             {
-                mApi.Logger.Error("[FSMlib] [BasicParry] No IResistEntityBehavior found");
+                mApi.Logger.Error("[FSMlib] [BasicBlock] No IResistEntityBehavior found");
                 return;
             }
             IResist resist = mParries[code].AddToBehavior(behavior);
-            if (mSounds[code] != null) resist.SetResistCallback((IResist resist, DamageSource damageSource, ref float damage, Entity receiver) => PlayParrySound(receiver, mSounds[code]));
+            if (mSounds[code] != null) resist.SetResistCallback((IResist resist, DamageSource damageSource, ref float damage, Entity receiver) => PlayBlockSound(receiver, mSounds[code]));
             mResists.Add(player.EntityId, resist);
         }
 
-        private void StopParry(EntityAgent player)
+        private void StopBlock(EntityAgent player)
         {
             long entityId = player.EntityId;
             if (mCallbacks.ContainsKey(entityId))
@@ -94,38 +104,40 @@ namespace MaltiezFSM.Systems
             mResists.Remove(entityId);
         }
 
-        private void PlayParrySound(Entity player, string sound)
+        private void PlayBlockSound(Entity player, string sound)
         {
             mSoundSystem?.PlaySound(sound, null, player as EntityAgent);
         }
     }
 
-    internal class ParryData
+    internal class BlockData
     {
-        public int windowStart;
-        public int windowEnd;
+        public const int timeoutMs = 60000;
+        
+        public int delay;
         public float yawLeft;
         public float yawRight;
         public float pitchBottom;
         public float pitchTop;
+        public Utils.DamageModifiers.TieredModifier damageModifier;
 
-        public ParryData(JsonObject definition)
+        public BlockData(JsonObject definition)
         {
-            JsonObject window = definition["window"];
+            delay = definition["delay"].AsInt(0);
+            damageModifier = Utils.DamageModifiers.GetTiered(definition["modifier"]);
+            
             JsonObject direction = definition["direction"];
-            windowStart = window["start"].AsInt();
-            windowEnd = window["end"].AsInt();
             yawLeft = direction["left"].AsFloat() * GameMath.DEG2RAD;
             yawRight = direction["right"].AsFloat() * GameMath.DEG2RAD;
             pitchBottom = direction["bottom"].AsFloat() * GameMath.DEG2RAD;
             pitchTop = direction["top"].AsFloat() * GameMath.DEG2RAD;
+            
         }
 
         public IResist AddToBehavior(ITempResistEntityBehavior behavior)
         {
-            BlockOrParryResist resist = new((pitchTop, pitchBottom, yawLeft, yawRight));
-            int duration = windowEnd - windowStart;
-            behavior.AddResist(resist, duration > 0 ? duration : 1);
+            BlockOrParryResist resist = new((pitchTop, pitchBottom, yawLeft, yawRight), false, new() { damageModifier });
+            behavior.AddResist(resist, timeoutMs);
             return resist;
         }
     }

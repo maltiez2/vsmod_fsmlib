@@ -4,12 +4,6 @@ using Vintagestory.API.MathTools;
 using System;
 using Vintagestory.API.Util;
 using System.Collections.Generic;
-using Vintagestory.API.Client;
-using Vintagestory.Server;
-using HarmonyLib;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Transactions;
 
 namespace MaltiezFSM.Framework
 {
@@ -17,30 +11,27 @@ namespace MaltiezFSM.Framework
     {
         internal class Logger
         {
-            private static ICoreAPI sApi;
+            private static ILogger sLogger;
             private static bool sDebugLogging;
-            private const string cPrefix = "[FSMlib] ";
+            private const string cPrefix = "[FSMlib]";
             
             private Logger()
             {
 
             }
 
-            public static void Init(ICoreAPI api, bool debugLogging = true)
+            public static void Init(ILogger logger, bool debugLogging = true)
             {
-                if (sApi == null)
-                {
-                    sApi = api;
-                    sDebugLogging = debugLogging;
-                }
+                sLogger = logger;
+                sDebugLogging = debugLogging;
             }
 
-            public static void Notify(object caller, string format, params object[] arguments) => sApi?.Logger.Notification(Format(caller, format), arguments);
-            public static void Warn(object caller, string format, params object[] arguments) => sApi?.Logger.Warning(Format(caller, format), arguments);
-            public static void Error(object caller, string format, params object[] arguments) => sApi?.Logger.Error(Format(caller, format), arguments);
+            public static void Notify(object caller, string format, params object[] arguments) => sLogger?.Notification(Format(caller, format), arguments);
+            public static void Warn(object caller, string format, params object[] arguments) => sLogger?.Warning(Format(caller, format), arguments);
+            public static void Error(object caller, string format, params object[] arguments) => sLogger?.Error(Format(caller, format), arguments);
             public static void Debug(object caller, string format, params object[] arguments)
             {
-                if (sDebugLogging) sApi?.Logger.Debug(Format(caller, format), arguments);
+                if (sDebugLogging) sLogger?.Debug(Format(caller, format), arguments);
             }
             private static string Format(object caller, string format) => cPrefix + " [" + caller.GetType().Name + "] " + format;
         }
@@ -342,15 +333,21 @@ namespace MaltiezFSM.Framework
                 List<int> thresholds = new();
                 List<float> modifiers = new();
 
-                foreach (JsonObject threshold in definition["thresholds"].AsArray())
+                if (definition.KeyExists("thresholds"))
                 {
-                    thresholds.Add(threshold.AsInt());
+                    foreach (JsonObject threshold in definition["thresholds"].AsArray())
+                    {
+                        thresholds.Add(threshold.AsInt());
+                    }
                 }
 
-                foreach (JsonObject threshold in definition["modifiers"].AsArray())
+                if (definition.KeyExists("modifiers"))
                 {
-                    modifiers.Add(threshold.AsFloat());
-                }
+                    foreach (JsonObject threshold in definition["modifiers"].AsArray())
+                    {
+                        modifiers.Add(threshold.AsFloat());
+                    }
+                }   
 
                 return (ref float damage, ref int tier) => Get(modifierType)(ref damage, CalcModifier(tier, 0, thresholds, modifiers, defaultModifier));
             }
