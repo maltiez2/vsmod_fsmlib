@@ -1,9 +1,7 @@
-﻿using HarmonyLib;
-using MaltiezFSM.API;
+﻿using MaltiezFSM.API;
 using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 
 namespace MaltiezFSM.Operations
@@ -19,7 +17,7 @@ namespace MaltiezFSM.Operations
         public const string mainTransitionsAttrName = "states";
         public const string systemsAttrName = "systems";
         public const string inputsAttrName = "inputsToHandle";
-        public const string inputsToInterceptAttrName = "inputsToIntercept";
+        public const string inputsToPreventAttrName = "inputsToIntercept";
         public const string attributesAttrName = "attributes";
         public const string initialName = "initial";
         public const string cancelAttrName = "cancel";
@@ -79,7 +77,6 @@ namespace MaltiezFSM.Operations
         protected readonly Dictionary<TransitionTriggerInitial, int?> mTimersInitialData = new();
         protected readonly List<IOperation.Transition> mTriggerConditions = new();
         protected readonly List<(string, string)> mStatesInitialData = new();
-        protected readonly List<string> mInputsInitialData = new();
         protected readonly List<string> mInputsToPreventInitialData = new();
 
         // Final data for operation's logic
@@ -90,66 +87,18 @@ namespace MaltiezFSM.Operations
         public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
         {
             mCode = code;
-
-            if (definition.KeyExists(inputsToInterceptAttrName))
-            {
-                foreach (JsonObject input in definition[inputsToInterceptAttrName].AsArray())
-                {
-                    mInputsToPreventInitialData.Add(input.AsString());
-                }
-            }
-
             mApi = api;
 
-            List<(string, JsonObject)> systemsInitial = new();
-            List<(string, JsonObject)> systemsCancel = new();
-            List<(string, JsonObject)> systemsFinal = new();
+            ParseInputsToPrevent(definition);
 
-            JsonObject[] systems = definition[systemsAttrName][initialName].AsArray();
-            foreach (JsonObject system in systems)
-            {
-                systemsInitial.Add(new (system["code"].AsString(), system[attributesAttrName]));
-            }
-            systems = definition[systemsAttrName][cancelAttrName].AsArray();
-            foreach (JsonObject system in systems)
-            {
-                systemsCancel.Add(new(system["code"].AsString(), system[attributesAttrName]));
-            }
-            systems = definition[systemsAttrName][finalAttrName].AsArray();
-            foreach (JsonObject system in systems)
-            {
-                systemsFinal.Add(new(system["code"].AsString(), system[attributesAttrName]));
-            }
+            List<(string, JsonObject)> systemsInitial = ParseSystems(definition, initialName);
+            List<(string, JsonObject)> systemsCancel = ParseSystems(definition, cancelAttrName);
+            List<(string, JsonObject)> systemsFinal = ParseSystems(definition, finalAttrName);
 
-            List<string> cancelInputs = new();
-            if (definition[inputsAttrName][cancelAttrName].IsArray())
-            {
-                foreach (JsonObject cancelInput in definition[inputsAttrName][cancelAttrName].AsArray())
-                {
-                    cancelInputs.Add(cancelInput.AsString());
-                    mInputsInitialData.Add(cancelInput.AsString());
-                }
-            }
-            else
-            {
-                cancelInputs.Add(definition[inputsAttrName][cancelAttrName].AsString());
-                mInputsInitialData.Add(definition[inputsAttrName][cancelAttrName].AsString());
-            }
+            List<string> cancelInputs = ParseInputs(definition, cancelAttrName);
+            List<string> inputsInitial = ParseInputs(definition, initialName);
 
-            List<string> inputsInitial = new List<string>();
-            if (definition[inputsAttrName][initialName].IsArray())
-            {
-                foreach (JsonObject input in definition[inputsAttrName][initialName].AsArray())
-                {
-                    inputsInitial.Add(input.AsString());
-                }
-            }
-            else
-            {
-                inputsInitial.Add(definition[initialName].AsString());
-            }
-
-            int? timerDelay = definition.KeyExists(delayAttrName) ? definition[delayAttrName].AsInt() : null;
+            int? timeout = definition.KeyExists(delayAttrName) ? definition[delayAttrName].AsInt() : null;
 
             JsonObject[] mainTransitions = definition[mainTransitionsAttrName].AsArray();
             foreach (JsonObject transition in mainTransitions)
@@ -159,28 +108,72 @@ namespace MaltiezFSM.Operations
                 string cancelState = transition[cancelAttrName].AsString();
                 string intermediateState = initialState + "_to_" + finalState + "_op." + code;
 
-                mStatesInitialData.Add((initialState, intermediateState));
-                mStatesInitialData.Add((intermediateState, finalState));
-                mStatesInitialData.Add((intermediateState, cancelState));
+                AddTransition(initialState, intermediateState, inputsInitial, systemsInitial);
+                AddTransition(intermediateState, cancelState, cancelInputs, systemsCancel);
+                AddTransitionForTimeout(timeout, intermediateState, finalState, inputsInitial, systemsFinal);
+                AddTransitionsForInputsToPrevent(intermediateState);
+            }
+        }
 
-                foreach (string inputInitial in inputsInitial)  mTransitionsInitialData.Add((initialState, inputInitial), (intermediateState, systemsInitial));
-                foreach (string inputInitial in inputsInitial) mTransitionsInitialData.Add((intermediateState, inputInitial), (finalState, systemsFinal));
-                foreach (string inputCancel in cancelInputs) mTransitionsInitialData.Add((intermediateState, inputCancel), (inputCancel, systemsCancel));
-
-                foreach (string inputInitial in inputsInitial) mTimersInitialData.Add((initialState, inputInitial), timerDelay);
-
-                foreach (string inputInitial in inputsInitial) mTriggerConditions.Add((initialState, inputInitial, intermediateState));
-                foreach (string inputCancel in cancelInputs) mTriggerConditions.Add((intermediateState, inputCancel, cancelState));
-                mTriggerConditions.Add((intermediateState, cTimerInput, finalState));
-
-                foreach (string input in mInputsToPreventInitialData)
+        protected void ParseInputsToPrevent(JsonObject definition)
+        {
+            if (definition.KeyExists(inputsToPreventAttrName))
+            {
+                foreach (JsonObject input in definition[inputsToPreventAttrName].AsArray())
                 {
-                    mTriggerConditions.Add((intermediateState, input, intermediateState));
-                    mStatesInitialData.Add((intermediateState, intermediateState));
-                    mTransitionsInitialData.Add((intermediateState, input), (intermediateState, new()));
+                    mInputsToPreventInitialData.Add(input.AsString());
                 }
             }
-
+        }
+        protected List<(string, JsonObject)> ParseSystems(JsonObject definition, string systemsType)
+        {
+            List<(string, JsonObject)> systemsRequests = new();
+            foreach (JsonObject system in definition[systemsAttrName][systemsType].AsArray())
+            {
+                systemsRequests.Add(new(system["code"].AsString(), system[attributesAttrName]));
+            }
+            return systemsRequests;
+        }
+        protected List<string> ParseInputs(JsonObject definition, string inputsType)
+        {
+            List<string> inputs = new();
+            if (definition[inputsAttrName][inputsType].IsArray())
+            {
+                foreach (JsonObject cancelInput in definition[inputsAttrName][inputsType].AsArray())
+                {
+                    inputs.Add(cancelInput.AsString());
+                }
+            }
+            else
+            {
+                inputs.Add(definition[inputsAttrName][inputsType].AsString());
+            }
+            return inputs;
+        }
+        protected void AddTransition(string stateFrom, string stateTo, List<string> inputs, List<(string, JsonObject)> systems)
+        {
+            mStatesInitialData.Add((stateFrom, stateTo));
+            foreach (string input in inputs)
+            {
+                mTransitionsInitialData.Add((stateFrom, input), (input, systems));
+                mTriggerConditions.Add((stateFrom, input, stateTo));
+            }
+        }
+        protected void AddTransitionForTimeout(int? timeout, string stateFrom, string stateTo, List<string> inputs, List<(string, JsonObject)> systems)
+        {
+            mStatesInitialData.Add((stateFrom, stateTo));
+            foreach (string inputInitial in inputs) mTransitionsInitialData.Add((stateFrom, inputInitial), (stateTo, systems));
+            foreach (string inputInitial in inputs) mTimersInitialData.Add((stateFrom, inputInitial), timeout);
+            mTriggerConditions.Add((stateFrom, cTimerInput, stateTo));
+        }
+        protected void AddTransitionsForInputsToPrevent(string state)
+        {
+            foreach (string input in mInputsToPreventInitialData)
+            {
+                mTriggerConditions.Add((state, input, state));
+                mStatesInitialData.Add((state, state));
+                mTransitionsInitialData.Add((state, input), (state, new()));
+            }
         }
 
         public List<IOperation.Transition> GetTransitions()
@@ -250,7 +243,6 @@ namespace MaltiezFSM.Operations
             mStatesInitialData.Clear();
             mTransitionsInitialData.Clear();
             mTimersInitialData.Clear();
-            mInputsInitialData.Clear();
             mInputsToPreventInitialData.Clear();
         }
         public bool StopTimer(ItemSlot slot, EntityAgent player, IState state, IInput input)
