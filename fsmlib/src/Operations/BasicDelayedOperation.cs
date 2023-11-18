@@ -72,14 +72,13 @@ namespace MaltiezFSM.Operations
         }
         
 
-        // Initial data for operation's logic
         protected readonly Dictionary<TransitionTriggerInitial, TransitionResultInitial> mTransitionsInitialData = new();
         protected readonly Dictionary<TransitionTriggerInitial, int?> mTimersInitialData = new();
         protected readonly List<IOperation.Transition> mTriggerConditions = new();
         protected readonly List<(string, string)> mStatesInitialData = new();
         protected readonly List<string> mInputsToPreventInitialData = new();
 
-        // Final data for operation's logic
+
         protected readonly Dictionary<TransitionTrigger, TransitionResult> mTransitions = new();
         protected readonly Dictionary<TransitionTrigger, int?> mTimers = new();
         protected readonly List<IInput> mInputsToPrevent = new();
