@@ -38,6 +38,8 @@ namespace MaltiezFSM.Framework
         
         static public ModelTransform ToTransformFrom(JsonObject transform, float multiplier = 1)
         {
+            if (transform == null) return null;
+            
             JsonObject translation = transform["translation"];
             JsonObject rotation = transform["rotation"];
             JsonObject origin = transform["origin"];

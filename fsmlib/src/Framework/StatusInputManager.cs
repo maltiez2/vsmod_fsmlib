@@ -1,9 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Vintagestory.API.Client;
 using MaltiezFSM.API;
-using MaltiezFSM.Systems;
-using Vintagestory.API.Common;
 
 namespace MaltiezFSM.Framework
 {

@@ -32,8 +32,24 @@ namespace MaltiezFSM.Systems
             {
                 string animationCode = animation[codeAttrName].AsString();
                 mDurations.Add(animationCode, animation[durationAttrName].AsInt());
-                mFpAnimations.Add(animationCode, Utils.ToTransformFrom(animation[fpAnimationAttrName]));
-                mTpAnimations.Add(animationCode, Utils.ToTransformFrom(animation[tpAnimationAttrName]));
+                
+                if (animation.KeyExists(fpAnimationAttrName))
+                {
+                    mFpAnimations.Add(animationCode, Utils.ToTransformFrom(animation[fpAnimationAttrName]));
+                }
+                else
+                {
+                    mFpAnimations.Add(animationCode, null);
+                }
+
+                if (animation.KeyExists(tpAnimationAttrName))
+                {
+                    mTpAnimations.Add(animationCode, Utils.ToTransformFrom(animation[tpAnimationAttrName]));
+                }
+                else
+                {
+                    mTpAnimations.Add(animationCode, null);
+                }
             }
         }
         public override bool Verify(ItemSlot slot, EntityAgent player, JsonObject parameters)
@@ -112,7 +128,9 @@ namespace MaltiezFSM.Systems
         private ModelTransform mFpTargetTransform = Utils.IdentityTransform();
         private ModelTransform mTpTargetTransform = Utils.IdentityTransform();
         private float mCurrentProgress;
-        
+
+        private bool fpAnimation;
+        private bool tpAnimation;
 
         public PlayerHeldItemTransformManager(long entityId, string code, CollectibleObject collectible)
         {
@@ -131,18 +149,28 @@ namespace MaltiezFSM.Systems
 
         public void StartForward(ItemSlot slot, ModelTransform fpTransform, ModelTransform tpTransform, CollectibleObject collectible)
         {
+            fpAnimation = fpTransform != null;
+            tpAnimation = tpTransform != null;
+
             if (slot != null)
             {
                 mTransformsManager.SetEntityId(mEntityId, slot.Itemstack);
                 slot.MarkDirty();
             }
 
-            ModelTransform fpLastTransform = mTransformsManager.GetTransform(mEntityId, mCode, EnumItemRenderTarget.HandFp);
-            ModelTransform tpLastTransform = mTransformsManager.GetTransform(mEntityId, mCode, EnumItemRenderTarget.HandTp);
-            mFpInitialTransform = fpLastTransform != null ? fpLastTransform : Utils.IdentityTransform();
-            mTpInitialTransform = tpLastTransform != null ? tpLastTransform : Utils.IdentityTransform();
-            mFpTargetTransform = Utils.SubtractTransformsNoScale(fpTransform, collectible.FpHandTransform);
-            mTpTargetTransform = Utils.SubtractTransformsNoScale(tpTransform, collectible.TpHandTransform);
+            if (fpAnimation)
+            {
+                ModelTransform fpLastTransform = mTransformsManager.GetTransform(mEntityId, mCode, EnumItemRenderTarget.HandFp);
+                mFpInitialTransform = fpLastTransform != null ? fpLastTransform : Utils.IdentityTransform();
+                mFpTargetTransform = Utils.SubtractTransformsNoScale(fpTransform, collectible.FpHandTransform);
+            }
+
+            if (tpAnimation)
+            {
+                ModelTransform tpLastTransform = mTransformsManager.GetTransform(mEntityId, mCode, EnumItemRenderTarget.HandTp);
+                mTpInitialTransform = tpLastTransform != null ? tpLastTransform : Utils.IdentityTransform();
+                mTpTargetTransform = Utils.SubtractTransformsNoScale(tpTransform, collectible.TpHandTransform);
+            }
         }
 
         public void StartBackward(ItemSlot slot)
@@ -153,28 +181,33 @@ namespace MaltiezFSM.Systems
                 slot.MarkDirty();
             }
 
-            ModelTransform currentFpTransform = Utils.TransitionTransform(mFpInitialTransform, mFpTargetTransform, mCurrentProgress);
-            
-            mFpInitialTransform = Utils.IdentityTransform();
-            mTpInitialTransform = Utils.IdentityTransform();
+            if (tpAnimation)
+            {
+                mTpInitialTransform = Utils.IdentityTransform();
+            }
 
-            if (mCurrentProgress <= 0) return;
-            mFpTargetTransform = Utils.TransitionTransform(mFpInitialTransform, currentFpTransform, 1 / mCurrentProgress);
+            if (fpAnimation)
+            {
+                ModelTransform currentFpTransform = Utils.TransitionTransform(mFpInitialTransform, mFpTargetTransform, mCurrentProgress);
+                mFpInitialTransform = Utils.IdentityTransform();
+                if (mCurrentProgress <= 0) return;
+                mFpTargetTransform = Utils.TransitionTransform(mFpInitialTransform, currentFpTransform, 1 / mCurrentProgress);
+            }
         }
 
         public void Cancel(EntityAgent player)
         {
             player.Controls.UsingHeldItemTransformAfter = Utils.IdentityTransform();
             player.Controls.UsingHeldItemTransformBefore = Utils.IdentityTransform();
-            mTransformsManager.ResetTransform(mEntityId, mCode, EnumItemRenderTarget.HandFp);
-            mTransformsManager.ResetTransform(mEntityId, mCode, EnumItemRenderTarget.HandTp);
+            if (fpAnimation) mTransformsManager.ResetTransform(mEntityId, mCode, EnumItemRenderTarget.HandFp);
+            if (tpAnimation) mTransformsManager.ResetTransform(mEntityId, mCode, EnumItemRenderTarget.HandTp);
         }
 
         public void Play(float progress, EntityAgent player)
         {
             mCurrentProgress = progress;
-            mTransformsManager.SetTransform(mEntityId, mCode, EnumItemRenderTarget.HandFp, Utils.TransitionTransform(mFpInitialTransform, mFpTargetTransform, progress));
-            mTransformsManager.SetTransform(mEntityId, mCode, EnumItemRenderTarget.HandTp, Utils.TransitionTransform(mTpInitialTransform, mTpTargetTransform, progress));
+            if (fpAnimation) mTransformsManager.SetTransform(mEntityId, mCode, EnumItemRenderTarget.HandFp, Utils.TransitionTransform(mFpInitialTransform, mFpTargetTransform, progress));
+            if (tpAnimation) mTransformsManager.SetTransform(mEntityId, mCode, EnumItemRenderTarget.HandTp, Utils.TransitionTransform(mTpInitialTransform, mTpTargetTransform, progress));
             player.Controls.UsingHeldItemTransformAfter = Utils.IdentityTransform();
             player.Controls.UsingHeldItemTransformBefore = Utils.IdentityTransform();
         }
