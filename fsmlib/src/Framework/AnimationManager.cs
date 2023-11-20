@@ -7,11 +7,26 @@ using Vintagestory.API.MathTools;
 
 namespace AnimationManagerLib.API
 {
+    [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
+    public struct AnimationRequest
+    {
+        public AnimationPlayerAction Action { get; set; }
+        public long EntityId { get; set; }
+        public CategoryIdentifier Category { get; set; }
+        public AnimationIdentifier AnimationId { get; set; }
+        public short Duration { get; set; }
+        public ProgressModifierType Modifier { get; set; }
+        public short? StartFrame { get; set; }
+        public short? FinishFrame { get; set; }
+    }
+
     public interface IAnimationManager : IDisposable
     {
         bool Register(AnimationIdentifier id, JsonObject definition);
-        bool Register(AnimationIdentifier id, AnimationMetaData metaData, int? startKeyFrame = null, int? endKeyFrame = null);
-        void Run(AnimationRequest request);
+        bool Register(AnimationIdentifier id, AnimationMetaData metaData);
+        bool Register(AnimationIdentifier id, string playerAnimationCode);
+        long Run(params AnimationRequest[] request);
+        void Stop(long runId);
     }
 
 
@@ -56,6 +71,23 @@ namespace AnimationManagerLib.API
         public static implicit operator AnimationPlayerIdentifier(AnimationRequest request) => new AnimationPlayerIdentifier(request);
     }
 
+    public struct AnimationRunMetadata
+    {
+        public AnimationPlayerAction Action { get; set; }
+        public short Duration { get; set; }
+        public short? StartFrame { get; set; }
+        public short? FinishFrame { get; set; }
+
+        public AnimationRunMetadata(AnimationRequest request)
+        {
+            this.Action = request.Action;
+            this.Duration = request.Duration;
+            this.StartFrame = request.StartFrame;
+            this.FinishFrame = request.FinishFrame;
+        }
+        public static implicit operator AnimationRunMetadata(AnimationRequest request) => new AnimationRunMetadata(request);
+    }
+
     public struct AnimationIdentifier
     {
         public uint Hash { get; private set; }
@@ -75,17 +107,6 @@ namespace AnimationManagerLib.API
         public CategoryIdentifier((uint hash, BlendingType blending) parameters) => new CategoryIdentifier() { Blending = parameters.blending, Hash = parameters.hash };
         
         public static implicit operator CategoryIdentifier(AnimationRequest request) => request.Category;
-    }
-
-    [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
-    public struct AnimationRequest
-    {
-        public AnimationPlayerAction Action { get; set; }
-        public long EntityId { get; set; }
-        public CategoryIdentifier Category { get; set; }
-        public AnimationIdentifier AnimationId { get; set; }
-        public short Duration { get; set; }
-        public ProgressModifierType Modifier { get; set; }
     }
 
     public struct ComposeRequest
@@ -110,7 +131,7 @@ namespace AnimationManagerLib.API
         where TAnimationResult : IAnimationResult
     {
         public void Init(ICoreAPI api);
-        public void Run(AnimationPlayerAction action, short duration_ms, IAnimation<TAnimationResult> animation);
+        public void Run(AnimationRunMetadata parameters, IAnimation<TAnimationResult> animation);
         public TAnimationResult Calculate(int timeElapsed_ms);
     }
 
