@@ -103,6 +103,8 @@ namespace MaltiezFSM.Framework
             {
                 StartServerSide(api as ICoreServerAPI, channelName);
             }
+
+            AnimationManager
         }
 
         // CLIENT SIDE

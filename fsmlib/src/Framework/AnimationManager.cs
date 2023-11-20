@@ -8,16 +8,16 @@ using Vintagestory.API.MathTools;
 namespace AnimationManagerLib.API
 {
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
-    public struct AnimationRequest
+    public struct AnimationRequest // 25
     {
-        public AnimationPlayerAction Action { get; set; }
-        public long EntityId { get; set; }
-        public CategoryIdentifier Category { get; set; }
-        public AnimationIdentifier AnimationId { get; set; }
-        public short Duration { get; set; }
-        public ProgressModifierType Modifier { get; set; }
-        public short? StartFrame { get; set; }
-        public short? FinishFrame { get; set; }
+        public AnimationPlayerAction Action { get; set; } // 1
+        public long EntityId { get; set; } // 8
+        public CategoryIdentifier Category { get; set; } // 5
+        public AnimationIdentifier AnimationId { get; set; } // 4
+        public short Duration { get; set; } // 2
+        public ProgressModifierType Modifier { get; set; } // 1
+        public short? StartFrame { get; set; } // 2
+        public short? FinishFrame { get; set; } // 2
     }
 
     public interface IAnimationManager : IDisposable
@@ -26,9 +26,9 @@ namespace AnimationManagerLib.API
         bool Register(AnimationIdentifier id, AnimationMetaData metaData);
         bool Register(AnimationIdentifier id, string playerAnimationCode);
         long Run(params AnimationRequest[] requests);
+        long Run(bool synchronize, params AnimationRequest[] requests);
         void Stop(long runId);
     }
-
 
 
 
@@ -53,7 +53,7 @@ namespace AnimationManagerLib.API
         SinQuadratic
     }
 
-    public enum BlendingType
+    public enum BlendingType : byte
     {
         Add,
         Subtract,
