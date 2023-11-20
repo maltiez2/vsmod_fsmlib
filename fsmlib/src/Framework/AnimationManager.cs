@@ -25,7 +25,7 @@ namespace AnimationManagerLib.API
         bool Register(AnimationIdentifier id, JsonObject definition);
         bool Register(AnimationIdentifier id, AnimationMetaData metaData);
         bool Register(AnimationIdentifier id, string playerAnimationCode);
-        long Run(params AnimationRequest[] request);
+        long Run(params AnimationRequest[] requests);
         void Stop(long runId);
     }
 
@@ -34,6 +34,8 @@ namespace AnimationManagerLib.API
 
     public enum AnimationPlayerAction : byte
     {
+        EaseIn,
+        EaseOut,
         Start,
         Stop,
         Rewind,
