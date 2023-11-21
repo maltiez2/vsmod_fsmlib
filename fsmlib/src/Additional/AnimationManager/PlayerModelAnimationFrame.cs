@@ -61,7 +61,7 @@ namespace AnimationManagerLib
             pose.translateX = Average(translateX, pose.translateX, weight, thisWeight);
             pose.translateY = Average(translateY, pose.translateY, weight, thisWeight);
             pose.translateZ = Average(translateZ, pose.translateZ, weight, thisWeight);
-            pose.degX = Average(degX, pose.degX, weight, thisWeight);
+            pose.degX = Average(degX, pose.degX, weight, thisWeight); // @TODO shortest distance
             pose.degY = Average(degY, pose.degY, weight, thisWeight);
             pose.degZ = Average(degZ, pose.degZ, weight, thisWeight);
             pose.scaleX = Average(scaleX, pose.scaleX, weight, thisWeight);

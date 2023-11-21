@@ -104,9 +104,10 @@ namespace AnimationManagerLib.API
     {
         public uint Hash { get; private set; }
         public BlendingType Blending { get; private set; }
+        public float? Weight { get; private set; }
 
-        public CategoryIdentifier((string name, BlendingType blending) parameters) => new CategoryIdentifier() { Blending = parameters.blending, Hash = Utils.ToCrc32(parameters.name) };
-        public CategoryIdentifier((uint hash, BlendingType blending) parameters) => new CategoryIdentifier() { Blending = parameters.blending, Hash = parameters.hash };
+        public CategoryIdentifier((string name, BlendingType blending, float? Weight) parameters) => new CategoryIdentifier() { Blending = parameters.blending, Hash = Utils.ToCrc32(parameters.name), Weight = parameters.Weight };
+        public CategoryIdentifier((uint hash, BlendingType blending, float? Weight) parameters) => new CategoryIdentifier() { Blending = parameters.blending, Hash = parameters.hash, Weight = parameters.Weight };
         
         public static implicit operator CategoryIdentifier(AnimationRequest request) => request.Category;
     }
@@ -147,7 +148,7 @@ namespace AnimationManagerLib.API
             where TAnimator : IAnimator<TAnimationResult>, new();
         bool Register(AnimationIdentifier id, IAnimation<TAnimationResult> animation);
         void Run(AnimationRequest request);
-        TAnimationResult Compose(ComposeRequest request);
+        TAnimationResult Compose(ComposeRequest request, TimeSpan timeElapsed);
     }
 
     public interface IAnimationSynchronizer : IDisposable
