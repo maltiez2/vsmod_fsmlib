@@ -8,16 +8,16 @@ using Vintagestory.API.MathTools;
 namespace AnimationManagerLib.API
 {
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
-    public struct AnimationRequest // 25
+    public struct AnimationRequest
     {
-        public AnimationPlayerAction Action { get; set; } // 1
-        public long EntityId { get; set; } // 8
-        public CategoryIdentifier Category { get; set; } // 5
-        public AnimationIdentifier AnimationId { get; set; } // 4
-        public short Duration { get; set; } // 2
-        public ProgressModifierType Modifier { get; set; } // 1
-        public short? StartFrame { get; set; } // 2
-        public short? FinishFrame { get; set; } // 2
+        public AnimationPlayerAction Action { get; set; }
+        public long EntityId { get; set; }
+        public CategoryIdentifier Category { get; set; }
+        public AnimationIdentifier AnimationId { get; set; }
+        public TimeSpan Duration { get; set; }
+        public ProgressModifierType Modifier { get; set; }
+        public ushort? StartFrame { get; set; }
+        public ushort? EndFrame { get; set; }
     }
 
     public interface IAnimationManager : IDisposable
@@ -34,13 +34,13 @@ namespace AnimationManagerLib.API
 
     public enum AnimationPlayerAction : byte
     {
+        Set,
         EaseIn,
         EaseOut,
         Start,
         Stop,
         Rewind,
-        Clear,
-        Set
+        Clear
     }
 
     public enum ProgressModifierType : byte
@@ -76,16 +76,16 @@ namespace AnimationManagerLib.API
     public struct AnimationRunMetadata
     {
         public AnimationPlayerAction Action { get; set; }
-        public short Duration { get; set; }
-        public short? StartFrame { get; set; }
-        public short? FinishFrame { get; set; }
+        public TimeSpan Duration { get; set; }
+        public ushort? StartFrame { get; set; }
+        public ushort? EndFrame { get; set; }
 
         public AnimationRunMetadata(AnimationRequest request)
         {
             this.Action = request.Action;
             this.Duration = request.Duration;
             this.StartFrame = request.StartFrame;
-            this.FinishFrame = request.FinishFrame;
+            this.EndFrame = request.EndFrame;
         }
         public static implicit operator AnimationRunMetadata(AnimationRequest request) => new AnimationRunMetadata(request);
     }
@@ -120,28 +120,31 @@ namespace AnimationManagerLib.API
     {
         IAnimationResult Add(IAnimationResult value);
         IAnimationResult Subtract(IAnimationResult value);
-        IAnimationResult Average(IAnimationResult value, float weight);
+        IAnimationResult Average(IAnimationResult value, float weight, float thisWeight = 1);
+        IAnimationResult Identity();
     }
 
-    public interface IAnimation<out TAnimationResult> : IDisposable
+    public interface IAnimation<TAnimationResult> : IDisposable
         where TAnimationResult : IAnimationResult
     {
-        public TAnimationResult Calculate(float progress);
+        public TAnimationResult Play(float progress, ushort? startFrame = null, ushort? endFrame = null);
+        public TAnimationResult Blend(float progress, ushort? startFrame, TAnimationResult endFrame);
+        public TAnimationResult EaseOut(float progress, TAnimationResult endFrame);
     }
 
     public interface IAnimator<TAnimationResult> : IDisposable
         where TAnimationResult : IAnimationResult
     {
-        public void Init(ICoreAPI api);
+        public void Init(ICoreAPI api, TAnimationResult defaultFrame);
         public void Run(AnimationRunMetadata parameters, IAnimation<TAnimationResult> animation);
-        public TAnimationResult Calculate(int timeElapsed_ms);
+        public TAnimationResult Calculate(TimeSpan timeElapsed);
     }
 
     public interface IAnimationComposer<TAnimationResult> : IDisposable
         where TAnimationResult : IAnimationResult
     {
         void SetAnimatorType<TAnimator>()
-            where TAnimator : IAnimator<TAnimationResult>;
+            where TAnimator : IAnimator<TAnimationResult>, new();
         bool Register(AnimationIdentifier id, IAnimation<TAnimationResult> animation);
         void Run(AnimationRequest request);
         TAnimationResult Compose(ComposeRequest request);

@@ -86,7 +86,7 @@ namespace MaltiezFSM.Systems
             {
                 case "forward":
                     mTransformManagers[player.EntityId].StartForward(slot, mFpAnimations[code], mTpAnimations[code], mCollectible);
-                    mTimers[player.EntityId] = new(mApi, duration, (float progress) => PlayAnimation(progressModifier(progress), player, finishCallback));
+                    mTimers[player.EntityId] = new(mApi, TimeSpan.FromMilliseconds(duration), (float progress) => PlayAnimation(progressModifier(progress), player, finishCallback));
                     break;
                 case "backward":
                     mTransformManagers[player.EntityId].StartBackward(slot);

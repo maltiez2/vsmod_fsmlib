@@ -588,21 +588,21 @@ namespace MaltiezFSM.Framework
             private readonly ICoreAPI mApi;
             private readonly Action<float> mCallback;
             
-            private float mDuration_ms;
+            private float mDuration;
             private long? mCallbackId;
             private float mCurrentDuration = 0;
             private float mCurrentProgress = 0;
             private bool mForward = true;
             private bool mAutoStop;
 
-            public TickBasedTimer(ICoreAPI api, int duration_ms, Action<float> callback, bool autoStop = true, float startingProgress = 0)
+            public TickBasedTimer(ICoreAPI api, TimeSpan duration, Action<float> callback, bool autoStop = true, float startingProgress = 0)
             {
                 mApi = api;
-                mDuration_ms = (float)duration_ms / 1000;
+                mDuration = duration.Seconds;
                 mCallback = callback;
                 mAutoStop = autoStop;
                 mCurrentProgress = startingProgress;
-                mCurrentDuration = mCurrentProgress * duration_ms;
+                mCurrentDuration = mCurrentProgress * mDuration;
                 StartListener();
             }
             public void Stop()
@@ -611,16 +611,16 @@ namespace MaltiezFSM.Framework
             }
             public void Resume(int? duration_ms = null, bool? autoStop = null)
             {
-                if (duration_ms != null) mDuration_ms = (float)duration_ms / 1000;
-                mCurrentDuration = mDuration_ms * mCurrentProgress;
+                if (duration_ms != null) mDuration = (float)duration_ms / 1000;
+                mCurrentDuration = mDuration * mCurrentProgress;
                 mForward = true;
                 mAutoStop = autoStop == null ? mAutoStop : (bool)autoStop;
                 StartListener();
             }
             public void Revert(int? duration_ms = null, bool? autoStop = null)
             {
-                if (duration_ms != null) mDuration_ms = (float)duration_ms / 1000;
-                mCurrentDuration = mDuration_ms * (1 - mCurrentProgress);
+                if (duration_ms != null) mDuration = (float)duration_ms / 1000;
+                mCurrentDuration = mDuration * (1 - mCurrentProgress);
                 mForward = false;
                 mAutoStop = autoStop == null ? mAutoStop : (bool)autoStop;
                 StartListener();
@@ -630,11 +630,11 @@ namespace MaltiezFSM.Framework
             {
                 mCurrentDuration += time;
                 mCallback(CalculateProgress(mCurrentDuration));
-                if (mAutoStop && mCurrentDuration >= mDuration_ms) StopListener();
+                if (mAutoStop && mCurrentDuration >= mDuration) StopListener();
             }
             private float CalculateProgress(float time)
             {
-                float progress = GameMath.Clamp(time / mDuration_ms, 0, 1);
+                float progress = GameMath.Clamp(time / mDuration, 0, 1);
                 mCurrentProgress = mForward ? progress : 1 - progress;
                 return mCurrentProgress;
             }

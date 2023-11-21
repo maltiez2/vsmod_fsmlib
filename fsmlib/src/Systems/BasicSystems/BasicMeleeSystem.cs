@@ -107,7 +107,7 @@ namespace MaltiezFSM.Systems
 
                     player.Attributes.SetInt("didattack", 0);
 
-                    mTimer = new(mApi, mAnimation.duration, (float progress) => TryAttack(progress * mAnimation.duration, slot, player));
+                    mTimer = new(mApi, TimeSpan.FromMilliseconds(mAnimation.duration), (float progress) => TryAttack(progress * mAnimation.duration, slot, player));
 
                     break;
                 case "stop":

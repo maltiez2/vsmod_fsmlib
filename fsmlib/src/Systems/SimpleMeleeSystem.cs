@@ -65,7 +65,7 @@ namespace MaltiezFSM.Systems
                     if (mApi is ICoreServerAPI)
                     {
                         player.Attributes.SetInt("didattack", 0);
-                        mTimers[playerId] = new(mApi, mAttacks[attack].duration, (float progress) => mAttacks[attack].TryAttack(player, mApi as ICoreServerAPI, progress));
+                        mTimers[playerId] = new(mApi, TimeSpan.FromMilliseconds(mAttacks[attack].duration), (float progress) => mAttacks[attack].TryAttack(player, mApi as ICoreServerAPI, progress));
                     }
                     mAttacks[attack].StartAnimation(slot, player);
                     break;
