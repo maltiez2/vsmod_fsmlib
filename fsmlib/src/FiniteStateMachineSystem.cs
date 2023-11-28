@@ -6,6 +6,7 @@ using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using System.Linq;
+using AnimationManagerLib.CollectibleBehaviors;
 
 namespace MaltiezFSM
 {
@@ -71,8 +72,11 @@ namespace MaltiezFSM
             mSystemFactory.Register<Systems.BasicDurability>("Durability");
             mSystemFactory.Register<Systems.ItemStackGiver>("ItemStackGiver");
             mSystemFactory.Register<Systems.SimpleMelee>("SimpleMelee");
+            mSystemFactory.Register<Systems.PlayerAnimation>("ProceduralPlayerAnimation");
+            mSystemFactory.Register<Systems.ItemAnimation>("ProceduralItemAnimation");
             mSystemFactory.Register<Systems.BasicParry<Additional.EntityBehaviorResists>>("BasicParry");
             mSystemFactory.Register<Systems.BasicBlock<Additional.EntityBehaviorResists>>("BasicBlock");
+            mSystemFactory.Register<Systems.SmoothAnimation>("SmoothAnimation");
         }
         public void RegisterOperations()
         {

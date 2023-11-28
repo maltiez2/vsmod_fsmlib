@@ -41,6 +41,23 @@ namespace MaltiezFSM.Systems
         void PlayAnimation(ItemSlot slot, EntityAgent player, AnimationData animationData, Action finishCallback = null, string mode = "forward");
     }
 
+    public interface IAnimationSystem
+    {
+        public class AnimationData
+        {
+            public string code { get; set; }
+            public float? duration { get; set; }
+
+            public AnimationData(JsonObject definition)
+            {
+                code = definition["code"].AsString();
+                duration = definition.KeyExists("duration") ? definition["duration"].AsFloat() : null;
+            }
+        }
+
+        void PlayAnimation(ItemSlot slot, EntityAgent player, string code, string category, string action = "start");
+    }
+
     public interface IAmmoSelector
     {
         ItemStack GetSelectedAmmo(ItemSlot slot);

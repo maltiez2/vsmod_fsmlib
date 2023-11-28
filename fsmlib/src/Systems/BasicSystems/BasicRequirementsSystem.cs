@@ -12,7 +12,7 @@ using Vintagestory.API.Common.Entities;
 
 namespace MaltiezFSM.Systems
 {
-    internal class BasicRequirements : BaseSystem
+    public class BasicRequirements : BaseSystem
     {
         private struct OperationRequirement
         {

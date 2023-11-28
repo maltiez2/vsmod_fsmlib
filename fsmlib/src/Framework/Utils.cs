@@ -598,7 +598,7 @@ namespace MaltiezFSM.Framework
             public TickBasedTimer(ICoreAPI api, TimeSpan duration, Action<float> callback, bool autoStop = true, float startingProgress = 0)
             {
                 mApi = api;
-                mDuration = duration.Seconds;
+                mDuration = (float)duration.TotalSeconds;
                 mCallback = callback;
                 mAutoStop = autoStop;
                 mCurrentProgress = startingProgress;

@@ -56,7 +56,7 @@ namespace MaltiezFSM.Framework
             }
         }
 
-        public override void OnUnloaded(ICoreAPI api)
+        public override void OnUnloaded(ICoreAPI api) // @TODO refactor
         {
             base.OnUnloaded(api);
 

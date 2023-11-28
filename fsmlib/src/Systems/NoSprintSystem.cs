@@ -1,15 +1,9 @@
-﻿using MaltiezFSM.API;
-using System;
-using System.Collections.Generic;
-using Vintagestory.API.Client;
-using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
+﻿using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
-using Vintagestory.Client.NoObf;
 
 namespace MaltiezFSM.Systems
 {
-    internal class NoSprint : BaseSystem
+    public class NoSprint : BaseSystem
     {
         public override bool Process(ItemSlot slot, EntityAgent player, JsonObject parameters)
         {

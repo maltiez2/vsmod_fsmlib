@@ -133,7 +133,7 @@ namespace MaltiezFSM.Operations
                 string initial = transition[initialAttrName].AsString();
                 string timeout = transition[finalAttrName].AsString();
                 string final = transition[cancelAttrName].AsString();
-                string intermediate = initial + "_to_" + timeout + "_op." + mCode;
+                string intermediate = mCode + "_from_" + initial + "_to_" + timeout;
 
                 transitions.Add(new TransitionsBranchInitial(initial, intermediate, timeout, final));
             }
@@ -197,7 +197,7 @@ namespace MaltiezFSM.Operations
         {
             foreach (string input in mInputsToPreventInitialData)
             {
-                mTriggerConditions.Add((state, input, state));
+                mTriggerConditions.Add((input, state, state));
                 mTransitionsInitialData.Add((state, input), (state, new()));
             }
         }

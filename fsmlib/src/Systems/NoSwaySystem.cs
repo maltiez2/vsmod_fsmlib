@@ -8,7 +8,7 @@ using Vintagestory.Client.NoObf;
 
 namespace MaltiezFSM.Systems
 {
-    internal class NoSway : BaseSystem
+    public class NoSway : BaseSystem
     {
         private ActionCallbackTimer mTimer;
 

@@ -8,7 +8,7 @@ using MaltiezFSM.Framework;
 
 namespace MaltiezFSM.Systems
 {  
-    internal class BasicReload : BaseSystem, IAmmoSelector, IItemStackProvider
+    public class BasicReload : BaseSystem, IAmmoSelector, IItemStackProvider
     {
         public const string ammoCodeAttrName = "ammoCode";
         public const string ammoNameAttrName = "ammoName";

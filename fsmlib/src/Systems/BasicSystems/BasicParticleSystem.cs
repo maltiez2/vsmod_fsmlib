@@ -6,7 +6,7 @@ using Vintagestory.API.MathTools;
 
 namespace MaltiezFSM.Systems
 {
-    internal class BasicParticles : BaseSystem
+    public class BasicParticles : BaseSystem
     {
         private readonly Dictionary<string, SimpleParticleProperties> mParticleEffectsTypes = new();
         private readonly Dictionary<string, Tuple<string, float, Vec3f, Vec3f>> mParticleEffects = new();

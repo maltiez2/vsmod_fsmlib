@@ -6,7 +6,7 @@ using Vintagestory.API.Datastructures;
 
 namespace MaltiezFSM.Systems
 {
-    internal class BasicDurability : BaseSystem
+    public class BasicDurability : BaseSystem
     {
         public override bool Verify(ItemSlot slot, EntityAgent player, JsonObject parameters)
         {

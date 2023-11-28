@@ -12,8 +12,7 @@ namespace MaltiezFSM.Inputs
     
     public class BasicSlotBefore : BaseInput, ISlotChangedBefore
     {
-        private const string typeAttrName = "type";
-        private readonly Dictionary<string, EnumHandling> types = new Dictionary<string, EnumHandling> // ImmutableDictionary are just pain in the ass to deal with, so deal with regular one being not immutable!
+        private readonly Dictionary<string, EnumHandling> mTypes = new Dictionary<string, EnumHandling>
         {
             { "prevent",    EnumHandling.PreventSubsequent },
             { "handle",     EnumHandling.Handled }
@@ -24,7 +23,7 @@ namespace MaltiezFSM.Inputs
         {
             base.Init(code, definition, collectible, api);
 
-            mInputType = types[definition[typeAttrName].AsString()];
+            mInputType = mTypes[definition["type"].AsString()];
         }
 
         public EnumHandling GetHandlingType()

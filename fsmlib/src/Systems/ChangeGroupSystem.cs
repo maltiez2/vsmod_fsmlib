@@ -3,7 +3,7 @@ using Vintagestory.API.Datastructures;
 
 namespace MaltiezFSM.Systems
 {
-    internal class ChangeGroup : BaseSystem
+    public class ChangeGroup : BaseSystem
     {
         public override bool Process(ItemSlot slot, EntityAgent player, JsonObject parameters)
         {

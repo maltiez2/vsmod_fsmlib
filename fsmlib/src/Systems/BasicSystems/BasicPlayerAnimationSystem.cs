@@ -3,7 +3,7 @@ using Vintagestory.API.Datastructures;
 
 namespace MaltiezFSM.Systems
 {
-    internal class BasicPlayerAnimation : BaseSystem
+    public class BasicPlayerAnimation : BaseSystem
     {
         public override bool Process(ItemSlot slot, EntityAgent player, JsonObject parameters)
         {

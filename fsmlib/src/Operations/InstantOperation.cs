@@ -107,7 +107,7 @@ namespace MaltiezFSM.Operations
             {
                 if (!systems.ContainsKey(entry.Item1))
                 {
-                    mApi.Logger.Warning("[FSMlib] [BasicInstant: {0}] State '{1}' not found.", mCode, entry.Item1);
+                    mApi.Logger.Warning("[FSMlib] [BasicInstant: {0}] System '{1}' not found.", mCode, entry.Item1);
                     continue;
                 }
 
@@ -119,7 +119,7 @@ namespace MaltiezFSM.Operations
             {
                 if (!systems.ContainsKey(input))
                 {
-                    mApi.Logger.Warning("[FSMlib] [BasicInstant: {0}] State '{1}' not found.", mCode, input);
+                    mApi.Logger.Warning("[FSMlib] [BasicInstant: {0}] System '{1}' not found.", mCode, input);
                     continue;
                 }
 
