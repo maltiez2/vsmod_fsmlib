@@ -19,9 +19,11 @@ namespace MaltiezFSM.Operations
 
             List<(string, JsonObject)> systemsInitial = ParseSystems(definition, "initial");
             List<(string, JsonObject)> systemsTimeout = ParseSystems(definition, "timeout");
+            List<(string, JsonObject)> systemsContinue = ParseSystems(definition, "continue");
             Dictionary<string, List<(string, JsonObject)>> systemsFinal = new();
 
             List<string> inputsInitial = ParseInputs(definition, "initial");
+            List<string> inputsContinue = ParseInputs(definition, "continue");
             Dictionary<string, List<string>> inputsFinal = new();
 
             foreach (string state in finalStates)
@@ -35,6 +37,7 @@ namespace MaltiezFSM.Operations
             foreach (TransitionsBranchInitial transition in transitions)
             {
                 AddTransition(transition.initial, transition.intermediate, inputsInitial, systemsInitial);
+                AddTransition(transition.intermediate, transition.intermediate, inputsContinue, systemsContinue);
                 AddTransitionForTimeout(timeout, transition.initial, transition.intermediate, transition.timeout, inputsInitial, systemsTimeout);
                 AddTransitionsForInputsToPrevent(transition.intermediate);
 

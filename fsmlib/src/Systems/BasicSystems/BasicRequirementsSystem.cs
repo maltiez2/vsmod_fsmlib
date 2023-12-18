@@ -238,8 +238,11 @@ namespace MaltiezFSM.Systems
         {
             ItemStack stack = slot?.Itemstack;
 
+            if (slot?.Empty == true && requirement.amount < 0) return slot;
+            if (slot?.Empty == false && requirement.amount < 0) return null;
             if (stack == null) return null;
-            if (!stack.Collectible.Code.Path.StartsWith(requirement.code)) return null;
+
+            if (!stack.Collectible.WildCardMatch(new AssetLocation(requirement.code))) return null;
             if (slot.StackSize < requirement.amount) return null;
             if (requirement.durabilityDamage > 0 && stack.Item.GetRemainingDurability(stack) < requirement.durabilityDamage) return null;
             if (requirement.durability > 0 && stack.Item.GetRemainingDurability(stack) < requirement.durability) return null;

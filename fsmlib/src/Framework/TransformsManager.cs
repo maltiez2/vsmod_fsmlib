@@ -21,8 +21,8 @@ namespace MaltiezFSM.Framework
 
         public TransformsManager(ICoreAPI api)
         {
-            mSetTransformSender = new TransformPacketSender(api, SetTransform, setChannelName);
-            mResetTransformSender = new TransformPacketSender(api, (entityId, transformType, target, transform) => ResetTransform(entityId, transformType, target), resetChannelName);
+            //mSetTransformSender = new TransformPacketSender(api, SetTransform, setChannelName);
+            //mResetTransformSender = new TransformPacketSender(api, (entityId, transformType, target, transform) => ResetTransform(entityId, transformType, target), resetChannelName);
         }
 
         public void SetTransform(long entityId, string transformType, EnumItemRenderTarget target, ModelTransform transform)
@@ -30,7 +30,7 @@ namespace MaltiezFSM.Framework
             if (!mTransforms.ContainsKey(entityId)) mTransforms[entityId] = new();
             if (!mTransforms[entityId].ContainsKey(target)) mTransforms[entityId][target] = new();
             mTransforms[entityId][target][transformType] = transform;
-            mSetTransformSender.SendPacket(entityId, transformType, target, transform);
+            //mSetTransformSender.SendPacket(entityId, transformType, target, transform);
         }
 
         public void ResetTransform(long entityId, string transformType, EnumItemRenderTarget target)
@@ -38,7 +38,7 @@ namespace MaltiezFSM.Framework
             if (!mTransforms.ContainsKey(entityId)) mTransforms[entityId] = new();
             if (!mTransforms[entityId].ContainsKey(target)) mTransforms[entityId][target] = new();
             mTransforms[entityId][target][transformType] = Utils.IdentityTransform();
-            mResetTransformSender.SendPacket(entityId, transformType, target, null);
+            //mResetTransformSender.SendPacket(entityId, transformType, target, null);
         }
 
         public ModelTransform GetTransform(long entityId, string transformType, EnumItemRenderTarget target)

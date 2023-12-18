@@ -515,7 +515,7 @@ namespace MaltiezFSM.Framework
                         case RequirementItemProcessMode.durabilityChange:
                             if (processParameter > 0)
                             {
-                                int durabilityMissing = collectible.GetMaxDurability(slot.Itemstack) - slot.Itemstack.Attributes.GetInt("durability"); ;
+                                int durabilityMissing = collectible.GetMaxDurability(slot.Itemstack) - slot.Itemstack.Attributes.GetInt("durability");
                                 match = durabilityMissing >= processParameter;
                             }
                             else if (processParameter < 0)

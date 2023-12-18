@@ -115,7 +115,21 @@ namespace MaltiezFSM.Systems
             if (projectileStack?.Item?.Code == null) return;
 
             EntityProperties type = player.World.GetEntityType(projectileStack.Item.Code);
-            var projectile = player.World.ClassRegistry.CreateEntity(type) as EntityProjectile;
+
+            if (type == null)
+            {
+                mApi.Logger.Warning("[FSMlib] [BasicShooting] [SpawnProjectile()] EntityProperties for '{0}' is null, projectile will not be spawned", projectileStack.Item.Code);
+                return;
+            }
+
+            EntityProjectile projectile = player.World.ClassRegistry.CreateEntity(type) as EntityProjectile;
+
+            if (projectile == null)
+            {
+                mApi.Logger.Warning("[FSMlib] [BasicShooting] [SpawnProjectile()] EntityProjectile for '{0}'({1}) is null, projectile will not be spawned", projectileStack.Item.Code, type.Code);
+                return;
+            }
+
             projectile.FiredBy = player;
             projectile.Damage = damage;
             projectile.ProjectileStack = projectileStack;

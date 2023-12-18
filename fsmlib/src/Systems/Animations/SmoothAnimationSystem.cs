@@ -37,9 +37,11 @@ namespace MaltiezFSM.Systems
 
             if (!mCollectible.HasBehavior<AnimatableAttachable>())
             {
-                mCollectible.CollectibleBehaviors = mCollectible.CollectibleBehaviors.Append(new AnimatableAttachable(collectible));
+                AnimatableAttachable animationBehavior = new AnimatableAttachable(collectible);
+                mCollectible.CollectibleBehaviors = mCollectible.CollectibleBehaviors.Append(animationBehavior);
                 mCollectible.CollectibleBehaviors.Last().Initialize(definition["parameters"]);
                 mCollectible.CollectibleBehaviors.Last().OnLoaded(api);
+                animationBehavior.RenderProceduralAnimations = true;
             }
 
             int index = 0;

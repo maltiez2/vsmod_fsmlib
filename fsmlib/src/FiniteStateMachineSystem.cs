@@ -29,6 +29,7 @@ namespace MaltiezFSM
             mTransformManager = new Framework.TransformsManager(api);
 
             api.RegisterItemClass("NoMelee", typeof(NoMelee));
+            api.RegisterItemClass("NoMeleeStrict", typeof(NoMeleeStrict));
             api.RegisterCollectibleBehaviorClass("FiniteStateMachine", typeof(Framework.FiniteStateMachineBehaviour<Framework.BehaviourAttributesParser, Framework.FiniteStateMachine>));
 
             api.RegisterEntityBehaviorClass("constresist", typeof(Additional.EntityBehaviorConstResists<Additional.ConstResist>));
@@ -83,6 +84,7 @@ namespace MaltiezFSM
             mOperationFactory.Register<Operations.Instant>("Instant");
             mOperationFactory.Register<Operations.Delayed>("Delayed");
             mOperationFactory.Register<Operations.Branched>("Branched");
+            mOperationFactory.Register<Operations.Continuous>("Continuous");
         }
 
         public void RegisterInputs()
@@ -98,32 +100,16 @@ namespace MaltiezFSM
             mInputFactory.Register<Inputs.Blank>("Blank");
         }
 
-        public IFactory<IOperation> GetOperationFactory()
-        {
-            return mOperationFactory;
-        }
-        public IFactory<ISystem> GetSystemFactory()
-        {
-            return mSystemFactory;
-        }
-        public IFactory<IInput> GetInputFactory()
-        {
-            return mInputFactory;
-        }
-        public IInputManager GetInputManager()
-        {
-            return mInputManager;
-        }
-        public ITransformManager GetTransformManager()
-        {
-            return mTransformManager;
-        }
+        public IFactory<IOperation> GetOperationFactory() => mOperationFactory;
+        public IFactory<ISystem> GetSystemFactory() => mSystemFactory;
+        public IFactory<IInput> GetInputFactory() => mInputFactory;
+        public IInputManager GetInputManager() => mInputManager;
+        public ITransformManager GetTransformManager() => mTransformManager;
 
         private struct BehaviorAsJsonObj
         {
             public string code;
         }
-
         public override void AssetsFinalize(ICoreAPI api)
         {
             BehaviorAsJsonObj newBehavior = new();
@@ -162,7 +148,6 @@ namespace MaltiezFSM
                 }
             }
         }
-
         private void AddPlayerBehavior(EntityPlayer player)
         {
             // In case 'AssetsFinalize' method failed to add behavior to player.

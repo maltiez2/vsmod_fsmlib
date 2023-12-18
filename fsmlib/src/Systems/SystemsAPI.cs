@@ -38,7 +38,7 @@ namespace MaltiezFSM.Systems
             }
         }
         
-        void PlayAnimation(ItemSlot slot, EntityAgent player, AnimationData animationData, Action finishCallback = null, string mode = "forward");
+        void PlayAnimation(ItemSlot slot, EntityAgent player, AnimationData animationData, Action finishCallback = null, string action = "forward");
     }
 
     public interface IAnimationSystem

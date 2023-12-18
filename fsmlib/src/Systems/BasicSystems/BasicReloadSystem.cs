@@ -76,7 +76,6 @@ namespace MaltiezFSM.Systems
                     int amount = 1;
                     if (parameters.KeyExists(amountAttrName)) amount = parameters[amountAttrName].AsInt(1);
 
-                    string ammoCode = parameters[ammoCodeAttrName].AsString();
                     AssetLocation[] location = Utils.GetAssetLocations(parameters[ammoCodeAttrName]);
                     ItemSlot ammoSlot = GetAmmoSlot(player, location, offHand);
                     if (ammoSlot == null || ammoSlot == slot) return false;

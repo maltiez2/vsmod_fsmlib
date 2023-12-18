@@ -13,7 +13,7 @@ namespace MaltiezFSM.Systems
         public const string animationsAttrName = "animations";
         public const string durationAttrName = "duration";
         public const string codeAttrName = "code";
-        public const string modeAttrName = "mode";
+        public const string actionAttrName = "action";
         public const string fpAnimationAttrName = "fpTransform";
         public const string tpAnimationAttrName = "tpTransform";
 
@@ -67,14 +67,14 @@ namespace MaltiezFSM.Systems
             if (!base.Process(slot, player, parameters)) return false;
 
             string code = parameters[codeAttrName].AsString();
-            string mode = parameters[modeAttrName].AsString();
+            string action = parameters[actionAttrName].AsString();
             int duration = mDurations[code];
             if (parameters.KeyExists(durationAttrName)) duration = parameters[durationAttrName].AsInt();
 
-            return ProcessImpl(slot, player, null, code, mode, duration, ProgressModifiers.Linear);
+            return ProcessImpl(slot, player, null, code, action, duration, ProgressModifiers.Linear);
         }
 
-        private bool ProcessImpl(ItemSlot slot, EntityAgent player, Action finishCallback, string code, string mode, int duration, ProgressModifiers.ProgressModifier progressModifier)
+        private bool ProcessImpl(ItemSlot slot, EntityAgent player, Action finishCallback, string code, string action, int duration, ProgressModifiers.ProgressModifier progressModifier)
         {
             if (!mFpAnimations.ContainsKey(code)) return false;
             if (!mTimers.ContainsKey(player.EntityId)) mTimers[player.EntityId] = null;
@@ -82,7 +82,7 @@ namespace MaltiezFSM.Systems
 
             mTimers[player.EntityId]?.Stop();
 
-            switch (mode)
+            switch (action)
             {
                 case "forward":
                     mTransformManagers[player.EntityId].StartForward(slot, mFpAnimations[code], mTpAnimations[code], mCollectible);
@@ -96,7 +96,7 @@ namespace MaltiezFSM.Systems
                     mTransformManagers[player.EntityId].Cancel(player);
                     break;
                 default:
-                    mApi.Logger.Error("[FSMlib] [BasicTransformAnimation] [Process] Mode does not exists: " + mode);
+                    mApi.Logger.Error("[FSMlib] [BasicTransformAnimation] [Process] Mode does not exists: " + action);
                     return false;
             }
 
@@ -109,11 +109,11 @@ namespace MaltiezFSM.Systems
             if (finishCallback != null && progress >= 1.0) finishCallback();
         }
 
-        void ITranformAnimationSystem.PlayAnimation(ItemSlot slot, EntityAgent player, ITranformAnimationSystem.AnimationData animationData, Action finishCallback, string mode)
+        public void PlayAnimation(ItemSlot slot, EntityAgent player, ITranformAnimationSystem.AnimationData animationData, Action finishCallback, string action)
         {
             int duration = mDurations[animationData.code];
             if (animationData.duration != null) duration = (int)animationData.duration;
-            ProcessImpl(slot, player, finishCallback, animationData.code, mode, duration, animationData.dynamic);
+            ProcessImpl(slot, player, finishCallback, animationData.code, action, duration, animationData.dynamic);
         }
     }
 

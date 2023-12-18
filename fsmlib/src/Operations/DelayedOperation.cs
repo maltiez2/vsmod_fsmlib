@@ -1,12 +1,8 @@
 ﻿using HarmonyLib;
 using MaltiezFSM.API;
-using MaltiezFSM.Framework;
-using System;
 using System.Collections.Generic;
-using System.Threading;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
-using static MaltiezFSM.Framework.FiniteStateMachine;
 
 namespace MaltiezFSM.Operations
 {
@@ -14,13 +10,17 @@ namespace MaltiezFSM.Operations
     {
         public const string mainTransitionsAttrName = "states";
         public const string systemsAttrName = "systems";
-        public const string inputsAttrName = "inputsToHandle";
+        public const string inputsAttrName = "inputs";
         public const string inputsToPreventAttrName = "inputsToIntercept";
         public const string attributesAttrName = "attributes";
         public const string initialAttrName = "initial";
         public const string cancelAttrName = "cancel";
         public const string finalAttrName = "final";
-        public const string delayAttrName = "delay_ms";
+        public const string delayAttrName = "duration";
+
+        public const string delayAttrNameAlt = "timeout";
+        public const string delayAttrNameOld = "delay_ms";
+        public const string inputsAttrNameOld = "inputsToHandle";
 
         protected const string cTimerInput = "";
         protected ICoreAPI mApi;
@@ -111,7 +111,9 @@ namespace MaltiezFSM.Operations
             List<string> cancelInputs = ParseInputs(definition, cancelAttrName);
             List<string> inputsInitial = ParseInputs(definition, initialAttrName);
 
-            int? timeout = definition.KeyExists(delayAttrName) ? definition[delayAttrName].AsInt() : null;
+            string delayAttr = definition.KeyExists(delayAttrNameAlt) ? delayAttrNameAlt : delayAttrNameOld;
+            delayAttr = definition.KeyExists(delayAttrName) ? delayAttrName : delayAttr;
+            int? timeout = definition.KeyExists(delayAttr) ? definition[delayAttr].AsInt() : null;
 
             List<TransitionsBranchInitial> transitions = ParseTransitions(definition);
             foreach (TransitionsBranchInitial transition in transitions)
@@ -163,16 +165,17 @@ namespace MaltiezFSM.Operations
         protected List<string> ParseInputs(JsonObject definition, string inputsType)
         {
             List<string> inputs = new();
-            if (definition[inputsAttrName][inputsType].IsArray())
+            string inputsAttr = definition.KeyExists(inputsAttrName) ? inputsAttrName : inputsAttrNameOld;
+            if (definition[inputsAttr][inputsType].IsArray())
             {
-                foreach (JsonObject cancelInput in definition[inputsAttrName][inputsType].AsArray())
+                foreach (JsonObject cancelInput in definition[inputsAttr][inputsType].AsArray())
                 {
                     inputs.Add(cancelInput.AsString());
                 }
             }
             else
             {
-                inputs.Add(definition[inputsAttrName][inputsType].AsString());
+                inputs.Add(definition[inputsAttr][inputsType].AsString());
             }
             return inputs;
         }
@@ -202,9 +205,9 @@ namespace MaltiezFSM.Operations
             }
         }
 
-        List<IOperation.Transition> IOperation.GetTransitions() => mTriggerConditions;
-        int? IOperation.Timer(ItemSlot slot, EntityAgent player, IState state, IInput input) => mTimers.ContainsKey((state, input)) ? mTimers[(state, input)] : null;
-        void IOperation.SetInputsStatesSystems(Dictionary<string, IInput> inputs, Dictionary<string, IState> states, Dictionary<string, ISystem> systems)
+        public virtual List<IOperation.Transition> GetTransitions() => mTriggerConditions;
+        public virtual int? Timer(ItemSlot slot, EntityAgent player, IState state, IInput input) => mTimers.ContainsKey((state, input)) ? mTimers[(state, input)] : null;
+        public virtual void SetInputsStatesSystems(Dictionary<string, IInput> inputs, Dictionary<string, IState> states, Dictionary<string, ISystem> systems)
         {
             foreach ((var trigger, var result) in mTransitionsInitialData)
             {
@@ -267,13 +270,13 @@ namespace MaltiezFSM.Operations
             mTimersInitialData.Clear();
             mInputsToPreventInitialData.Clear();
         }
-        bool IOperation.StopTimer(ItemSlot slot, EntityAgent player, IState state, IInput input)
+        public virtual bool StopTimer(ItemSlot slot, EntityAgent player, IState state, IInput input)
         {
             if (!mTransitions.ContainsKey((state, input))) return false;
 
             return !mInputsToPrevent.Contains(input);
         }
-        IState IOperation.Perform(ItemSlot slot, EntityAgent player, IState state, IInput input)
+        public virtual IState Perform(ItemSlot slot, EntityAgent player, IState state, IInput input)
         {
             if (!mTransitions.ContainsKey((state, input))) return state;
             

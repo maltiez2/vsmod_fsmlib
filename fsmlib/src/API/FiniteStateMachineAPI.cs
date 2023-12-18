@@ -239,7 +239,13 @@ namespace MaltiezFSM.API
     {
         public delegate bool InputCallback(ItemSlot slot, EntityAgent player, IInput input);
         void RegisterInput(IInput input, InputCallback callback, CollectibleObject collectible);
+        void RegisterInvoker(IInputInvoker invoker, Type inputType);
         void InvokeCustomInput(ICustomInput input, long playerEntityId);
+    }
+    public interface IInputInvoker
+    {
+        public delegate bool InputCallback(ItemSlot slot, EntityAgent player, IInput input);
+        void RegisterInput(IInput input, InputCallback callback, CollectibleObject collectible);
     }
     public interface IHotkeyInputManager
     {

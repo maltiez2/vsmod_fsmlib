@@ -203,7 +203,7 @@ namespace MaltiezFSM.Additional
             Vec3f attackDirection = sourceEyesPosition - playerEyesPosition;
             Vec3f playerViewDirection = EntityPos.GetViewVector(player.SidedPos.Pitch, player.SidedPos.Yaw);
             if (horizontal) playerViewDirection.Y = 0;
-            
+
             var direction = Utils.ToReferenceFrame(playerViewDirection, attackDirection);
             Utils.DirectionOffset offset = new(direction, new Vec3f(0, 0, 1));
 

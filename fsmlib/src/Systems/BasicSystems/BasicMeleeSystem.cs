@@ -111,7 +111,7 @@ namespace MaltiezFSM.Systems
 
                     break;
                 case "stop":
-                    mTimer.Stop();
+                    mTimer?.Stop();
                     mTransformsManager.ResetTransform(player.EntityId, mCode, EnumItemRenderTarget.HandFp);
                     mTransformsManager.ResetTransform(player.EntityId, mCode, EnumItemRenderTarget.HandTp);
                     break;
