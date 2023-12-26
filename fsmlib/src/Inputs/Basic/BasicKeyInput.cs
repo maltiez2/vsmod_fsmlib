@@ -37,13 +37,13 @@ namespace MaltiezFSM.Inputs
             switch (definition[keyPressTypeAttrName].AsString())
             {
                 case ("released"):
-                    mType = KeyEventType.KEY_UP;
+                    mType = KeyEventType.KeyUp;
                     break;
                 case ("pressed"):
-                    mType = KeyEventType.KEY_DOWN;
+                    mType = KeyEventType.KeyDown;
                     break;
                 default:
-                    mType = KeyEventType.KEY_DOWN;
+                    mType = KeyEventType.KeyDown;
                     break;
 
             }

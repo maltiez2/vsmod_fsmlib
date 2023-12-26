@@ -72,6 +72,7 @@ namespace MaltiezFSM.Framework
         private readonly Dictionary<IOperation, HashSet<State>> mStatesByOperationForTimer = new();
         private DelayedCallback mRepeater;
         private readonly Dictionary<long, DelayedCallback> mTimers = new();
+        private IOperationInputInvoker? mOperationInputInvoker;
 
         private CollectibleObject mCollectible;
         private ICoreAPI mApi;
@@ -238,5 +239,7 @@ namespace MaltiezFSM.Framework
             slot?.Itemstack?.Attributes?.SetString(cStateAttributeName, state.ToString());
             slot?.MarkDirty();
         }
+
+        public void SetOperationInputInvoker(IOperationInputInvoker invoker) => mOperationInputInvoker = invoker;
     }
 }

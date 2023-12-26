@@ -3,15 +3,18 @@ using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 
+#nullable enable
+
 namespace MaltiezFSM.Framework
 {
-    public class KeyInputManager : IKeyInputManager
+    public sealed class KeyToHotkeyMapper : IDisposable
     {
         private readonly Dictionary<string, List<IKeyInput>> mInputs = new();
 
         private readonly ICoreClientAPI mClientApi;
+        private bool mDisposed;
 
-        public KeyInputManager(ICoreClientAPI api)
+        public KeyToHotkeyMapper(ICoreClientAPI api)
         {
             mClientApi = api;
 
@@ -38,7 +41,6 @@ namespace MaltiezFSM.Framework
         private void SetUpListener()
         {
             mClientApi.Event.HotkeysChanged += HotkeysChangedCallback;
-            mClientApi.Event.PauseResume += _ => HotkeysChangedCallback();
             mClientApi.Event.LevelFinalize += HotkeysChangedCallback;
         }
 
@@ -84,6 +86,18 @@ namespace MaltiezFSM.Framework
 
             input.SetModifiers(modifiers);
             input.SetKey(key);
+        }
+
+        public void Dispose()
+        {
+            if (!mDisposed)
+            {
+                mClientApi.Event.HotkeysChanged -= HotkeysChangedCallback;
+                mClientApi.Event.LevelFinalize -= HotkeysChangedCallback;
+
+                mDisposed = true;
+            }
+            GC.SuppressFinalize(this);
         }
     }
 }

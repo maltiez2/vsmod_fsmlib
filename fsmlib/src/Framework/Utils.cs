@@ -1,24 +1,20 @@
-﻿using Vintagestory.API.Datastructures;
-using Vintagestory.API.Common;
-using Vintagestory.API.MathTools;
-using System;
-using Vintagestory.API.Util;
+﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace MaltiezFSM.Framework
 {
     public static class Utils
     {
-        internal class Logger
+        internal static class Logger
         {
             private static ILogger sLogger;
             private static bool sDebugLogging;
             private const string cPrefix = "[FSMlib]";
-            
-            private Logger()
-            {
-
-            }
 
             public static void Init(ILogger logger, bool debugLogging = true)
             {
@@ -27,19 +23,39 @@ namespace MaltiezFSM.Framework
             }
 
             public static void Notify(object caller, string format, params object[] arguments) => sLogger?.Notification(Format(caller, format), arguments);
+            public static void Notify(ICoreAPI api, object caller, string format, params object[] arguments) => api?.Logger?.Notification(Format(caller, format), arguments);
             public static void Warn(object caller, string format, params object[] arguments) => sLogger?.Warning(Format(caller, format), arguments);
+            public static void Warn(ICoreAPI api, object caller, string format, params object[] arguments) => api?.Logger?.Warning(Format(caller, format), arguments);
             public static void Error(object caller, string format, params object[] arguments) => sLogger?.Error(Format(caller, format), arguments);
+            public static void Error(ICoreAPI api, object caller, string format, params object[] arguments) => api?.Logger?.Error(Format(caller, format), arguments);
             public static void Debug(object caller, string format, params object[] arguments)
             {
                 if (sDebugLogging) sLogger?.Debug(Format(caller, format), arguments);
             }
-            private static string Format(object caller, string format) => cPrefix + " [" + caller.GetType().Name + "] " + format;
+            public static void Debug(ICoreAPI api, object caller, string format, params object[] arguments)
+            {
+                if (sDebugLogging) api?.Logger?.Debug(Format(caller, format), arguments);
+            }
+            private static string Format(object caller, string format) => $"{cPrefix} [{TypeName(caller)}] {format}";
+            private static string TypeName(object caller)
+            {
+                Type type = caller.GetType();
+
+                if (type.IsGenericType)
+                {
+                    string namePrefix = type.Name.Split(new[] { '`' }, StringSplitOptions.RemoveEmptyEntries)[0];
+                    string genericParameters = type.GetGenericArguments().Select(TypeName).Aggregate((first, second) => $"{first},{second}");
+                    return $"{namePrefix}<{genericParameters}>";
+                }
+
+                return type.Name;
+            }
         }
-        
+
         static public ModelTransform ToTransformFrom(JsonObject transform, float multiplier = 1)
         {
             if (transform == null) return null;
-            
+
             JsonObject translation = transform["translation"];
             JsonObject rotation = transform["rotation"];
             JsonObject origin = transform["origin"];
@@ -107,7 +123,7 @@ namespace MaltiezFSM.Framework
         static public Vec3f FromCameraReferenceFrame(EntityAgent player, Vec3f position)
         {
             Vec3f viewVector = player.SidedPos.GetViewVector();
-            Vec3f vertical = new Vec3f(0, 1, 0);
+            Vec3f vertical = new(0, 1, 0);
             Vec3f localZ = viewVector.Normalize();
             Vec3f localX = viewVector.Cross(vertical).Normalize();
             Vec3f localY = localX.Cross(localZ);
@@ -116,8 +132,8 @@ namespace MaltiezFSM.Framework
         static public Vec3d FromCameraReferenceFrame(EntityAgent player, Vec3d position)
         {
             Vec3f viewVectorF = player.SidedPos.GetViewVector();
-            Vec3d viewVector = new Vec3d(viewVectorF.X, viewVectorF.Y, viewVectorF.Z);
-            Vec3d vertical = new Vec3d(0, 1, 0);
+            Vec3d viewVector = new(viewVectorF.X, viewVectorF.Y, viewVectorF.Z);
+            Vec3d vertical = new(0, 1, 0);
             Vec3d localZ = viewVector.Normalize();
             Vec3d localX = viewVector.Cross(vertical).Normalize();
             Vec3d localY = localX.Cross(localZ);
@@ -126,8 +142,8 @@ namespace MaltiezFSM.Framework
         static public Vec3d ToCameraReferenceFrame(EntityAgent player, Vec3d position)
         {
             Vec3f viewVectorF = player.SidedPos.GetViewVector();
-            Vec3d viewVector = new Vec3d(viewVectorF.X, viewVectorF.Y, viewVectorF.Z);
-            Vec3d vertical = new Vec3d(0, 1, 0);
+            Vec3d viewVector = new(viewVectorF.X, viewVectorF.Y, viewVectorF.Z);
+            Vec3d vertical = new(0, 1, 0);
             Vec3d localZ = viewVector.Normalize();
             Vec3d localX = viewVector.Cross(vertical).Normalize();
             Vec3d localY = localX.Cross(localZ);
@@ -138,7 +154,7 @@ namespace MaltiezFSM.Framework
         }
         static public Vec3d ToReferenceFrame(Vec3d reference, Vec3d position)
         {
-            Vec3d vertical = new Vec3d(0, 1, 0);
+            Vec3d vertical = new(0, 1, 0);
             Vec3d localZ = reference.Normalize();
             Vec3d localX = reference.Cross(vertical).Normalize();
             Vec3d localY = localX.Cross(localZ);
@@ -149,7 +165,7 @@ namespace MaltiezFSM.Framework
         }
         static public Vec3f ToReferenceFrame(Vec3f reference, Vec3f position)
         {
-            Vec3f vertical = new Vec3f(0, 1, 0);
+            Vec3f vertical = new(0, 1, 0);
             Vec3f localZ = reference.Normalize();
             Vec3f localX = reference.Cross(vertical).Normalize();
             Vec3f localY = localX.Cross(localZ);
@@ -203,8 +219,8 @@ namespace MaltiezFSM.Framework
             {
                 Translation = new Vec3f() { X = DeserializeFloatPreciseEnough(transform[0]), Y = DeserializeFloatPreciseEnough(transform[1]), Z = DeserializeFloatPreciseEnough(transform[2]) },
                 Rotation = new Vec3f() { X = DeserializeFloatPreciseEnough(transform[3]), Y = DeserializeFloatPreciseEnough(transform[4]), Z = DeserializeFloatPreciseEnough(transform[5]) },
-                Origin = new Vec3f() {X = DeserializeFloatPreciseEnough(transform[6]), Y = DeserializeFloatPreciseEnough(transform[7]), Z = DeserializeFloatPreciseEnough(transform[8]) },
-                ScaleXYZ = new Vec3f() {X = DeserializeFloatPreciseEnough(transform[9]), Y = DeserializeFloatPreciseEnough(transform[10]), Z = DeserializeFloatPreciseEnough(transform[11]) }
+                Origin = new Vec3f() { X = DeserializeFloatPreciseEnough(transform[6]), Y = DeserializeFloatPreciseEnough(transform[7]), Z = DeserializeFloatPreciseEnough(transform[8]) },
+                ScaleXYZ = new Vec3f() { X = DeserializeFloatPreciseEnough(transform[9]), Y = DeserializeFloatPreciseEnough(transform[10]), Z = DeserializeFloatPreciseEnough(transform[11]) }
             };
         }
 
@@ -218,7 +234,7 @@ namespace MaltiezFSM.Framework
         }
 
         // *** Based on code from Dana (https://github.com/Craluminum2413)
-        public static void SetArray<TArray>(this ITreeAttribute tree, string key, TArray data) 
+        public static void SetArray<TArray>(this ITreeAttribute tree, string key, TArray data)
         {
             tree.SetBytes(key, SerializerUtil.Serialize(data));
         }
@@ -349,7 +365,7 @@ namespace MaltiezFSM.Framework
                     {
                         modifiers.Add(threshold.AsFloat());
                     }
-                }   
+                }
 
                 return (ref float damage, ref int tier) => Get(modifierType)(ref damage, CalcModifier(tier, 0, thresholds, modifiers, defaultModifier));
             }
@@ -378,7 +394,7 @@ namespace MaltiezFSM.Framework
                 return new AssetLocation[] { new AssetLocation(definition.AsString()) };
             }
         }
-        
+
         public enum RequirementSlotType
         {
             mainhand,
@@ -404,7 +420,7 @@ namespace MaltiezFSM.Framework
         {
             public RequirementSlotType slot { get; set; }
             public RequirementSearchMode mode { get; set; }
-            public RequirementItemProcessMode process {  get; set; }
+            public RequirementItemProcessMode process { get; set; }
             public AssetLocation[] locations { get; set; }
             public int processParameter { get; set; }
 
@@ -505,7 +521,7 @@ namespace MaltiezFSM.Framework
                 CollectibleObject collectible = slot?.Itemstack?.Collectible;
 
                 bool match = collectible?.WildCardMatch(locations) == true;
-                
+
                 if (match)
                 {
                     switch (process)
@@ -587,7 +603,7 @@ namespace MaltiezFSM.Framework
         {
             private readonly ICoreAPI mApi;
             private readonly Action<float> mCallback;
-            
+
             private float mDuration;
             private long? mCallbackId;
             private float mCurrentDuration = 0;
@@ -647,6 +663,100 @@ namespace MaltiezFSM.Framework
             {
                 if (mCallbackId != null) mApi.World.UnregisterGameTickListener((long)mCallbackId);
                 mCallbackId = null;
+            }
+        }
+
+        public enum SlotType
+        {
+            HotBar,
+            MainHand,
+            OffHand,
+            Inventory
+        }
+        public struct SlotData
+        {
+            public SlotType SlotType { get; set; }
+            public int SlotId { get; set; } = -1;
+            public string InventoryId { get; set; } = "";
+
+            public SlotData(SlotType type, ItemSlot slot = null, IPlayer player = null)
+            {
+                SlotType = type;
+
+                if (slot == null || player == null) return;
+
+                switch (type)
+                {
+                    case SlotType.HotBar:
+                        SlotId = player.InventoryManager.GetHotbarInventory().GetSlotId(slot);
+                        break;
+                    case SlotType.Inventory:
+                        (string inventoryId, int slotId) = GetSlotIdFromInventory(slot, player);
+                        SlotId = slotId;
+                        InventoryId = inventoryId;
+                        break;
+                    default: break;
+                }
+            }
+
+            public ItemSlot Slot(IPlayer player)
+            {
+                switch (SlotType)
+                {
+                    case SlotType.HotBar:
+                        return player.InventoryManager.GetHotbarInventory()[SlotId];
+                    case SlotType.MainHand:
+                        return player.Entity.RightHandItemSlot;
+                    case SlotType.OffHand:
+                        return player.Entity.LeftHandItemSlot;
+                    case SlotType.Inventory:
+                        return player.InventoryManager.GetInventory(InventoryId)[SlotId];
+                    default:
+                        return null;
+                }
+            }
+
+            public static IEnumerable<SlotData> GetForAllSlots(SlotType type, IPlayer player = null)
+            {
+                HashSet<SlotData> slots = new();
+
+                switch (type)
+                {
+                    case SlotType.HotBar:
+                        foreach (ItemSlot hotbarSlot in player.InventoryManager.GetHotbarInventory())
+                        {
+                            slots.Add(new(type, hotbarSlot));
+                        }
+                        break;
+                    case SlotType.Inventory:
+                        foreach ((_, IInventory inventory) in player.InventoryManager.Inventories)
+                        {
+                            foreach (ItemSlot inventorySlot in inventory)
+                            {
+                                slots.Add(new(type, inventorySlot, player));
+                            }
+                        }
+                        break;
+                    default:
+                        slots.Add(new(type));
+                        break;
+                }
+
+                return slots;
+            }
+
+            private static (string inventory, int slot) GetSlotIdFromInventory(ItemSlot slot, IPlayer player)
+            {
+                foreach ((_, IInventory inventory) in player.InventoryManager.Inventories)
+                {
+                    int slotId = inventory.GetSlotId(slot);
+                    if (slotId != -1)
+                    {
+                        return (inventory.InventoryID, slotId);
+                    }
+                }
+
+                return ("", -1);
             }
         }
     }

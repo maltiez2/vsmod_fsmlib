@@ -4,95 +4,16 @@ using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 
+#nullable enable
+
 namespace MaltiezFSM.Framework
 {
-    public class ActiveSlotPassiveListener : IActiveSlotListener
+
+    public sealed class DropItemsInputInvoker : IInputInvoker
     {
         private readonly ICoreClientAPI mClientApi;
-        private readonly Dictionary<IActiveSlotListener.SlotEventType, Dictionary<int, System.Func<int, bool>>> mCallbacks = new();
-        private int mLastListenerId = 0;
-
-        private ItemSlot mLastSlot;
-        private CollectibleObject mLastCollectible = null;
-        private int? mLastItemsCount = null;
-
-        public ActiveSlotPassiveListener(ICoreClientAPI api)
-        {
-            mClientApi = api;
-            mClientApi.Event.RegisterGameTickListener(Listener, 0);
-
-            mLastSlot = mClientApi.World?.Player?.Entity?.ActiveHandItemSlot;
-            mLastCollectible = mLastSlot?.Itemstack?.Collectible;
-            mLastItemsCount = mLastSlot?.Itemstack?.StackSize;
-        }
-
-        int IActiveSlotListener.RegisterListener(IActiveSlotListener.SlotEventType eventType, System.Func<int, bool> callback)
-        {
-            mLastListenerId++;
-            mCallbacks.TryAdd(eventType, new());
-            mCallbacks[eventType].Add(mLastListenerId, callback);
-            return mLastListenerId;
-        }
-
-        void IActiveSlotListener.UnregisterListener(int id)
-        {
-            foreach (Dictionary<int, System.Func<int, bool>> listener in mCallbacks.Values.Where(listener => listener.ContainsKey(id)))
-            {
-                listener.Remove(id);
-            }
-        }
-
-        private void Listener(float timePassed)
-        {
-            IActiveSlotListener.SlotEventType? eventType = CheckForChange();
-
-            if (eventType == null || !mCallbacks.ContainsKey((IActiveSlotListener.SlotEventType)eventType)) return;
-
-            foreach (var callback in mCallbacks[(IActiveSlotListener.SlotEventType)eventType].Values)
-            {
-                callback(GetSlotId());
-            }
-        }
-
-        private int GetSlotId()
-        {
-            int? slotId = mClientApi?.World?.Player?.Entity?.GearInventory?.GetSlotId(mLastSlot);
-            return slotId == null ? -1 : (int)slotId;
-        }
-
-        private IActiveSlotListener.SlotEventType? CheckForChange()
-        {
-            ItemSlot currentSlot = mClientApi.World.Player.Entity.ActiveHandItemSlot;
-            CollectibleObject currentCollectible = mLastSlot?.Itemstack?.Collectible;
-            int? currentItemsCount = mLastSlot?.Itemstack?.StackSize;
-
-            if (currentSlot != mLastSlot)
-            {
-                mLastSlot = currentSlot;
-                return null;
-            }
-
-            if (currentCollectible != mLastCollectible)
-            {
-                mLastCollectible = currentCollectible;
-                return null;
-            }
-
-            if (currentItemsCount != mLastItemsCount)
-            {
-                mLastItemsCount = currentItemsCount;
-                return IActiveSlotListener.SlotEventType.ItemDropped;
-            }
-
-            return null;
-        }
-    }
-
-    public class ActiveSlotActiveListener : IActiveSlotListener
-    {
-        private readonly ICoreClientAPI mClientApi;
-        private readonly Dictionary<IActiveSlotListener.SlotEventType, Dictionary<int, System.Func<int, bool>>> mCallbacks = new();
-        private int mLastListenerId = 0;
+        private readonly Dictionary<ISlotEvent, IInputInvoker.InputCallback> mCallbacks = new();
+        private bool mDispose = false;
 
         private readonly List<string> mHotkeys = new List<string>
         {
@@ -100,32 +21,15 @@ namespace MaltiezFSM.Framework
             "dropitems"
         };
 
-        private readonly Dictionary<string, IActiveSlotListener.SlotEventType> mHotkeysToEventType = new()
-        {
-            { "dropitem",  IActiveSlotListener.SlotEventType.ItemDropped },
-            { "dropitems",  IActiveSlotListener.SlotEventType.ItemDropped }
-        };
-
-        public ActiveSlotActiveListener(ICoreClientAPI api)
+        public DropItemsInputInvoker(ICoreClientAPI api)
         {
             mClientApi = api;
             mClientApi.Event.KeyDown += KeyPressListener;
         }
 
-        int IActiveSlotListener.RegisterListener(IActiveSlotListener.SlotEventType eventType, System.Func<int, bool> callback)
+        public void RegisterInput(IInput input, IInputInvoker.InputCallback callback, CollectibleObject collectible)
         {
-            mLastListenerId++;
-            mCallbacks.TryAdd(eventType, new());
-            mCallbacks[eventType].Add(mLastListenerId, callback);
-            return mLastListenerId;
-        }
-
-        void IActiveSlotListener.UnregisterListener(int id)
-        {
-            foreach (Dictionary<int, System.Func<int, bool>> listener in mCallbacks.Values.Where(listener => listener.ContainsKey(id)))
-            {
-                listener.Remove(id);
-            }
+            if (input is ISlotEvent slotInput) mCallbacks.Add(slotInput, callback);
         }
 
         private void KeyPressListener(KeyEvent ev)
@@ -139,7 +43,7 @@ namespace MaltiezFSM.Framework
 
                 if (mClientApi.Input.HotKeys.ContainsKey(hotkeyId) && CompareCombinations(ev, mClientApi.Input.HotKeys[hotkeyId].CurrentMapping))
                 {
-                    HotkeyPressHandler(hotkeyId, ev);
+                    HotkeyPressHandler(ev);
                     break;
                 }
             }
@@ -155,26 +59,38 @@ namespace MaltiezFSM.Framework
             return true;
         }
 
-        private void HotkeyPressHandler(string hotkeyId, KeyEvent ev)
+        private void HotkeyPressHandler(KeyEvent ev)
         {
-            IActiveSlotListener.SlotEventType eventType = mHotkeysToEventType[hotkeyId];
-
-            if (!mCallbacks.ContainsKey(eventType)) return;
-
             bool handled = false;
-            foreach (var callback in mCallbacks[eventType].Values)
+
+            foreach ((var input, _) in mCallbacks)
             {
-                bool handledByCallback = callback(GetSlotId());
-                if (handledByCallback) handled = true;
+                handled = HandleInput(input);
             }
 
             if (handled) ev.Handled = true;
         }
 
-        private int GetSlotId()
+        private bool HandleInput(ISlotEvent input)
         {
-            int? slotId = mClientApi?.World?.Player?.InventoryManager?.GetHotbarInventory()?.GetSlotId(mClientApi.World.Player.Entity.ActiveHandItemSlot);
-            return slotId == null ? -1 : (int)slotId;
+            Utils.SlotType slotType = input.SlotType();
+
+            IEnumerable<Utils.SlotData> slots = Utils.SlotData.GetForAllSlots(slotType, mClientApi.World.Player);
+
+            bool handled = false;
+            foreach (Utils.SlotData slotData in slots.Where(slotData => mCallbacks[input](slotData, mClientApi.World.Player, input))) // Unreadable but now warning... I guess win win?
+            {
+                handled = true;
+            }
+
+            return handled;
+        }
+        
+        public void Dispose()
+        {
+            if (mDispose) return;
+            mDispose = true;
+            mClientApi.Event.KeyDown -= KeyPressListener;
         }
     }
 }

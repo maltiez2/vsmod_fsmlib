@@ -6,7 +6,6 @@ using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using System.Linq;
-using AnimationManagerLib.CollectibleBehaviors;
 
 namespace MaltiezFSM
 {
@@ -17,6 +16,7 @@ namespace MaltiezFSM
         private IFactory<IInput> mInputFactory;
         private IInputManager mInputManager;
         private ITransformManager mTransformManager;
+        private IOperationInputInvoker? mOperationInputInvoker;
 
         public override void Start(ICoreAPI api)
         {
@@ -40,17 +40,32 @@ namespace MaltiezFSM
             mOperationFactory = new Framework.Factory<IOperation, Framework.UniqueIdGeneratorForFactory>(api);
             mSystemFactory = new Framework.Factory<ISystem, Framework.UniqueIdGeneratorForFactory>(api);
             mInputFactory = new Framework.Factory<IInput, Framework.UniqueIdGeneratorForFactory>(api);
+            mInputManager = new Framework.InputManager(api);
 
             RegisterSystems();
             RegisterOperations();
             RegisterInputs();
+            if (api is ICoreClientAPI clientApi) RegisterInputInvokers(clientApi);
+            if (api is ICoreServerAPI serverApi) RegisterInputInvokers(serverApi);
+        }
 
-            IActiveSlotListener activeSlotListener = (api.Side == EnumAppSide.Client) ? new Framework.ActiveSlotActiveListener(api as ICoreClientAPI) : null;
-            IHotkeyInputManager hotkeyInputManager = (api.Side == EnumAppSide.Client) ? new Framework.HotkeyInputManager(api as ICoreClientAPI) : null;
-            IStatusInputManager statusInputManager = (api.Side == EnumAppSide.Client) ? new Framework.StatusInputManager(api as ICoreClientAPI) : null;
-            IKeyInputManager    keyInputManager    = (api.Side == EnumAppSide.Client) ? new Framework.KeyInputManager(api as ICoreClientAPI) : null;
-            ICustomInputManager customInputManager = new Framework.CustomInputManager(api);
-            mInputManager = new Framework.InputManager(api, activeSlotListener, hotkeyInputManager, statusInputManager, keyInputManager, customInputManager);
+        public void RegisterInputInvokers(ICoreClientAPI api)
+        {
+            Framework.KeyInputInvoker keyInput = new(api);
+            Framework.StatusInputManager statusInput = new(api);
+            Framework.DropItemsInputInvoker dropItems = new(api);
+
+            mInputManager.RegisterInvoker(keyInput, typeof(IKeyInput));
+            mInputManager.RegisterInvoker(keyInput, typeof(IMouseInput));
+            mInputManager.RegisterInvoker(statusInput, typeof(IStatusInput));
+            mInputManager.RegisterInvoker(dropItems, typeof(ISlotEvent));
+        }
+
+        public void RegisterInputInvokers(ICoreServerAPI api)
+        {
+            mOperationInputInvoker = new Framework.OperationInputInvoker();
+
+            mInputManager.RegisterInvoker(mOperationInputInvoker as Framework.OperationInputInvoker, typeof(IOperationInput));
         }
 
         public void RegisterSystems()
@@ -105,6 +120,7 @@ namespace MaltiezFSM
         public IFactory<IInput> GetInputFactory() => mInputFactory;
         public IInputManager GetInputManager() => mInputManager;
         public ITransformManager GetTransformManager() => mTransformManager;
+        public IOperationInputInvoker? GetOperationInputInvoker() => mOperationInputInvoker;
 
         private struct BehaviorAsJsonObj
         {
@@ -152,6 +168,13 @@ namespace MaltiezFSM
         {
             // In case 'AssetsFinalize' method failed to add behavior to player.
             if (!player.HasBehavior<Additional.EntityBehaviorResists>()) player.SidedProperties.Behaviors.Insert(0, new Additional.EntityBehaviorResists(player));
+        }
+
+        public override void Dispose()
+        {
+            mInputManager.Dispose();
+
+            base.Dispose();
         }
     }
 }

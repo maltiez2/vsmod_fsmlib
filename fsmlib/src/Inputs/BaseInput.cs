@@ -1,8 +1,6 @@
 ﻿using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using MaltiezFSM.API;
-using static MaltiezFSM.API.IInput;
-using System.Collections.Generic;
 using Vintagestory.API.Client;
 using System;
 using MaltiezFSM.Framework;
@@ -16,13 +14,13 @@ namespace MaltiezFSM.Inputs
         
         private string mCode;
         private bool mHandled;
-        private SlotTypes mSlotType;
+        private Utils.SlotType mSlotType;
 
         public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
         {
             if (definition == null)
             {
-                Utils.Logger.Error(this, "Input '{0}' got empty definition");
+                Utils.Logger.Error(api, this, $"Input '{code}' got empty definition");
                 return;
             }
 
@@ -30,11 +28,12 @@ namespace MaltiezFSM.Inputs
             mCode = code;
             mApi = api;
             mHandled = definition["handle"].AsBool(true);
-            mSlotType = (SlotTypes)Enum.Parse(typeof(SlotTypes), definition["slot"].AsString("mainHand"));
+            mSlotType = (Utils.SlotType)Enum.Parse(typeof(Utils.SlotType), definition["slot"].AsString("mainHand"));
         }
 
-        string IInput.GetName() => mCode;
-        SlotTypes IInput.SlotType() => mSlotType;
+        public string GetName() => mCode;
+        public Utils.SlotType SlotType() => mSlotType;
+        public int Index { get; set; }
 
         public virtual bool Handled() => mHandled;
         public virtual WorldInteraction GetInteractionInfo(ItemSlot slot) => null;

@@ -6,56 +6,47 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Server;
 using static MaltiezFSM.API.IInputManager;
-using static MaltiezFSM.API.IKeyInput;
-using static MaltiezFSM.API.IMouseInput;
-using static MaltiezFSM.API.ISlotChangedAfter;
+
+#nullable enable
 
 namespace MaltiezFSM.Framework
 {
-    public class InputManager : IInputManager
+    public sealed class InputManager : IInputManager
     {
-        private readonly ICoreClientAPI mClientApi;
         private readonly List<IInput> mInputs = new();
         private readonly List<InputCallback> mCallbacks = new();
         private readonly List<CollectibleObject> mCollectibles = new();
-        private readonly Dictionary<Type, IInputInvoker> mInputHandlers = new();
-        private readonly InputPacketSender mPacketSender;
-
+        private readonly Dictionary<Type, IInputInvoker> mInputInvokers = new();
+        private readonly InputPacketSenderClient? mClientPacketSender;
+        private readonly InputPacketSenderServer? mServerPacketSender;
+        private bool mDisposed;
         private const string cNetworkChannelName = "maltiezfierarms.inputManager";
 
-        // Whitelisted GuiDialogs
-        private readonly static Type rHudMouseToolsType = typeof(Vintagestory.Client.NoObf.ClientMain).Assembly.GetType("Vintagestory.Client.NoObf.HudMouseTools");
-        private readonly HashSet<string> rBlockingGuiDialogs = new();
-
-        public InputManager(ICoreAPI api, IActiveSlotListener slotListener, IHotkeyInputManager hotkeyManager, IStatusInputManager statusManager, IKeyInputManager keyManager, ICustomInputManager customInputManager)
+        public InputManager(ICoreAPI api)
         {
-            mPacketSender = new InputPacketSender(api, ServerInputProxyHandler, cNetworkChannelName);
-            mHotkeyInputManager = hotkeyManager;
-            mStatusInputManager = statusManager;
-            mKeyManager = keyManager;
-
-            if (api.Side == EnumAppSide.Client)
+            if (api is ICoreServerAPI serverAPI)
             {
-                mClientApi = api as ICoreClientAPI;
-                mSlotListener = slotListener;
+                mServerPacketSender = new InputPacketSenderServer(serverAPI, PacketHandler, cNetworkChannelName);
             }
-
-            mCustomInputManager = customInputManager;
+            else if (api is ICoreClientAPI clientAPI)
+            {
+                mClientPacketSender = new InputPacketSenderClient(clientAPI, PacketHandler, cNetworkChannelName);
+            }
         }
 
         public void RegisterInvoker(IInputInvoker invoker, Type inputType)
         {
-            mInputHandlers.Add(inputType, invoker);
+            mInputInvokers.Add(inputType, invoker);
         }
         public void RegisterInput(IInput input, InputCallback callback, CollectibleObject collectible)
         {
-            int inputIndex = mInputs.Count;
+            input.Index = mInputs.Count;
 
             mInputs.Add(input);
             mCallbacks.Add(callback);
             mCollectibles.Add(collectible);
 
-            foreach ((Type type, IInputInvoker invoker) in mInputHandlers)
+            foreach ((Type type, IInputInvoker invoker) in mInputInvokers)
             {
                 if (type.IsInstanceOfType(input))
                 {
@@ -64,12 +55,45 @@ namespace MaltiezFSM.Framework
             }
         }
 
-        private bool InputHandler(ItemSlot slot, EntityAgent player, IInput input)
+        private void PacketHandler(int inputIndex, Utils.SlotData slot, IPlayer player)
         {
+            if (mInputs.Count > inputIndex)
+            {
+                _ = InputHandler(slot, player, mInputs[inputIndex]);
+            }
+        }
+        private bool InputHandler(Utils.SlotData slot, IPlayer player, IInput input)
+        {
+            if (mClientPacketSender != null)
+            {
+                mClientPacketSender.SendPacket(input.Index, slot);
+            }
+            else if (mServerPacketSender != null && player is IServerPlayer serverPlayer)
+            {
+                mServerPacketSender.SendPacket(input.Index, slot, serverPlayer);
+            }
 
+            InputCallback callback = mCallbacks[input.Index];
+            return callback(slot.Slot(player), player.Entity, input);
         }
 
-        private void ClientRegisterEventHandler(IEventInput input, int inputIndex)
+        public void Dispose()
+        {
+            if (!mDisposed)
+            {
+#pragma warning disable S3966 // Objects should not be disposed more than once
+                foreach ((_, IInputInvoker invoker) in mInputInvokers)
+                {
+                    invoker.Dispose();
+                }
+#pragma warning restore S3966
+
+                mDisposed = true;
+            }
+            GC.SuppressFinalize(this);
+        }
+
+        /*private void ClientRegisterEventHandler(IEventInput input, int inputIndex)
         {
             switch ((input as IKeyInput)?.GetEventType())
             {
@@ -228,7 +252,9 @@ namespace MaltiezFSM.Framework
 
         private bool ClientIfEventShouldBeHandled()
         {
-            foreach (GuiDialog item in mClientApi.Gui.OpenedGuis)
+            if (mApi is not ICoreClientAPI clientApi) return true;
+
+            foreach (GuiDialog item in clientApi.Gui.OpenedGuis)
             {
                 if (item is HudElement) continue;
                 if (item.GetType().IsAssignableFrom(rHudMouseToolsType)) continue;
@@ -236,100 +262,40 @@ namespace MaltiezFSM.Framework
 
                 if (!rBlockingGuiDialogs.Contains(item.DebugName))
                 {
-                    mClientApi.Logger.Debug("[FSMlib] [InputManager] [ClientIfEventShouldBeHandled()] Input was not handled due to opened: " + item.DebugName);
+                    clientApi.Logger.Debug("[FSMlib] [InputManager] [ClientIfEventShouldBeHandled()] Input was not handled due to opened: " + item.DebugName);
                     rBlockingGuiDialogs.Add(item.DebugName);
                 }
 
                 return false;
             }
 
-            if (mClientApi.IsGamePaused)
+            if (clientApi.IsGamePaused)
             {
                 return false;
             }
 
             return true;
-        }
-
-        void IInputManager.InvokeCustomInput(ICustomInput input, long playerEntityId)
-        {
-            mCustomInputManager.InvokeCustomInput(input, playerEntityId);
-        }
+        }*/
     }
 
-    public class InputPacketSender
+    [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
+    internal struct InputPacket
     {
-        [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
-        public class InputPacket
-        {
-            public int InputIndex;
-            public int? SlotId;
-            public SlotType SlotType
-        }
+        public int InputIndex { get; set; }
+        public Utils.SlotData Slot { get; set; }
+    }
 
-        public enum SlotType
-        {
-            Hotbar
-        }
+    internal delegate void InputHandler(int inputIndex, Utils.SlotData slot, IPlayer player);
 
-        public delegate void InputHandler(int inputIndex, int? slotId, IPlayer player);
-        private InputHandler mHandler;
-        public InputPacketSender(ICoreAPI api, InputHandler handler, string channelName)
+    internal class InputPacketSenderClient
+    {
+        private readonly InputHandler mHandler;
+        private readonly IClientNetworkChannel mClientNetworkChannel;
+        private readonly IPlayer mPlayer;
+
+        public InputPacketSenderClient(ICoreClientAPI api, InputHandler handler, string channelName)
         {
             mHandler = handler;
-
-            if (api.Side == EnumAppSide.Server)
-            {
-                StartServerSide(api as ICoreServerAPI, channelName);
-            }
-            else if (api.Side == EnumAppSide.Client)
-            {
-                StartClientSide(api as ICoreClientAPI, channelName);
-            }
-        }
-        public void SendPacket(int index, int? slot, IServerPlayer player)
-        {
-            mServerNetworkChannel.SendPacket(new InputPacket()
-            {
-                InputIndex = index,
-                SlotId = slot
-            }, player);
-        }
-        public void SendPacket(int index, int? slot)
-        {
-            mClientNetworkChannel.SendPacket(new InputPacket()
-            {
-                InputIndex = index,
-                SlotId = slot
-            });
-        }
-
-        // SERVER SIDE
-
-        private IServerNetworkChannel mServerNetworkChannel;
-        
-        private void StartServerSide(ICoreServerAPI api, string channelName)
-        {
-            api.Network.RegisterChannel(channelName)
-            .RegisterMessageType<InputPacket>()
-            .SetMessageHandler<InputPacket>(OnServerPacket);
-
-            mServerNetworkChannel = api.Network.RegisterChannel(channelName)
-            .RegisterMessageType<InputPacket>();
-        }
-        private void OnServerPacket(IServerPlayer fromPlayer, InputPacket packet)
-        {
-            mHandler(packet.InputIndex, packet.SlotId, fromPlayer);
-        }
-        
-
-        // CLIENT SIDE
-
-        private IClientNetworkChannel mClientNetworkChannel;
-        private IPlayer mPlayer;
-        
-        private void StartClientSide(ICoreClientAPI api, string channelName)
-        {
             mPlayer = api.World.Player;
 
             api.Network.RegisterChannel(channelName)
@@ -339,9 +305,46 @@ namespace MaltiezFSM.Framework
             mClientNetworkChannel = api.Network.RegisterChannel(channelName)
             .RegisterMessageType<InputPacket>();
         }
+        public void SendPacket(int index, Utils.SlotData slot)
+        {
+            mClientNetworkChannel.SendPacket(new InputPacket()
+            {
+                InputIndex = index,
+                Slot = slot
+            });
+        }
         private void OnClientPacket(InputPacket packet)
         {
-            mHandler(packet.InputIndex, packet.SlotId, mPlayer);
+            mHandler(packet.InputIndex, packet.Slot, mPlayer);
+        }
+    }
+    internal class InputPacketSenderServer
+    {
+        private readonly InputHandler mHandler;
+        private readonly IServerNetworkChannel mServerNetworkChannel;
+
+        public InputPacketSenderServer(ICoreServerAPI api, InputHandler handler, string channelName)
+        {
+            mHandler = handler;
+
+            api.Network.RegisterChannel(channelName)
+                        .RegisterMessageType<InputPacket>()
+                        .SetMessageHandler<InputPacket>(OnServerPacket);
+
+            mServerNetworkChannel = api.Network.RegisterChannel(channelName)
+            .RegisterMessageType<InputPacket>();
+        }
+        public void SendPacket(int index, Utils.SlotData slot, IServerPlayer player)
+        {
+            mServerNetworkChannel.SendPacket(new InputPacket()
+            {
+                InputIndex = index,
+                Slot = slot
+            }, player);
+        }
+        private void OnServerPacket(IServerPlayer fromPlayer, InputPacket packet)
+        {
+            mHandler(packet.InputIndex, packet.Slot, fromPlayer);
         }
     }
 }

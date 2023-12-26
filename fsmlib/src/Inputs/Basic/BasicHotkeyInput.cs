@@ -2,7 +2,6 @@
 using Vintagestory.API.Datastructures;
 using MaltiezFSM.API;
 using Vintagestory.API.Client;
-using Vintagestory.GameContent;
 using System.Linq;
 
 namespace MaltiezFSM.Inputs

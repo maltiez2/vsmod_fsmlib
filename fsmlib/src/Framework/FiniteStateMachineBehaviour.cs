@@ -5,8 +5,8 @@ using Vintagestory.API.Client;
 using System.Text;
 using System.Collections.Generic;
 using System.Linq;
-using Vintagestory.API.Util;
-using Vintagestory.GameContent;
+
+#nullable enable
 
 namespace MaltiezFSM.Framework
 {
@@ -19,31 +19,29 @@ namespace MaltiezFSM.Framework
 
         }
 
-        private ICoreAPI mApi;
-        private IFactoryProvider mFactories;
-        private IFiniteStateMachine mFsm;
-        private IInputManager mInputManager;
-        private JsonObject mProperties;
+        private IFiniteStateMachine? mFsm;
+        private IInputManager? mInputManager;
+        private JsonObject? mProperties;
+        private ITransformManager? mTransformsManager;
         private readonly List<ISystem> mSystems = new();
-        
-        public ITransformManager transformsManager { get; private set; }
 
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
 
-            Utils.Logger.Notify(this, "Started");
+            Utils.Logger.Debug(api, this, $"Started FSM for: {collObj.Code}");
 
-            mApi = api;
-            mFactories = mApi.ModLoader.GetModSystem<FiniteStateMachineSystem>();
-            mInputManager = mApi.ModLoader.GetModSystem<FiniteStateMachineSystem>().GetInputManager();
-            transformsManager = mApi.ModLoader.GetModSystem<FiniteStateMachineSystem>().GetTransformManager();
+            IFactoryProvider factories = api.ModLoader.GetModSystem<FiniteStateMachineSystem>();
+            mInputManager = api.ModLoader.GetModSystem<FiniteStateMachineSystem>().GetInputManager();
+            mTransformsManager = api.ModLoader.GetModSystem<FiniteStateMachineSystem>().GetTransformManager();
+            IOperationInputInvoker? operationInputInvoker = api.ModLoader.GetModSystem<FiniteStateMachineSystem>().GetOperationInputInvoker();
 
             IBehaviourAttributesParser parser = new TAttributesFormat();
-            parser.ParseDefinition(mFactories.GetOperationFactory(), mFactories.GetSystemFactory(), mFactories.GetInputFactory(), mProperties, collObj);
+            parser.ParseDefinition(factories.GetOperationFactory(), factories.GetSystemFactory(), factories.GetInputFactory(), mProperties, collObj);
 
             mFsm = new TFiniteStateMachine();
-            mFsm.Init(mApi, parser.GetOperations(), parser.GetSystems(), parser.GetInputs(), mProperties, collObj);
+            mFsm.Init(api, parser.GetOperations(), parser.GetSystems(), parser.GetInputs(), mProperties, collObj);
+            if (operationInputInvoker != null) mFsm.SetOperationInputInvoker(operationInputInvoker);
 
             foreach (var inputEntry in parser.GetInputs())
             {
@@ -56,14 +54,11 @@ namespace MaltiezFSM.Framework
             }
         }
 
-        public override void OnUnloaded(ICoreAPI api) // @TODO refactor
+        public override void OnUnloaded(ICoreAPI api)
         {
             base.OnUnloaded(api);
 
-            mFactories = null;
-            mFsm = null;
-            mInputManager = null;
-            mProperties = null;
+            mInputManager?.Dispose();
         }
 
         public override void Initialize(JsonObject properties)
@@ -75,10 +70,10 @@ namespace MaltiezFSM.Framework
 
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
-            long? entitiId = transformsManager?.GetEntityId(itemstack);
+            long? entitiId = mTransformsManager?.GetEntityId(itemstack);
             if (entitiId != null)
             {
-                ModelTransform currentTransform = transformsManager.CalcCurrentTransform((long)entitiId, target);
+                ModelTransform currentTransform = mTransformsManager.CalcCurrentTransform((long)entitiId, target);
                 renderinfo.Transform = Utils.CombineTransforms(renderinfo.Transform, currentTransform);
             }
             
@@ -114,9 +109,6 @@ namespace MaltiezFSM.Framework
             return interactionsHelp.ToArray();
         }
 
-        ITransformManager ITransformManagerProvider.GetTransformManager()
-        {
-            return transformsManager;
-        }
+        public ITransformManager? GetTransformManager() => mTransformsManager;
     }
 }

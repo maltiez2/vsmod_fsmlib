@@ -55,13 +55,13 @@ namespace MaltiezFSM.API
         /// <param name="definition">Given to the factory by factory user, usually consists from attributes defined in <c>itemtype</c></param>
         /// <param name="collectible">This factory object will be used only by given collectible</param>
         void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api);
-        
+
         /// <summary>
         /// Called immediately after <see cref="Init"/>>
         /// </summary>
         /// <param name="id">Given by <see cref="IFactory{TProductClass}"/> and is meant to be unique among all instances produced by all factories </param>
         void SetId(int id);
-        
+
         /// <returns>Unique id given to the object by calling <see cref="SetId"/></returns>
         int GetId();
     }
@@ -81,7 +81,7 @@ namespace MaltiezFSM.API
         IState Perform(ItemSlot slot, EntityAgent player, IState state, IInput input);
 
         bool StopTimer(ItemSlot slot, EntityAgent player, IState state, IInput input);
-        
+
         /// <summary>
         /// Called by FSM after successful <see cref="Perform"/> call. Used to set up timer that will call the same operation with the same parameters except for state, that will be equal to new FSM state
         /// </summary>
@@ -91,7 +91,7 @@ namespace MaltiezFSM.API
         /// <param name="input">Input that triggered this operation, same as previously provided to <see cref="Perform"/></param>
         /// <returns>Time in <b>milliseconds</b>, timer will not be created if value is equal to <c>null</c></returns>
         int? Timer(ItemSlot slot, EntityAgent player, IState state, IInput input);
-        
+
         struct Transition
         {
             public string input { get; set; }
@@ -120,98 +120,6 @@ namespace MaltiezFSM.API
         bool Process(ItemSlot slot, EntityAgent player, JsonObject parameters);
         string[] GetDescription(ItemSlot slot, IWorldAccessor world);
     }
-    public interface IKeyRelatedInput
-    {
-        KeyPressModifiers GetModifiers();
-        string GetKey();
-        void SetModifiers(KeyPressModifiers modifiers);
-    }
-    public interface IInput : IFactoryObject
-    {
-        enum SlotTypes
-        {
-            mainHand,
-            offHand,
-            inventory,
-            mouse
-        }
-        string GetName();
-        bool Handled();
-        SlotTypes SlotType();
-        WorldInteraction GetInteractionInfo(ItemSlot slot);
-    }
-    public interface ICustomInput : IInput
-    {
-
-    }
-    public interface IStatusInput : IInput
-    {
-        enum StatusType
-        {
-            SWIMMING
-        }
-        StatusType GetStatusType();
-        bool CheckStatus();
-    }
-    public interface IHotkeyInput : IInput, IKeyRelatedInput
-    {
-        string GetLangName();
-    }
-    public interface IEventInput : IInput
-    {
-
-    }
-    public interface IKeyInput : IEventInput, IKeyRelatedInput
-    {
-        enum KeyEventType
-        {
-            KEY_DOWN,
-            KEY_UP
-        }
-        KeyEventType GetEventType();
-        bool CheckIfShouldBeHandled(KeyEvent keyEvent, KeyEventType eventType);
-        string GetHotkeyCode();
-        string GetLangName();
-        void SetKey(string key);
-    }
-    public interface IMouseInput : IEventInput, IKeyRelatedInput
-    {
-        enum MouseEventType
-        {
-            MOUSE_MOVE,
-            MOUSE_DOWN,
-            MOUSE_UP
-        }
-        MouseEventType GetEventType();
-        bool CheckIfShouldBeHandled(MouseEvent mouseEvent, MouseEventType eventType);
-        bool IsRepeatable();
-    }
-    public interface ISlotInput : IEventInput
-    {
-
-    }
-    public interface ISlotModified : ISlotInput
-    {
-
-    }
-    public interface ISlotChangedAfter : ISlotInput
-    {
-        enum SlotEventType
-        {
-            TO_WEAPON,
-            FROM_WEAPON
-        }
-        SlotEventType GetEventType();
-    }
-    public interface ISlotChangedBefore : ISlotInput
-    {
-        EnumHandling GetHandlingType();
-    }
-    public interface ISlotEvent : ISlotInput
-    {
-        IActiveSlotListener.SlotEventType GetEventType();
-    }
-
 
     public interface IFactory<TProductClass>
     {
@@ -233,39 +141,12 @@ namespace MaltiezFSM.API
         bool Process(ItemSlot slot, EntityAgent player, IInput input);
         bool OnTimer(ItemSlot slot, EntityAgent player, IInput input, IOperation operation);
         List<IInput> GetAvailableInputs(ItemSlot slot);
+        void SetOperationInputInvoker(IOperationInputInvoker invoker);
     }
-
-    public interface IInputManager
+    public interface IOperationInputInvoker
     {
-        public delegate bool InputCallback(ItemSlot slot, EntityAgent player, IInput input);
-        void RegisterInput(IInput input, InputCallback callback, CollectibleObject collectible);
-        void RegisterInvoker(IInputInvoker invoker, Type inputType);
-        void InvokeCustomInput(ICustomInput input, long playerEntityId);
-    }
-    public interface IInputInvoker
-    {
-        public delegate bool InputCallback(ItemSlot slot, EntityAgent player, IInput input);
-        void RegisterInput(IInput input, InputCallback callback, CollectibleObject collectible);
-    }
-    public interface IHotkeyInputManager
-    {
-        public delegate bool InputCallback(KeyCombination keyCombination);
-        void RegisterHotkeyInput(IHotkeyInput input, InputCallback callback);
-    }
-    public interface IKeyInputManager
-    {
-        void RegisterKeyInput(IKeyInput input);
-    }
-    public interface IStatusInputManager
-    {
-        public delegate bool InputCallback(IStatusInput.StatusType statusType);
-        void RegisterStatusInput(IStatusInput input, InputCallback callback);
-    }
-    public interface ICustomInputManager
-    {
-        public delegate bool InputCallback(ICustomInput input);
-        void RegisterCustomInput(ICustomInput input, InputCallback callback);
-        void InvokeCustomInput(ICustomInput input, long playerEntityId);
+        bool Started(IOperation operation, ItemSlot inSlot, IPlayer player);
+        bool Finished(IOperation operation, ItemSlot inSlot, IPlayer player);
     }
 
     public interface IFactoryProvider

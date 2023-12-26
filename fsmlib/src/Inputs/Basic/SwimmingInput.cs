@@ -11,7 +11,7 @@ namespace MaltiezFSM.Inputs
 
         IStatusInput.StatusType IStatusInput.GetStatusType()
         {
-            return IStatusInput.StatusType.SWIMMING;
+            return IStatusInput.StatusType.Swimming;
         }
     }
 }
