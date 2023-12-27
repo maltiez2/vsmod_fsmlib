@@ -34,7 +34,7 @@ namespace MaltiezFSM.Framework
         {
             if (!mProducts.ContainsKey(name))
             {
-                Utils.Logger.Warn(this, "Type '{0}' (code: '{1}') is not registered, will skip it.", name, code);
+                Utils.Logger.Warn(mApi, this, $"Type '{name}' (code: '{code}') is not registered, will skip it.");
                 return default;
             }
             TProductClass producedInstance = (TProductClass)Activator.CreateInstance(mProducts[name]);

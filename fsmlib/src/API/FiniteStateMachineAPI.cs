@@ -65,59 +65,80 @@ namespace MaltiezFSM.API
         /// <returns>Unique id given to the object by calling <see cref="SetId"/></returns>
         int GetId();
     }
-    /// <summary>
-    /// Represents transition between main FSM states. Constructs part of a FSM state graph and interacts with <see cref="ISystem">systems</see>.
-    /// </summary>
-    public interface IOperation : IFactoryObject
+
+    public interface IOperation : IFactoryObject, IDisposable
     {
-        /// <summary>
-        /// Is called when particular <see cref="IInput"/> is caught and FSM is in an appropriate state.
-        /// </summary>
-        /// <param name="slot">Slot containing <see cref="CollectibleObject"/> specified in <see cref="IFactoryObject.Init"/></param>
-        /// <param name="player">Player that owns provided slot</param>
-        /// <param name="state">Current FSM state</param>
-        /// <param name="input">Input that triggered this operation</param>
-        /// <returns>State that FSM will switch to</returns>
-        IState Perform(ItemSlot slot, EntityAgent player, IState state, IInput input);
+        public enum Outcome
+        {
+            None,
+            Started,
+            Failed,
+            Finished,
+            StartedAndFinished
+        }
+        public enum Timeout
+        {
+            Ignore,
+            Start,
+            Stop
+        }
+        public readonly struct Result
+        {
+            public IState State { get; }
+            public Outcome Outcome { get; }
+            public Timeout Timeout { get; }
+            public TimeSpan TimeoutDelay { get; }
 
-        bool StopTimer(ItemSlot slot, EntityAgent player, IState state, IInput input);
+            public Result(IState state, Outcome outcome, Timeout timeout, TimeSpan? delay = null)
+            {
+                State = state;
+                Outcome = outcome;
+                Timeout = timeout;
+                TimeoutDelay = delay ?? new TimeSpan(0);
+            }
+        }
 
-        /// <summary>
-        /// Called by FSM after successful <see cref="Perform"/> call. Used to set up timer that will call the same operation with the same parameters except for state, that will be equal to new FSM state
-        /// </summary>
-        /// <param name="slot">Slot containing <see cref="CollectibleObject"/> specified in <see cref="IFactoryObject.Init"/>, same as previously provided to <see cref="Perform"/></param>
-        /// <param name="player">Player that owns provided slot, same as previously provided to <see cref="Perform"/></param>
-        /// <param name="state">FSM state, same as previously provided to <see cref="Perform"/></param>
-        /// <param name="input">Input that triggered this operation, same as previously provided to <see cref="Perform"/></param>
-        /// <returns>Time in <b>milliseconds</b>, timer will not be created if value is equal to <c>null</c></returns>
-        int? Timer(ItemSlot slot, EntityAgent player, IState state, IInput input);
+        Outcome Verify(ItemSlot slot, IPlayer player, IState state, IInput input);
+
+        Result Perform(ItemSlot slot, IPlayer player, IState state, IInput input);
 
         struct Transition
         {
-            public string input { get; set; }
-            public string fromState { get; set; }
-            public string toState { get; set; }
+            public enum TriggerType
+            {
+                Input,
+                Timeout
+            }
+            
+            public TriggerType Trigger { get; set; }
+            public string? Input { get; set; }
+            public string FromState { get; set; }
+            public string ToState { get; set; }
+
+            public static Transition InputTrigger(string input, string fromState, string toState)
+            {
+                return new Transition() { Trigger = TriggerType.Input, Input = input, FromState = fromState, ToState = toState };
+            }
+
+            public static Transition TimeoutTrigger(string fromState, string toState)
+            {
+                return new Transition() { Trigger = TriggerType.Timeout, Input = null, FromState = fromState, ToState = toState };
+            }
 
             public static implicit operator Transition((string input, string fromState, string toState) parameters)
             {
-                return new Transition() { input = parameters.input, fromState = parameters.fromState, toState = parameters.toState };
+                return new Transition() { Trigger = TriggerType.Input, Input = parameters.input, FromState = parameters.fromState, ToState = parameters.toState };
             }
         }
         List<Transition> GetTransitions();
 
-        /// <summary>
-        /// Called by FSM after calling <see cref="GetInitialStates"/> and <see cref="GetFinalStates"/> and <see cref="GetInputs"/>
-        /// </summary>
-        /// <param name="inputs">Map to <see cref="IInput"/> objects from inputs codes given to FSM in <see cref="GetInputs"/></param>
-        /// <param name="states">Map to <see cref="IState"/> objects from states codes given to FSM in <see cref="GetInitialStates"/> and <see cref="GetFinalStates"/></param>
-        /// <param name="systems">Map from states codes to all available <see cref="ISystem"/> objects</param>
         void SetInputsStatesSystems(Dictionary<string, IInput> inputs, Dictionary<string, IState> states, Dictionary<string, ISystem> systems);
     }
     public interface ISystem : IFactoryObject
     {
         void SetSystems(Dictionary<string, ISystem> systems);
-        bool Verify(ItemSlot slot, EntityAgent player, JsonObject parameters);
-        bool Process(ItemSlot slot, EntityAgent player, JsonObject parameters);
+        bool Verify(ItemSlot slot, IPlayer player, JsonObject parameters);
+        bool Process(ItemSlot slot, IPlayer player, JsonObject parameters);
         string[] GetDescription(ItemSlot slot, IWorldAccessor world);
     }
 
@@ -135,11 +156,10 @@ namespace MaltiezFSM.API
         Dictionary<string, ISystem> GetSystems();
         Dictionary<string, IInput> GetInputs();
     }
-    public interface IFiniteStateMachine
+    public interface IFiniteStateMachine : IDisposable
     {
-        void Init(ICoreAPI api, Dictionary<string, IOperation> operations, Dictionary<string, ISystem> systems, Dictionary<string, IInput> inputs, JsonObject behaviourAttributes, CollectibleObject collectible, IOperationInputInvoker? invoker);
-        bool Process(ItemSlot slot, EntityAgent player, IInput input);
-        bool OnTimer(ItemSlot slot, EntityAgent player, IInput input, IOperation operation);
+        bool Process(ItemSlot slot, IPlayer player, IInput input);
+        bool OnTimer(ItemSlot slot, IPlayer player, IInput input, IOperation operation);
         List<IInput> GetAvailableInputs(ItemSlot slot);
     }
     public interface IOperationInputInvoker

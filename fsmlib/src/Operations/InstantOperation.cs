@@ -1,101 +1,86 @@
-﻿using System.Collections.Generic;
+﻿using MaltiezFSM.API;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
-using MaltiezFSM.API;
-using System;
-using Vintagestory.API.Common.Entities;
+
+#nullable enable
 
 namespace MaltiezFSM.Operations
 {
     public class Instant : UniqueId, IOperation
     {
-        public const string mainTransitionsAttrName = "states";
-        public const string systemsAttrName = "systems";
-        public const string initialStateAttrName = "initial";
-        public const string finalStateAttrName = "final";
-        public const string inputAttrName = "input";
-        public const string attributesAttrName = "attributes";
-        public const string inputsToInterceptAttrName = "inputsToIntercept";
-
         private readonly Dictionary<string, string> mStatesInitialData = new();
         private readonly List<Tuple<string, JsonObject>> mSystemsInitialData = new();
-        private readonly List<IOperation.Transition> mTransitions = new();
-        private readonly List<string> mInputsToPreventInitialData = new();
-
         private readonly Dictionary<IState, IState> mStates = new();
         private readonly List<Tuple<ISystem, JsonObject>> mSystems = new();
-        private readonly List<IInput> mInputsToPrevent = new();
 
-        private string mCode;
-        private ICoreAPI mApi;
+        protected readonly List<IOperation.Transition> mTransitions = new();
+        protected ICoreAPI? mApi;
+
+        private string? mCode;
+        private bool mDisposed = false;
 
         public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
         {
             mCode = code;
             mApi = api;
 
-            List<string> inputs = new List<string>();
-            if (definition[inputAttrName].IsArray())
+            IEnumerable<string> inputs = ParseField(definition, "inputs").Select((input) => input.AsString());
+            List<JsonObject> mainTransitions = ParseField(definition, "transitions");
+            
+            foreach (JsonObject transition in mainTransitions)
             {
-                foreach (JsonObject input in definition[inputAttrName].AsArray())
+                mStatesInitialData.Add(transition["initial"].AsString(), transition["final"].AsString());
+
+                foreach (string input in inputs)
                 {
-                    inputs.Add(input.AsString());
+                    mTransitions.Add((input, transition["initial"].AsString(), transition["final"].AsString()));
+                }
+            }
+
+            List<JsonObject> systems = ParseField(definition, "systems");
+            foreach (JsonObject system in systems)
+            {
+                mSystemsInitialData.Add(new(system["code"].AsString(), system));
+            }
+        }
+
+        private static List<JsonObject> ParseField(JsonObject definition, string field)
+        {
+            List<JsonObject> transitions = new();
+            if (definition[field].IsArray())
+            {
+                foreach (JsonObject transition in definition[field].AsArray())
+                {
+                    transitions.Add(transition);
                 }
             }
             else
             {
-                inputs.Add(definition[inputAttrName].AsString());
+                transitions.Add(definition[field]);
             }
-
-            if (definition.KeyExists(inputsToInterceptAttrName))
-            {
-                foreach (JsonObject input in definition[inputsToInterceptAttrName].AsArray())
-                {
-                    mInputsToPreventInitialData.Add(input.AsString());
-                }
-            }
-
-            JsonObject[] mainTransitions = definition[mainTransitionsAttrName].AsArray();
-            foreach (JsonObject transition in mainTransitions)
-            {
-                mStatesInitialData.Add(transition[initialStateAttrName].AsString(), transition[finalStateAttrName].AsString());
-
-                foreach (string input in inputs)
-                {
-                    mTransitions.Add((input, transition[initialStateAttrName].AsString(), transition[finalStateAttrName].AsString()));
-                }
-
-                foreach (string input in mInputsToPreventInitialData)
-                {
-                    mTransitions.Add((input, transition[initialStateAttrName].AsString(), transition[initialStateAttrName].AsString()));
-                }
-            }
-
-            JsonObject[] systems = definition[systemsAttrName].AsArray();
-            foreach (JsonObject system in systems)
-            {
-                mSystemsInitialData.Add(new (system["code"].AsString(), system));
-            }
+            return transitions;
         }
 
-        public List<IOperation.Transition> GetTransitions()
+        public virtual List<IOperation.Transition> GetTransitions()
         {
             return mTransitions;
         }
-
-        public void SetInputsStatesSystems(Dictionary<string, IInput> inputs, Dictionary<string, IState> states, Dictionary<string, ISystem> systems)
+        public virtual void SetInputsStatesSystems(Dictionary<string, IInput> inputs, Dictionary<string, IState> states, Dictionary<string, ISystem> systems)
         {
-            foreach (var entry in mStatesInitialData)
+            foreach (KeyValuePair<string, string> entry in mStatesInitialData)
             {
                 if (!states.ContainsKey(entry.Key))
                 {
-                    mApi.Logger.Warning("[FSMlib] [BasicInstant: {0}] State '{1}' not found.", mCode, entry.Key);
+                    mApi?.Logger.Warning("[FSMlib] [BasicInstant: {0}] State '{1}' not found.", mCode, entry.Key);
                     continue;
                 }
 
                 if (!states.ContainsKey(entry.Value))
                 {
-                    mApi.Logger.Warning("[FSMlib] [BasicInstant: {0}] State '{1}' not found.", mCode, entry.Value);
+                    mApi?.Logger.Warning("[FSMlib] [BasicInstant: {0}] State '{1}' not found.", mCode, entry.Value);
                     continue;
                 }
 
@@ -103,57 +88,56 @@ namespace MaltiezFSM.Operations
             }
             mStatesInitialData.Clear();
 
-            foreach (var entry in mSystemsInitialData)
+            foreach (Tuple<string, JsonObject> entry in mSystemsInitialData)
             {
                 if (!systems.ContainsKey(entry.Item1))
                 {
-                    mApi.Logger.Warning("[FSMlib] [BasicInstant: {0}] System '{1}' not found.", mCode, entry.Item1);
+                    mApi?.Logger.Warning("[FSMlib] [BasicInstant: {0}] System '{1}' not found.", mCode, entry.Item1);
                     continue;
                 }
 
                 mSystems.Add(new(systems[entry.Item1], entry.Item2));
             }
             mSystemsInitialData.Clear();
-
-            foreach (string input in mInputsToPreventInitialData)
-            {
-                if (!systems.ContainsKey(input))
-                {
-                    mApi.Logger.Warning("[FSMlib] [BasicInstant: {0}] System '{1}' not found.", mCode, input);
-                    continue;
-                }
-
-                mInputsToPrevent.Add(inputs[input]);
-            }
-            mInputsToPreventInitialData.Clear();
         }
-
-        public IState Perform(ItemSlot slot, EntityAgent player, IState state, IInput input)
+        public virtual IOperation.Outcome Verify(ItemSlot slot, IPlayer player, IState state, IInput input)
         {
-            if (mInputsToPrevent.Contains(input)) return state;
-            
-            foreach (var entry in mSystems)
+            foreach (Tuple<ISystem, JsonObject> entry in mSystems)
             {
-                if (!entry.Item1.Verify(slot, player, entry.Item2[attributesAttrName]))
+                if (!entry.Item1.Verify(slot, player, entry.Item2["attributes"]))
                 {
-                    return state;
+                    return IOperation.Outcome.Failed;
                 }
             }
 
-            foreach (var entry in mSystems)
+            return IOperation.Outcome.StartedAndFinished;
+        }
+        public virtual IOperation.Result Perform(ItemSlot slot, IPlayer player, IState state, IInput input)
+        {
+            foreach (Tuple<ISystem, JsonObject> entry in mSystems)
             {
-                entry.Item1.Process(slot, player, entry.Item2[attributesAttrName]);
+                entry.Item1.Process(slot, player, entry.Item2["attributes"]);
             }
 
-            return mStates[state];
+            return new(mStates[state], IOperation.Outcome.StartedAndFinished, IOperation.Timeout.Ignore);
         }
-        public bool StopTimer(ItemSlot slot, EntityAgent player, IState state, IInput input)
+
+        protected virtual void Dispose(bool disposing)
         {
-            return false;
+            if (!mDisposed)
+            {
+                if (disposing)
+                {
+                    // Nothing to dispose
+                }
+
+                mDisposed = true;
+            }
         }
-        public int? Timer(ItemSlot slot, EntityAgent player, IState state, IInput input)
+        public void Dispose()
         {
-            return null;
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

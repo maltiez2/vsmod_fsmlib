@@ -7,10 +7,6 @@ namespace MaltiezFSM.Framework
 {
     public class BehaviourAttributesParser : IBehaviourAttributesParser
     {
-        public const string codeAttrName = "code";
-        public const string classAttrName = "class";
-        public const string attributesAttrName = "attributes";
-
         private readonly Dictionary<string, IOperation> mOperations = new();
         private readonly Dictionary<string, ISystem> mSystems = new();
         private readonly Dictionary<string, IInput> mInputs = new();
@@ -40,11 +36,9 @@ namespace MaltiezFSM.Framework
 
         static private void AddObject<TObjectInterface>(JsonObject definition, CollectibleObject collectible, IFactory<TObjectInterface> factory, Dictionary<string, TObjectInterface> container)
         {
-            string objectCode = definition[codeAttrName].AsString();
-            string objectClass = definition[classAttrName].AsString();
-            JsonObject attributes = null;
-            if (definition.KeyExists(attributesAttrName)) attributes = definition[attributesAttrName];
-            TObjectInterface objectInstance = factory.Instantiate(objectCode, objectClass, attributes, collectible);
+            string objectCode = definition["code"].AsString();
+            string objectClass = definition["class"].AsString();
+            TObjectInterface objectInstance = factory.Instantiate(objectCode, objectClass, definition, collectible);
             if (objectInstance != null) container.Add(objectCode, objectInstance);
         }
     }

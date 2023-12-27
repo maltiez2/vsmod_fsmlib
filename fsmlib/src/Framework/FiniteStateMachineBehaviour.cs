@@ -10,9 +10,8 @@ using System.Linq;
 
 namespace MaltiezFSM.Framework
 {
-    public class FiniteStateMachineBehaviour<TAttributesFormat, TFiniteStateMachine> : CollectibleBehavior, ITransformManagerProvider
+    public class FiniteStateMachineBehaviour<TAttributesFormat> : CollectibleBehavior, ITransformManagerProvider
         where TAttributesFormat : IBehaviourAttributesParser, new()
-        where TFiniteStateMachine : IFiniteStateMachine, new()
     {
         public FiniteStateMachineBehaviour(CollectibleObject collObj) : base(collObj)
         {
@@ -39,8 +38,7 @@ namespace MaltiezFSM.Framework
             IBehaviourAttributesParser parser = new TAttributesFormat();
             parser.ParseDefinition(factories.GetOperationFactory(), factories.GetSystemFactory(), factories.GetInputFactory(), mProperties, collObj);
 
-            mFsm = new TFiniteStateMachine();
-            mFsm.Init(api, parser.GetOperations(), parser.GetSystems(), parser.GetInputs(), mProperties, collObj, operationInputInvoker);
+            mFsm = new FiniteStateMachine(api, parser.GetOperations(), parser.GetSystems(), parser.GetInputs(), mProperties, collObj, operationInputInvoker);
 
             foreach (var inputEntry in parser.GetInputs())
             {
@@ -58,6 +56,7 @@ namespace MaltiezFSM.Framework
             base.OnUnloaded(api);
 
             mInputManager?.Dispose();
+            mFsm?.Dispose();
         }
 
         public override void Initialize(JsonObject properties)
@@ -69,10 +68,12 @@ namespace MaltiezFSM.Framework
 
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
-            long? entitiId = mTransformsManager?.GetEntityId(itemstack);
-            if (entitiId != null)
+            if (mTransformsManager == null) return;
+            
+            long? entityId = mTransformsManager.GetEntityId(itemstack);
+            if (entityId != null)
             {
-                ModelTransform currentTransform = mTransformsManager.CalcCurrentTransform((long)entitiId, target);
+                ModelTransform currentTransform = mTransformsManager.CalcCurrentTransform((long)entityId, target);
                 renderinfo.Transform = Utils.CombineTransforms(renderinfo.Transform, currentTransform);
             }
             
@@ -99,6 +100,9 @@ namespace MaltiezFSM.Framework
         public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot, ref EnumHandling handling)
         {
             List<WorldInteraction> interactionsHelp = base.GetHeldInteractionHelp(inSlot, ref handling).ToList();
+
+            if (mFsm == null) return interactionsHelp.ToArray();
+
             foreach (IInput input in mFsm.GetAvailableInputs(inSlot))
             {
                 WorldInteraction interactionHelp = input.GetInteractionInfo(inSlot);

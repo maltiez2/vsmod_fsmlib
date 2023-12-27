@@ -1,123 +1,68 @@
-﻿using System;
+﻿using MaltiezFSM.API;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
-using MaltiezFSM.API;
+
+#nullable enable
 
 namespace MaltiezFSM.Framework
-{    
-    public class FiniteStateMachine : IFiniteStateMachine
-    {    
-        public class State : IState
+{
+    internal sealed class FiniteStateMachine : IFiniteStateMachine
+    {
+        private sealed class State : IState
         {
             private readonly string mState;
             private readonly int mHash;
 
             public State(string inputState)
-            { 
+            {
                 mState = inputState;
                 mHash = mState.GetHashCode();
             }
             public override string ToString() { return mState; }
-            public override bool Equals(object obj)
+            public override bool Equals(object? obj)
             {
                 return (obj as State)?.mHash == mHash;
             }
             public override int GetHashCode()
-            { 
+            {
                 return mHash;
             }
         }
 
-        public class DelayedCallback
-        {
-            private readonly Action mCallback;
-            private readonly ICoreAPI mApi;
-            private long? mCallbackId;
-
-            public DelayedCallback(ICoreAPI api, int delayMs, Action callback)
-            {
-                mCallback = callback;
-                mApi = api;
-
-                mCallbackId = mApi.World.RegisterCallback(Handler, delayMs);
-            }
-
-            ~DelayedCallback()
-            {
-                Cancel();
-            }
-
-            public void Handler(float time)
-            {
-                mCallback();
-            }
-
-            public void Cancel()
-            {
-                if (mCallbackId != null)
-                {
-                    mApi.World.UnregisterCallback((long)mCallbackId);
-                    mCallbackId = null;
-                }
-            }
-        }
-        
         private const string cStateAttributeName = "FSMlib.state";
         private const string cInitialStateAttribute = "initialState";
 
-        private string mInitialState;
+        private readonly string mInitialState;
         private readonly Dictionary<State, Dictionary<IInput, IOperation>> mOperationsByInputAndState = new();
         private readonly Dictionary<IOperation, HashSet<State>> mStatesByOperationForTimer = new();
-        private DelayedCallback mRepeater;
-        private readonly Dictionary<long, DelayedCallback> mTimers = new();
-        private IOperationInputInvoker? mOperationInputInvoker;
+        private readonly Dictionary<long, Utils.DelayedCallback> mTimers = new();
+        private readonly List<IOperation> mOperations = new();
+        private readonly IOperationInputInvoker mOperationInputInvoker;
+        private readonly CollectibleObject mCollectible;
+        private readonly ICoreAPI mApi;
 
-        private CollectibleObject mCollectible;
-        private ICoreAPI mApi;
+        private bool mDisposed = false;
 
-        public void Init(ICoreAPI api, Dictionary<string, IOperation> operations, Dictionary<string, ISystem> systems, Dictionary<string, IInput> inputs, JsonObject behaviourAttributes, CollectibleObject collectible, IOperationInputInvoker invoker)
+        public FiniteStateMachine(ICoreAPI api, Dictionary<string, IOperation> operations, Dictionary<string, ISystem> systems, Dictionary<string, IInput> inputs, JsonObject behaviourAttributes, CollectibleObject collectible, IOperationInputInvoker invoker)
         {
             mCollectible = collectible;
             mInitialState = behaviourAttributes[cInitialStateAttribute].AsString();
             mOperationInputInvoker = invoker;
             mApi = api;
 
-            foreach (var entry in systems)
+            foreach ((_, ISystem system) in systems)
             {
-                entry.Value.SetSystems(systems);
+                system.SetSystems(systems);
             }
 
-            foreach (var operationEntry in operations)
+            foreach ((_, IOperation operation) in operations)
             {
-                IOperation operation = operationEntry.Value;
+                mOperations.Add(operation);
 
                 List<IOperation.Transition> transitions = operation.GetTransitions();
 
-                Dictionary<string, IState> operationStateMapping = new Dictionary<string, IState>();
-                
-                foreach (var transition in transitions)
-                {
-                    string input = transition.input;
-                    State initialState = new State(transition.fromState);
-                    State finalState = new State(transition.toState);
-
-                    operationStateMapping.TryAdd(transition.fromState, initialState);
-                    operationStateMapping.TryAdd(transition.toState, finalState);
-
-                    mOperationsByInputAndState.TryAdd(initialState, new());
-                    mOperationsByInputAndState.TryAdd(finalState, new());
-
-                    if (input == "")
-                    {
-                        if (!mStatesByOperationForTimer.ContainsKey(operation)) mStatesByOperationForTimer.Add(operation, new());
-
-                        mStatesByOperationForTimer[operation].Add(initialState);
-                        continue;
-                    }
-                    
-                    mOperationsByInputAndState[initialState].TryAdd(inputs[input], operation);
-                }
+                Dictionary<string, IState> operationStateMapping = ProcessTransitions(operation, transitions, inputs);
 
                 operation.SetInputsStatesSystems(inputs, operationStateMapping, systems);
             }
@@ -128,18 +73,17 @@ namespace MaltiezFSM.Framework
             List<IInput> inputs = new();
 
             State state = ReadStateFrom(slot);
-            foreach (var item in mOperationsByInputAndState[state])
+            foreach (KeyValuePair<IInput, IOperation> item in mOperationsByInputAndState[state])
             {
-                inputs.Add(item.Key);   
+                inputs.Add(item.Key);
             }
 
             return inputs;
         }
-
-        public bool Process(ItemSlot slot, EntityAgent player, IInput input)
+        public bool Process(ItemSlot slot, IPlayer player, IInput input)
         {
             if (slot?.Itemstack?.Collectible != mCollectible || player == null) return false;
-            
+
             State state = ReadStateFrom(slot);
             if (!mOperationsByInputAndState.ContainsKey(state))
             {
@@ -155,13 +99,12 @@ namespace MaltiezFSM.Framework
 
             if (RunOperation(slot, player, operation, input, state))
             {
-                TryRepeat(slot, player, input);
                 return true;
             }
 
             return false;
         }
-        public bool OnTimer(ItemSlot slot, EntityAgent player, IInput input, IOperation operation)
+        public bool OnTimer(ItemSlot slot, IPlayer player, IInput input, IOperation operation)
         {
             if (slot?.Itemstack?.Collectible != mCollectible || player == null) return false;
 
@@ -173,71 +116,90 @@ namespace MaltiezFSM.Framework
 
             if (RunOperation(slot, player, operation, input, state))
             {
-                TryRepeat(slot, player, input);
                 return true;
             }
 
             return false;
         }
 
-        private void TryRepeat(ItemSlot slot, EntityAgent player, IInput input)
+        private Dictionary<string, IState> ProcessTransitions(IOperation operation, List<IOperation.Transition> transitions, Dictionary<string, IInput> inputs)
         {
-            if ((input as IMouseInput)?.IsRepeatable() == true) mRepeater = new DelayedCallback(mApi, 1, () => Repeat(slot, player, input));
+            Dictionary<string, IState> operationStateMapping = new();
+
+            foreach (IOperation.Transition transition in transitions)
+            {
+                State initialState = new(transition.FromState);
+                State finalState = new(transition.ToState);
+
+                operationStateMapping.TryAdd(transition.FromState, initialState);
+                operationStateMapping.TryAdd(transition.ToState, finalState);
+
+                mOperationsByInputAndState.TryAdd(initialState, new());
+                mOperationsByInputAndState.TryAdd(finalState, new());
+
+                if (transition.Trigger == IOperation.Transition.TriggerType.Timeout)
+                {
+                    mStatesByOperationForTimer.TryAdd(operation, new());
+                    mStatesByOperationForTimer[operation].Add(initialState);
+                }
+                else if (transition.Trigger == IOperation.Transition.TriggerType.Input && transition.Input != null)
+                {
+                    mOperationsByInputAndState[initialState].TryAdd(inputs[transition.Input], operation);
+                }
+            }
+
+            return operationStateMapping;
         }
-
-        private void Repeat(ItemSlot slot, EntityAgent player, IInput input)
+        private bool RunOperation(ItemSlot slot, IPlayer player, IOperation operation, IInput input, State state)
         {
-            if (slot?.Itemstack?.Collectible != mCollectible || player == null) return;
+            if (player == null || slot == null) return false;
 
-            State state = ReadStateFrom(slot);
-            if (!mOperationsByInputAndState.ContainsKey(state))
+            IOperation.Outcome outcome = operation.Verify(slot, player, state, input);
+
+            if (outcome == IOperation.Outcome.Failed) return false;
+
+            if ((outcome == IOperation.Outcome.Started || outcome == IOperation.Outcome.StartedAndFinished) && mOperationInputInvoker.Started(operation, slot, player))
             {
-                WriteStateTo(slot, new State(mInitialState));
-                return;
-            }
-            if (!mOperationsByInputAndState[state].ContainsKey(input))
-            {
-                return;
+                return false;
             }
 
-            IOperation operation = mOperationsByInputAndState[state][input];
+            IOperation.Result result = operation.Perform(slot, player, state, input);
 
-            RunOperation(slot, player, operation, input, state);
-        }
+            if (state != result.State && result.State is State resultState) WriteStateTo(slot, resultState);
 
-        private bool RunOperation(ItemSlot slot, EntityAgent player, IOperation operation, IInput input, State state)
-        {
-            if (operation.StopTimer(slot, player, state, input) && player != null && mTimers.ContainsKey(player.EntityId))
-            {
-                mTimers[player.EntityId]?.Cancel();
-            }
+            if (result.Timeout != IOperation.Timeout.Ignore && mTimers.ContainsKey(player.Entity.EntityId)) mTimers[player.Entity.EntityId]?.Cancel();
 
-            IState newState = operation.Perform(slot, player, state, input);
+            if (result.Timeout == IOperation.Timeout.Start) mTimers[player.Entity.EntityId] = new(mApi, (int)result.TimeoutDelay.TotalMilliseconds, () => OnTimer(slot, player, input, operation));
 
-            if (state.ToString() != newState.ToString())
-            {
-                if (mApi.Side == EnumAppSide.Client) mApi.Logger.Debug("[FSMlib] [CLIENT] State moved from '" + state.ToString() + "' to '" + newState.ToString() + "'.");
-                WriteStateTo(slot, newState as State);
-            }
-
-            int? timerDelayMs = operation.Timer(slot, player, state, input);
-
-            if (timerDelayMs != null)
-            {
-                mTimers[player.EntityId] = new DelayedCallback(mApi, (int)timerDelayMs, () => OnTimer(slot, player, input, operation));
-            }
+            if (result.Outcome == IOperation.Outcome.Finished) mOperationInputInvoker.Finished(operation, slot, player);
 
             return input.Handled();
         }
         private State ReadStateFrom(ItemSlot slot)
         {
-            State state = new State(slot.Itemstack.Attributes.GetAsString(cStateAttributeName, mInitialState));
+            State state = new(slot.Itemstack.Attributes.GetAsString(cStateAttributeName, mInitialState));
             return state;
         }
-        private void WriteStateTo(ItemSlot slot, State state)
+        private static void WriteStateTo(ItemSlot slot, State state)
         {
             slot?.Itemstack?.Attributes?.SetString(cStateAttributeName, state.ToString());
             slot?.MarkDirty();
+        }
+
+        public void Dispose()
+        {
+            if (mDisposed) return;
+            mDisposed = true;
+
+            foreach ((_, Utils.DelayedCallback timer) in mTimers)
+            {
+                timer.Dispose();
+            }
+
+            foreach (IOperation operation in mOperations)
+            {
+                operation.Dispose();
+            }
         }
     }
 }

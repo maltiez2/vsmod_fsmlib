@@ -73,7 +73,7 @@ public sealed class InputManager : IInputManager
         }
 
         InputCallback callback = mCallbacks[input.Index];
-        return callback(slot.Slot(player), player.Entity, input);
+        return callback.Invoke(slot.Slot(player), player, input);
     }
 
     public void Dispose()

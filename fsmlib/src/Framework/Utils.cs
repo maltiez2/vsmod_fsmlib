@@ -668,6 +668,55 @@ namespace MaltiezFSM.Framework
             }
         }
 
+        public class DelayedCallback : IDisposable
+        {
+            private readonly Action mCallback;
+            private readonly ICoreAPI mApi;
+            private long? mCallbackId;
+            private bool mDisposed = false;
+
+            public DelayedCallback(ICoreAPI api, int delayMs, Action callback)
+            {
+                mCallback = callback;
+                mApi = api;
+
+                mCallbackId = mApi.World.RegisterCallback(Handler, delayMs);
+            }
+
+            public void Handler(float time)
+            {
+                mCallback();
+            }
+
+            public void Cancel()
+            {
+                if (mCallbackId != null)
+                {
+                    mApi.World.UnregisterCallback((long)mCallbackId);
+                    mCallbackId = null;
+                }
+            }
+
+            protected virtual void Dispose(bool disposing)
+            {
+                if (!mDisposed)
+                {
+                    if (disposing)
+                    {
+                        Cancel();
+                    }
+
+                    mDisposed = true;
+                }
+            }
+
+            public void Dispose()
+            {
+                Dispose(disposing: true);
+                GC.SuppressFinalize(this);
+            }
+        }
+
         public enum SlotType
         {
             MainHand,

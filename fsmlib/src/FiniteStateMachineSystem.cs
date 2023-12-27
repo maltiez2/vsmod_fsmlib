@@ -30,7 +30,7 @@ namespace MaltiezFSM
 
             api.RegisterItemClass("NoMelee", typeof(NoMelee));
             api.RegisterItemClass("NoMeleeStrict", typeof(NoMeleeStrict));
-            api.RegisterCollectibleBehaviorClass("FiniteStateMachine", typeof(Framework.FiniteStateMachineBehaviour<Framework.BehaviourAttributesParser, Framework.FiniteStateMachine>));
+            api.RegisterCollectibleBehaviorClass("FiniteStateMachine", typeof(Framework.FiniteStateMachineBehaviour<Framework.BehaviourAttributesParser>));
 
             api.RegisterEntityBehaviorClass("constresist", typeof(Additional.EntityBehaviorConstResists<Additional.ConstResist>));
             api.RegisterEntityBehaviorClass("tempresists", typeof(Additional.EntityBehaviorResists));
@@ -44,12 +44,12 @@ namespace MaltiezFSM
 
             RegisterSystems();
             RegisterOperations();
-            RegisterInputs();
             if (api is ICoreClientAPI clientApi) RegisterInputInvokers(clientApi);
             if (api is ICoreServerAPI serverApi) RegisterInputInvokers(serverApi);
+            RegisterInputs();
         }
 
-        public void RegisterInputInvokers(ICoreClientAPI api)
+        private void RegisterInputInvokers(ICoreClientAPI api)
         {
             Framework.KeyInputInvoker keyInput = new(api);
             Framework.StatusInputInvoker statusInput = new(api);
@@ -64,14 +64,14 @@ namespace MaltiezFSM
             mInputManager.RegisterInvoker(activeSlotChanged, typeof(ISlotChangedBefore));
         }
 
-        public void RegisterInputInvokers(ICoreServerAPI api)
+        private void RegisterInputInvokers(ICoreServerAPI api)
         {
             mOperationInputInvoker = new Framework.OperationInputInvoker();
 
             mInputManager.RegisterInvoker(mOperationInputInvoker as Framework.OperationInputInvoker, typeof(IOperationInput));
         }
 
-        public void RegisterSystems()
+        private void RegisterSystems()
         {  
             mSystemFactory.Register<Systems.BasicSoundSystem>("Sound");
             mSystemFactory.Register<Systems.BasicReload>("Reload");
@@ -97,15 +97,14 @@ namespace MaltiezFSM
             mSystemFactory.Register<Systems.BasicBlock<Additional.EntityBehaviorResists>>("BasicBlock");
             mSystemFactory.Register<Systems.SmoothAnimation>("SmoothAnimation");
         }
-        public void RegisterOperations()
+        private void RegisterOperations()
         {
             mOperationFactory.Register<Operations.Instant>("Instant");
             mOperationFactory.Register<Operations.Delayed>("Delayed");
-            mOperationFactory.Register<Operations.Branched>("Branched");
             mOperationFactory.Register<Operations.Continuous>("Continuous");
         }
 
-        public void RegisterInputs()
+        private void RegisterInputs()
         {
             mInputFactory.Register<Inputs.BasicKey>("Key");
             mInputFactory.Register<Inputs.BasicMouse>("MouseKey");

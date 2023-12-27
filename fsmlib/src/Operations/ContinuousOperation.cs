@@ -5,7 +5,7 @@ using Vintagestory.API.Datastructures;
 
 namespace MaltiezFSM.Operations
 {
-    public class Continuous : Branched
+    public class Continuous : Delayed
     {
         public class SystemRequest
         {
@@ -13,7 +13,7 @@ namespace MaltiezFSM.Operations
             public JsonObject Attributes { get; set; }
             public ISystem System { get; set; }
 
-            public bool Process(ItemSlot slot, EntityAgent player)
+            public bool Process(ItemSlot slot, IPlayer player)
             {
                 if (System.Verify(slot, player, Attributes))
                 {
@@ -31,7 +31,7 @@ namespace MaltiezFSM.Operations
         {
             base.Init(code, definition, collectible, api);
 
-            foreach (JsonObject system in definition[systemsAttrName]["timed"].AsArray())
+            foreach (JsonObject system in definition["systems"]["timed"].AsArray())
             {
                 string systemCode = system["code"].AsString();
                 int time = system["time"].AsInt();
@@ -55,28 +55,26 @@ namespace MaltiezFSM.Operations
             }
         }
 
-        public override bool StopTimer(ItemSlot slot, EntityAgent player, IState state, IInput input)
+        public override IOperation.Result Perform(ItemSlot slot, IPlayer player, IState state, IInput input)
         {
-            bool stop = base.StopTimer(slot, player, state, input);
+            var result = base.Perform(slot, player, state, input);
 
-            if (stop) StopTimedSystems(player.EntityId);
+            if (result.Outcome == IOperation.Outcome.Finished)
+            {
+                StopTimedSystems(player.Entity.EntityId);
+            }
 
-            return stop;
+            if (result.Outcome == IOperation.Outcome.Started)
+            {
+                StartTimedSystems(slot, player);
+            }
+
+            return result;
         }
 
-        public override IState Perform(ItemSlot slot, EntityAgent player, IState state, IInput input)
+        protected void StartTimedSystems(ItemSlot slot, IPlayer player)
         {
-            IState nextState = base.Perform(slot, player, state, input);
-            if (state == nextState) return state;
-
-            StartTimedSystems(slot, player);
-
-            return nextState;
-        }
-
-        protected void StartTimedSystems(ItemSlot slot, EntityAgent player)
-        {
-            long entityId = player.EntityId;
+            long entityId = player.Entity.EntityId;
 
             if (!mSystemsTimers.ContainsKey(entityId))
             {
@@ -103,7 +101,7 @@ namespace MaltiezFSM.Operations
             mSystemsTimers[entityId].Clear();
         }
 
-        protected void RunSystem(int time, ItemSlot slot, EntityAgent player)
+        protected void RunSystem(int time, ItemSlot slot, IPlayer player)
         {
             foreach (SystemRequest request in mTimedSystems[time])
             {
