@@ -52,13 +52,16 @@ namespace MaltiezFSM
         public void RegisterInputInvokers(ICoreClientAPI api)
         {
             Framework.KeyInputInvoker keyInput = new(api);
-            Framework.StatusInputManager statusInput = new(api);
+            Framework.StatusInputInvoker statusInput = new(api);
             Framework.DropItemsInputInvoker dropItems = new(api);
+            Framework.ActiveSlotChangedInputInvoker activeSlotChanged = new(api);
 
             mInputManager.RegisterInvoker(keyInput, typeof(IKeyInput));
             mInputManager.RegisterInvoker(keyInput, typeof(IMouseInput));
             mInputManager.RegisterInvoker(statusInput, typeof(IStatusInput));
-            mInputManager.RegisterInvoker(dropItems, typeof(ISlotEvent));
+            mInputManager.RegisterInvoker(dropItems, typeof(IItemDropped));
+            mInputManager.RegisterInvoker(activeSlotChanged, typeof(ISlotChangedAfter));
+            mInputManager.RegisterInvoker(activeSlotChanged, typeof(ISlotChangedBefore));
         }
 
         public void RegisterInputInvokers(ICoreServerAPI api)

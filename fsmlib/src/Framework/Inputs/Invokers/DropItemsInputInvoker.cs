@@ -12,8 +12,8 @@ namespace MaltiezFSM.Framework
     public sealed class DropItemsInputInvoker : IInputInvoker
     {
         private readonly ICoreClientAPI mClientApi;
-        private readonly Dictionary<ISlotEvent, IInputInvoker.InputCallback> mCallbacks = new();
-        private readonly Dictionary<ISlotEvent, CollectibleObject> mCollectibles = new();
+        private readonly Dictionary<IItemDropped, IInputInvoker.InputCallback> mCallbacks = new();
+        private readonly Dictionary<IItemDropped, CollectibleObject> mCollectibles = new();
         private bool mDispose = false;
 
         private readonly List<string> mHotkeys = new()
@@ -30,7 +30,7 @@ namespace MaltiezFSM.Framework
 
         public void RegisterInput(IInput input, IInputInvoker.InputCallback callback, CollectibleObject collectible)
         {
-            if (input is ISlotEvent slotInput)
+            if (input is IItemDropped slotInput)
             {
                 mCallbacks.Add(slotInput, callback);
                 mCollectibles.Add(slotInput, collectible);
@@ -68,7 +68,7 @@ namespace MaltiezFSM.Framework
         {
             bool handled = false;
 
-            foreach ((ISlotEvent input, _) in mCallbacks)
+            foreach ((IItemDropped input, _) in mCallbacks)
             {
                 handled = HandleInput(input);
             }
@@ -76,7 +76,7 @@ namespace MaltiezFSM.Framework
             if (handled) ev.Handled = true;
         }
 
-        private bool HandleInput(ISlotEvent input)
+        private bool HandleInput(IItemDropped input)
         {
             Utils.SlotType slotType = input.SlotType();
 

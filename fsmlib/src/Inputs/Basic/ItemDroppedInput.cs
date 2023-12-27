@@ -2,9 +2,9 @@
 
 namespace MaltiezFSM.Inputs
 {
-    public class ItemDropped : BaseInput, ISlotEvent
+    public class ItemDropped : BaseInput, IItemDropped
     {
-        IActiveSlotListener.SlotEventType ISlotEvent.GetEventType()
+        IActiveSlotListener.SlotEventType IItemDropped.GetEventType()
         {
             return IActiveSlotListener.SlotEventType.ItemDropped;
         }

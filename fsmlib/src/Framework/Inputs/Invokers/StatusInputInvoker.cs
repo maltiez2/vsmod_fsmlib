@@ -9,7 +9,7 @@ using ProtoBuf.Meta;
 
 namespace MaltiezFSM.Framework
 {
-    public sealed class StatusInputManager : IInputInvoker
+    public sealed class StatusInputInvoker : IInputInvoker
     {
         private const int cCheckInterval_ms = 33;
         private readonly ICoreClientAPI mClientApi;
@@ -18,7 +18,7 @@ namespace MaltiezFSM.Framework
         private readonly long mListener;
         private bool mDisposed = false;
 
-        public StatusInputManager(ICoreClientAPI api)
+        public StatusInputInvoker(ICoreClientAPI api)
         {
             mClientApi = api;
             mListener = mClientApi.World.RegisterGameTickListener(_ => CheckStatuses(), cCheckInterval_ms);

@@ -104,10 +104,6 @@ public interface ISlotInput : IEventInput
         ToSlot
     }
 }
-public interface ISlotModified : ISlotInput
-{
-
-}
 public interface ISlotChangedAfter : ISlotInput
 {
     SlotEventType GetEventType();
@@ -117,12 +113,6 @@ public interface ISlotChangedBefore : ISlotInput
     SlotEventType GetEventType();
     EnumHandling GetHandlingType();
 }
-public interface ISlotEvent : ISlotInput
+public interface IItemDropped : ISlotInput
 {
-    public enum EventType
-    {
-        ItemDropped
-    }
-
-    EventType GetEventType();
 }
