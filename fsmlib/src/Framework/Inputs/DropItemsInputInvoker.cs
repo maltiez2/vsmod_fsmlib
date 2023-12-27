@@ -13,9 +13,10 @@ namespace MaltiezFSM.Framework
     {
         private readonly ICoreClientAPI mClientApi;
         private readonly Dictionary<ISlotEvent, IInputInvoker.InputCallback> mCallbacks = new();
+        private readonly Dictionary<ISlotEvent, CollectibleObject> mCollectibles = new();
         private bool mDispose = false;
 
-        private readonly List<string> mHotkeys = new List<string>
+        private readonly List<string> mHotkeys = new()
         {
             "dropitem",
             "dropitems"
@@ -29,7 +30,11 @@ namespace MaltiezFSM.Framework
 
         public void RegisterInput(IInput input, IInputInvoker.InputCallback callback, CollectibleObject collectible)
         {
-            if (input is ISlotEvent slotInput) mCallbacks.Add(slotInput, callback);
+            if (input is ISlotEvent slotInput)
+            {
+                mCallbacks.Add(slotInput, callback);
+                mCollectibles.Add(slotInput, collectible);
+            }
         }
 
         private void KeyPressListener(KeyEvent ev)
@@ -63,7 +68,7 @@ namespace MaltiezFSM.Framework
         {
             bool handled = false;
 
-            foreach ((var input, _) in mCallbacks)
+            foreach ((ISlotEvent input, _) in mCallbacks)
             {
                 handled = HandleInput(input);
             }
@@ -75,7 +80,7 @@ namespace MaltiezFSM.Framework
         {
             Utils.SlotType slotType = input.SlotType();
 
-            IEnumerable<Utils.SlotData> slots = Utils.SlotData.GetForAllSlots(slotType, mClientApi.World.Player);
+            IEnumerable<Utils.SlotData> slots = Utils.SlotData.GetForAllSlots(slotType, mCollectibles[input], mClientApi.World.Player);
 
             bool handled = false;
             foreach (Utils.SlotData slotData in slots.Where(slotData => mCallbacks[input](slotData, mClientApi.World.Player, input))) // Unreadable but now warning... I guess win win?
@@ -85,7 +90,7 @@ namespace MaltiezFSM.Framework
 
             return handled;
         }
-        
+
         public void Dispose()
         {
             if (mDispose) return;

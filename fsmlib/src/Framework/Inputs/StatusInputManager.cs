@@ -3,6 +3,9 @@ using Vintagestory.API.Client;
 using MaltiezFSM.API;
 using Vintagestory.API.Common;
 using System.Linq;
+using ProtoBuf.Meta;
+
+#nullable enable
 
 namespace MaltiezFSM.Framework
 {
@@ -11,6 +14,7 @@ namespace MaltiezFSM.Framework
         private const int cCheckInterval_ms = 33;
         private readonly ICoreClientAPI mClientApi;
         private readonly Dictionary<IStatusInput, IInputInvoker.InputCallback> mCallbacks = new();
+        private readonly Dictionary<IInput, CollectibleObject> mCollectibles = new();
         private readonly long mListener;
         private bool mDisposed = false;
 
@@ -22,7 +26,11 @@ namespace MaltiezFSM.Framework
 
         public void RegisterInput(IInput input, IInputInvoker.InputCallback callback, CollectibleObject collectible)
         {
-            if (input is IStatusInput statusInput) mCallbacks.Add(statusInput, callback);
+            if (input is IStatusInput statusInput)
+            {
+                mCallbacks.Add(statusInput, callback);
+                mCollectibles.Add(statusInput, collectible);
+            }
         }
 
         private void CheckStatuses()
@@ -38,31 +46,20 @@ namespace MaltiezFSM.Framework
 
         private bool CheckStatus(IStatusInput input)
         {
-            switch (input.GetStatusType())
+            return input.GetStatusType() switch
             {
-                case IStatusInput.StatusType.Activity:
-                    return mClientApi.World.Player.Entity.IsActivityRunning(input.Activity);
-                case IStatusInput.StatusType.Swimming:
-                    return mClientApi.World.Player.Entity.Swimming;
-                case IStatusInput.StatusType.OnFire:
-                    return mClientApi.World.Player.Entity.IsOnFire;
-                case IStatusInput.StatusType.Collided:
-                    return mClientApi.World.Player.Entity.Collided;
-                case IStatusInput.StatusType.CollidedHorizontally:
-                    return mClientApi.World.Player.Entity.CollidedHorizontally;
-                case IStatusInput.StatusType.CollidedVertically:
-                    return mClientApi.World.Player.Entity.CollidedVertically;
-                case IStatusInput.StatusType.EyesSubmerged:
-                    return mClientApi.World.Player.Entity.IsEyesSubmerged();
-                case IStatusInput.StatusType.FeetInLiquid:
-                    return mClientApi.World.Player.Entity.FeetInLiquid;
-                case IStatusInput.StatusType.InLava:
-                    return mClientApi.World.Player.Entity.InLava;
-                case IStatusInput.StatusType.OnGround:
-                    return mClientApi.World.Player.Entity.OnGround;
-            }
-
-            return false;
+                IStatusInput.StatusType.Activity => mClientApi.World.Player.Entity.IsActivityRunning(input.Activity),
+                IStatusInput.StatusType.Swimming => mClientApi.World.Player.Entity.Swimming,
+                IStatusInput.StatusType.OnFire => mClientApi.World.Player.Entity.IsOnFire,
+                IStatusInput.StatusType.Collided => mClientApi.World.Player.Entity.Collided,
+                IStatusInput.StatusType.CollidedHorizontally => mClientApi.World.Player.Entity.CollidedHorizontally,
+                IStatusInput.StatusType.CollidedVertically => mClientApi.World.Player.Entity.CollidedVertically,
+                IStatusInput.StatusType.EyesSubmerged => mClientApi.World.Player.Entity.IsEyesSubmerged(),
+                IStatusInput.StatusType.FeetInLiquid => mClientApi.World.Player.Entity.FeetInLiquid,
+                IStatusInput.StatusType.InLava => mClientApi.World.Player.Entity.InLava,
+                IStatusInput.StatusType.OnGround => mClientApi.World.Player.Entity.OnGround,
+                _ => false,
+            };
         }
 
 
@@ -70,10 +67,10 @@ namespace MaltiezFSM.Framework
         {
             Utils.SlotType slotType = input.SlotType();
 
-            IEnumerable<Utils.SlotData> slots = Utils.SlotData.GetForAllSlots(slotType, mClientApi.World.Player);
+            IEnumerable<Utils.SlotData> slots = Utils.SlotData.GetForAllSlots(slotType, mCollectibles[input], mClientApi.World.Player);
 
             bool handled = false;
-            foreach (Utils.SlotData slotData in slots.Where(slotData => mCallbacks[input](slotData, mClientApi.World.Player, input))) // Unreadable but now warning... I guess win win?
+            foreach (Utils.SlotData slotData in slots.Where(slotData => mCallbacks[input](slotData, mClientApi.World.Player, input)))
             {
                 handled = true;
             }

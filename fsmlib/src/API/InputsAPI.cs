@@ -98,7 +98,11 @@ public interface IMouseInput : IEventInput, IKeyRelatedInput
 }
 public interface ISlotInput : IEventInput
 {
-
+    enum SlotEventType
+    {
+        FromSlot,
+        ToSlot
+    }
 }
 public interface ISlotModified : ISlotInput
 {
@@ -106,15 +110,11 @@ public interface ISlotModified : ISlotInput
 }
 public interface ISlotChangedAfter : ISlotInput
 {
-    enum SlotEventType
-    {
-        TO_WEAPON,
-        FROM_WEAPON
-    }
     SlotEventType GetEventType();
 }
 public interface ISlotChangedBefore : ISlotInput
 {
+    SlotEventType GetEventType();
     EnumHandling GetHandlingType();
 }
 public interface ISlotEvent : ISlotInput

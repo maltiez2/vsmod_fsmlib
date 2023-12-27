@@ -137,11 +137,10 @@ namespace MaltiezFSM.API
     }
     public interface IFiniteStateMachine
     {
-        void Init(ICoreAPI api, Dictionary<string, IOperation> operations, Dictionary<string, ISystem> systems, Dictionary<string, IInput> inputs, JsonObject behaviourAttributes, CollectibleObject collectible);
+        void Init(ICoreAPI api, Dictionary<string, IOperation> operations, Dictionary<string, ISystem> systems, Dictionary<string, IInput> inputs, JsonObject behaviourAttributes, CollectibleObject collectible, IOperationInputInvoker? invoker);
         bool Process(ItemSlot slot, EntityAgent player, IInput input);
         bool OnTimer(ItemSlot slot, EntityAgent player, IInput input, IOperation operation);
         List<IInput> GetAvailableInputs(ItemSlot slot);
-        void SetOperationInputInvoker(IOperationInputInvoker invoker);
     }
     public interface IOperationInputInvoker
     {

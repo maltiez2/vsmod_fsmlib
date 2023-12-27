@@ -2,9 +2,11 @@
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
+using Vintagestory.GameContent;
 
 namespace MaltiezFSM.Framework
 {
@@ -668,10 +670,13 @@ namespace MaltiezFSM.Framework
 
         public enum SlotType
         {
-            HotBar,
             MainHand,
             OffHand,
-            Inventory
+            Inventory,
+            HotBar,
+            Character,
+            Backpack,
+            Crafting
         }
         public struct SlotData
         {
@@ -711,6 +716,12 @@ namespace MaltiezFSM.Framework
                         return player.Entity.LeftHandItemSlot;
                     case SlotType.Inventory:
                         return player.InventoryManager.GetInventory(InventoryId)[SlotId];
+                    case SlotType.Character:
+                        return player.InventoryManager.GetOwnInventory(GlobalConstants.characterInvClassName)[SlotId];
+                    case SlotType.Backpack:
+                        return player.InventoryManager.GetOwnInventory(GlobalConstants.backpackInvClassName)[SlotId];
+                    case SlotType.Crafting:
+                        return player.InventoryManager.GetOwnInventory(GlobalConstants.craftingInvClassName)[SlotId];
                     default:
                         return null;
                 }
@@ -735,6 +746,77 @@ namespace MaltiezFSM.Framework
                             {
                                 slots.Add(new(type, inventorySlot, player));
                             }
+                        }
+                        break;
+                    case SlotType.Character:
+                        foreach (ItemSlot characterSlot in player.InventoryManager.GetOwnInventory(GlobalConstants.characterInvClassName))
+                        {
+                            slots.Add(new(type, characterSlot));
+                        }
+                        break;
+                    case SlotType.Backpack:
+                        foreach (ItemSlot backpackSlot in player.InventoryManager.GetOwnInventory(GlobalConstants.backpackInvClassName))
+                        {
+                            slots.Add(new(type, backpackSlot));
+                        }
+                        break;
+                    case SlotType.Crafting:
+                        foreach (ItemSlot craftingSlot in player.InventoryManager.GetOwnInventory(GlobalConstants.craftingInvClassName))
+                        {
+                            slots.Add(new(type, craftingSlot));
+                        }
+                        break;
+                    default:
+                        slots.Add(new(type));
+                        break;
+                }
+
+                return slots;
+            }
+
+            public static IEnumerable<SlotData> GetForAllSlots(SlotType type, CollectibleObject collectible, IPlayer player = null)
+            {
+                HashSet<SlotData> slots = new();
+
+                switch (type)
+                {
+                    case SlotType.HotBar:
+                        foreach (ItemSlot hotbarSlot in player.InventoryManager.GetHotbarInventory().Where((slot) => slot?.Itemstack?.Collectible == collectible))
+                        {
+                            slots.Add(new(type, hotbarSlot));
+                        }
+                        break;
+                    case SlotType.Inventory:
+                        foreach ((_, IInventory inventory) in player.InventoryManager.Inventories)
+                        {
+                            foreach (ItemSlot inventorySlot in inventory.Where((slot) => slot?.Itemstack?.Collectible == collectible))
+                            {
+                                slots.Add(new(type, inventorySlot, player));
+                            }
+                        }
+                        break;
+                    case SlotType.MainHand:
+                        if (player?.Entity?.RightHandItemSlot?.Itemstack?.Collectible == collectible) slots.Add(new(type));
+                        break;
+                    case SlotType.OffHand:
+                        if (player?.Entity?.LeftHandItemSlot?.Itemstack?.Collectible == collectible) slots.Add(new(type));
+                        break;
+                    case SlotType.Character:
+                        foreach (ItemSlot characterSlot in player.InventoryManager.GetOwnInventory(GlobalConstants.characterInvClassName).Where((slot) => slot?.Itemstack?.Collectible == collectible))
+                        {
+                            slots.Add(new(type, characterSlot));
+                        }
+                        break;
+                    case SlotType.Backpack:
+                        foreach (ItemSlot backpackSlot in player.InventoryManager.GetOwnInventory(GlobalConstants.backpackInvClassName).Where((slot) => slot?.Itemstack?.Collectible == collectible))
+                        {
+                            slots.Add(new(type, backpackSlot));
+                        }
+                        break;
+                    case SlotType.Crafting:
+                        foreach (ItemSlot craftingSlot in player.InventoryManager.GetOwnInventory(GlobalConstants.craftingInvClassName).Where((slot) => slot?.Itemstack?.Collectible == collectible))
+                        {
+                            slots.Add(new(type, craftingSlot));
                         }
                         break;
                     default:

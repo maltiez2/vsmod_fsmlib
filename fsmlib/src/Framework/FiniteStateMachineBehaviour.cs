@@ -40,8 +40,7 @@ namespace MaltiezFSM.Framework
             parser.ParseDefinition(factories.GetOperationFactory(), factories.GetSystemFactory(), factories.GetInputFactory(), mProperties, collObj);
 
             mFsm = new TFiniteStateMachine();
-            mFsm.Init(api, parser.GetOperations(), parser.GetSystems(), parser.GetInputs(), mProperties, collObj);
-            if (operationInputInvoker != null) mFsm.SetOperationInputInvoker(operationInputInvoker);
+            mFsm.Init(api, parser.GetOperations(), parser.GetSystems(), parser.GetInputs(), mProperties, collObj, operationInputInvoker);
 
             foreach (var inputEntry in parser.GetInputs())
             {

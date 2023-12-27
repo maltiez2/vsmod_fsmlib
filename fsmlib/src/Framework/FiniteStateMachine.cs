@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using MaltiezFSM.API;
-using static MaltiezFSM.Framework.FiniteStateMachine;
 
 namespace MaltiezFSM.Framework
 {    
@@ -77,10 +76,11 @@ namespace MaltiezFSM.Framework
         private CollectibleObject mCollectible;
         private ICoreAPI mApi;
 
-        public void Init(ICoreAPI api, Dictionary<string, IOperation> operations, Dictionary<string, ISystem> systems, Dictionary<string, IInput> inputs, JsonObject behaviourAttributes, CollectibleObject collectible)
+        public void Init(ICoreAPI api, Dictionary<string, IOperation> operations, Dictionary<string, ISystem> systems, Dictionary<string, IInput> inputs, JsonObject behaviourAttributes, CollectibleObject collectible, IOperationInputInvoker invoker)
         {
             mCollectible = collectible;
             mInitialState = behaviourAttributes[cInitialStateAttribute].AsString();
+            mOperationInputInvoker = invoker;
             mApi = api;
 
             foreach (var entry in systems)
@@ -239,7 +239,5 @@ namespace MaltiezFSM.Framework
             slot?.Itemstack?.Attributes?.SetString(cStateAttributeName, state.ToString());
             slot?.MarkDirty();
         }
-
-        public void SetOperationInputInvoker(IOperationInputInvoker invoker) => mOperationInputInvoker = invoker;
     }
 }

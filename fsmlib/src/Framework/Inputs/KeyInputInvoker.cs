@@ -30,6 +30,7 @@ public sealed class KeyInputInvoker : IInputInvoker
     private readonly HashSet<string> rBlockingGuiDialogs = new();
     private readonly Dictionary<InputType, List<IInput>> mInputs = new();
     private readonly Dictionary<IInput, IInputInvoker.InputCallback> mCallbacks = new();
+    private readonly Dictionary<IInput, CollectibleObject> mCollectibles = new();
     private bool mDisposed;
 
     public KeyInputInvoker(ICoreClientAPI api)
@@ -66,6 +67,7 @@ public sealed class KeyInputInvoker : IInputInvoker
         {
             mInputs[inputType].Add(input);
             mCallbacks.Add(input, callback);
+            mCollectibles.Add(input, collectible);
         }
     }
 
@@ -179,7 +181,7 @@ public sealed class KeyInputInvoker : IInputInvoker
     {
         Utils.SlotType slotType = input.SlotType();
 
-        IEnumerable<Utils.SlotData> slots = Utils.SlotData.GetForAllSlots(slotType, mClientApi.World.Player);
+        IEnumerable<Utils.SlotData> slots = Utils.SlotData.GetForAllSlots(slotType, mCollectibles[input], mClientApi.World.Player);
 
         bool handled = false;
         foreach (Utils.SlotData slotData in slots.Where(slotData => mCallbacks[input](slotData, mClientApi.World.Player, input))) // Unreadable but now warning... I guess win win?
