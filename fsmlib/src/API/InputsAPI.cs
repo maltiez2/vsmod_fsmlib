@@ -23,7 +23,7 @@ public interface IKeyRelatedInput
     string GetKey();
     void SetModifiers(KeyPressModifiers modifiers);
 }
-public interface IInput : IFactoryObject
+public interface IInput : IFactoryProduct
 {
     public int Index { get; set; }
     string GetName();

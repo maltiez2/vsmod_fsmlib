@@ -7,7 +7,7 @@ using MaltiezFSM.API;
 namespace MaltiezFSM.Framework
 {
     internal class Factory<TProductClass, TIdGeneratorClass> : IFactory<TProductClass>
-        where TProductClass : IFactoryObject
+        where TProductClass : IFactoryProduct
         where TIdGeneratorClass : IUniqueIdGeneratorForFactory, new()  
     {
         private readonly Dictionary<string, Type> mProducts = new();

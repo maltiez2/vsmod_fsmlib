@@ -10,7 +10,7 @@ using System.Linq;
 
 namespace MaltiezFSM.Framework
 {
-    public class FiniteStateMachineBehaviour<TAttributesFormat> : CollectibleBehavior, ITransformManagerProvider
+    public class FiniteStateMachineBehaviour<TAttributesFormat> : CollectibleBehavior
         where TAttributesFormat : IBehaviourAttributesParser, new()
     {
         public FiniteStateMachineBehaviour(CollectibleObject collObj) : base(collObj)
@@ -21,7 +21,6 @@ namespace MaltiezFSM.Framework
         private IFiniteStateMachine? mFsm;
         private IInputManager? mInputManager;
         private JsonObject? mProperties;
-        private ITransformManager? mTransformsManager;
         private readonly List<ISystem> mSystems = new();
 
         public override void OnLoaded(ICoreAPI api)
@@ -32,7 +31,6 @@ namespace MaltiezFSM.Framework
 
             IFactoryProvider factories = api.ModLoader.GetModSystem<FiniteStateMachineSystem>();
             mInputManager = api.ModLoader.GetModSystem<FiniteStateMachineSystem>().GetInputManager();
-            mTransformsManager = api.ModLoader.GetModSystem<FiniteStateMachineSystem>().GetTransformManager();
             IOperationInputInvoker? operationInputInvoker = api.ModLoader.GetModSystem<FiniteStateMachineSystem>().GetOperationInputInvoker();
 
             IBehaviourAttributesParser parser = new TAttributesFormat();
@@ -66,20 +64,6 @@ namespace MaltiezFSM.Framework
             mProperties = properties;
         }
 
-        public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
-        {
-            if (mTransformsManager == null) return;
-            
-            long? entityId = mTransformsManager.GetEntityId(itemstack);
-            if (entityId != null)
-            {
-                ModelTransform currentTransform = mTransformsManager.CalcCurrentTransform((long)entityId, target);
-                renderinfo.Transform = Utils.CombineTransforms(renderinfo.Transform, currentTransform);
-            }
-            
-            base.OnBeforeRender(capi, itemstack, target, ref renderinfo);
-        }
-
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
@@ -111,7 +95,5 @@ namespace MaltiezFSM.Framework
 
             return interactionsHelp.ToArray();
         }
-
-        public ITransformManager? GetTransformManager() => mTransformsManager;
     }
 }

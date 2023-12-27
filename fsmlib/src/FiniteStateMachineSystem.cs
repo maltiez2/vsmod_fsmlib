@@ -15,7 +15,6 @@ namespace MaltiezFSM
         private IFactory<ISystem> mSystemFactory;
         private IFactory<IInput> mInputFactory;
         private IInputManager mInputManager;
-        private ITransformManager mTransformManager;
         private IOperationInputInvoker? mOperationInputInvoker;
 
         public override void Start(ICoreAPI api)
@@ -25,8 +24,6 @@ namespace MaltiezFSM
             Framework.Utils.Logger.Init(api.Logger);
 
             Framework.Utils.Logger.Notify(this, "Started");
-
-            mTransformManager = new Framework.TransformsManager(api);
 
             api.RegisterItemClass("NoMelee", typeof(NoMelee));
             api.RegisterItemClass("NoMeleeStrict", typeof(NoMeleeStrict));
@@ -78,7 +75,6 @@ namespace MaltiezFSM
             mSystemFactory.Register<Systems.BasicShooting>("Shooting");
             mSystemFactory.Register<Systems.BasicVariantsAnimation<Systems.TickBasedAnimation>>("VariantsAnimation");
             mSystemFactory.Register<Systems.BasicRequirements>("Requirements");
-            mSystemFactory.Register<Systems.BasicTransformAnimation>("TransformAnimation");
             mSystemFactory.Register<Systems.BasicPlayerAnimation>("PlayerAnimation");
             mSystemFactory.Register<Systems.BasicPlayerStats>("PlayerStats");
             mSystemFactory.Register<Systems.BasicParticles>("Particles");
@@ -121,7 +117,6 @@ namespace MaltiezFSM
         public IFactory<ISystem> GetSystemFactory() => mSystemFactory;
         public IFactory<IInput> GetInputFactory() => mInputFactory;
         public IInputManager GetInputManager() => mInputManager;
-        public ITransformManager GetTransformManager() => mTransformManager;
         public IOperationInputInvoker? GetOperationInputInvoker() => mOperationInputInvoker;
 
         private struct BehaviorAsJsonObj
