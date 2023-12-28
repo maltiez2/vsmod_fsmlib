@@ -27,11 +27,6 @@ public interface IInput : IFactoryProduct
     WorldInteraction? GetInteractionInfo(ItemSlot slot);
 }
 
-public interface IKeyPress
-{
-    KeyPressModifiers Modifiers { get; set; }
-    string KeyName { get; set; }
-}
 public struct KeyPressModifiers
 {
     public bool? Alt { get; set; }

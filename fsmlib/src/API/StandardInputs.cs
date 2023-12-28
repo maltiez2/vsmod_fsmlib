@@ -40,7 +40,7 @@ public interface IStatusInput : IStandardInput
     bool Invert { get; set; }
     StatusType Status { get; set; }
 }
-public interface IKeyInput : IStandardInput, IKeyPress
+public interface IKeyInput : IStandardInput
 {
     enum KeyEventType
     {
@@ -50,9 +50,11 @@ public interface IKeyInput : IStandardInput, IKeyPress
     KeyEventType EventType { get; }
     string HotKey { get; }
     string Name { get; }
+    GlKeys Key { get; set; }
+    KeyPressModifiers Modifiers { get; set; }
     bool CheckIfShouldBeHandled(KeyEvent keyEvent, KeyEventType eventType);
 }
-public interface IMouseInput : IStandardInput, IKeyPress
+public interface IMouseInput : IStandardInput
 {
     enum MouseEventType
     {
@@ -60,7 +62,10 @@ public interface IMouseInput : IStandardInput, IKeyPress
         MouseDown,
         MouseUp
     }
-    KeyEventType EventType { get; }
+    MouseEventType EventType { get; }
+    string Name { get; }
+    KeyPressModifiers Modifiers { get; set; }
+    EnumMouseButton Key { get; set; }
     bool CheckIfShouldBeHandled(MouseEvent mouseEvent, MouseEventType eventType);
 }
 public interface ISlotInput : IStandardInput

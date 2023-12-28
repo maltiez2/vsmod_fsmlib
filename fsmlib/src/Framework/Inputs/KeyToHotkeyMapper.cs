@@ -27,12 +27,12 @@ public sealed class KeyToHotkeyMapper : IDisposable
         if (hotkeyCode == null) return;
 
         KeyPressModifiers modifiers = input.Modifiers;
-        GlKeys key = (GlKeys)Enum.Parse(typeof(GlKeys), input.KeyName);
+        
 
         if (!mInputs.ContainsKey(hotkeyCode))
         {
             mInputs.Add(hotkeyCode, new());
-            mClientApi.Input.RegisterHotKey(hotkeyCode, input.Name, key, HotkeyType.CharacterControls, modifiers.Alt == true, modifiers.Ctrl == true, modifiers.Shift == true);
+            mClientApi.Input.RegisterHotKey(hotkeyCode, input.Name, input.Key, HotkeyType.CharacterControls, modifiers.Alt == true, modifiers.Ctrl == true, modifiers.Shift == true);
         }
 
         mInputs[hotkeyCode].Add(input);
@@ -62,7 +62,7 @@ public sealed class KeyToHotkeyMapper : IDisposable
 
     private bool CompareHotkey(IKeyInput input, HotKey hotkey)
     {
-        int key = (int)Enum.Parse(typeof(GlKeys), input.KeyName);
+        int key = (int)input.Key;
         KeyPressModifiers modifiers = input.Modifiers;
         KeyCombination hotkeyCombination = hotkey.CurrentMapping;
 
@@ -78,14 +78,13 @@ public sealed class KeyToHotkeyMapper : IDisposable
     {
         KeyCombination hotkeyCombination = hotkey.CurrentMapping;
         KeyPressModifiers modifiers = input.Modifiers;
-        string key = ((GlKeys)hotkeyCombination.KeyCode).ToString();
 
         if (modifiers.Alt != false) modifiers.Alt = hotkeyCombination.Alt ? true : null;
         if (modifiers.Ctrl != false) modifiers.Ctrl = hotkeyCombination.Ctrl ? true : null;
         if (modifiers.Shift != false) modifiers.Shift = hotkeyCombination.Shift ? true : null;
 
         input.Modifiers = modifiers;
-        input.KeyName = key;
+        input.Key = (GlKeys)hotkeyCombination.KeyCode;
     }
 
     public void Dispose()

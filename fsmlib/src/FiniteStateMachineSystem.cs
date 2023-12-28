@@ -69,7 +69,7 @@ namespace MaltiezFSM
         private void RegisterInputs()
         {
             mInputFactory.Register<Inputs.KeyboardKey>("Key");
-            mInputFactory.Register<Inputs.BasicMouse>("MouseKey");
+            mInputFactory.Register<Inputs.MouseKey>("MouseKey");
             mInputFactory.Register<Inputs.BasicHotkey>("Hotkey");
             mInputFactory.Register<Inputs.SlotModified>("SlotModified");
             mInputFactory.Register<Inputs.BasicSlotBefore>("SlotChange");

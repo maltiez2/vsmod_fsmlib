@@ -28,6 +28,6 @@ public class BaseInput : FactoryProduct, IInput
         }
 
         mHandled = definition["handle"].AsBool(true);
-        mSlotType = (Utils.SlotType)Enum.Parse(typeof(Utils.SlotType), definition["slot"].AsString("mainHand"));
+        mSlotType = (Utils.SlotType)Enum.Parse(typeof(Utils.SlotType), definition["slot"].AsString("MainHand"));
     }
 }
