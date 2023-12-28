@@ -12,6 +12,7 @@ public interface IStandardInput : IInput
 public interface IOperationInput : IStandardInput
 {
     IOperation Operation { get; set; }
+    string OperationCode { get; set; }
 }
 public interface IOperationStarted : IOperationInput
 {
@@ -36,9 +37,9 @@ public interface IStatusInput : IStandardInput
         InLava,
         OnGround
     }
-    string Activity { get; set; }
-    bool Invert { get; set; }
-    StatusType Status { get; set; }
+    string Activity { get; }
+    bool Invert { get; }
+    StatusType Status { get; }
 }
 public interface IKeyInput : IStandardInput
 {

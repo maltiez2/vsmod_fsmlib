@@ -69,14 +69,13 @@ namespace MaltiezFSM
         private void RegisterInputs()
         {
             mInputFactory.Register<Inputs.KeyboardKey>("Key");
-            mInputFactory.Register<Inputs.MouseKey>("MouseKey");
-            mInputFactory.Register<Inputs.BasicHotkey>("Hotkey");
-            mInputFactory.Register<Inputs.SlotModified>("SlotModified");
-            mInputFactory.Register<Inputs.BasicSlotBefore>("SlotChange");
-            mInputFactory.Register<Inputs.BasicSlotAfter>("SlotSelected");
+            mInputFactory.Register<Inputs.MouseKey>("Mouse");
+            mInputFactory.Register<Inputs.BeforeSlotChanged>("SlotChange");
+            mInputFactory.Register<Inputs.AfterSlotChanged>("SlotSelected");
             mInputFactory.Register<Inputs.ItemDropped>("ItemDropped");
-            mInputFactory.Register<Inputs.Swimming>("Swimming");
-            mInputFactory.Register<Inputs.Blank>("Blank");
+            mInputFactory.Register<Inputs.OperationStarted>("OperationStarted");
+            mInputFactory.Register<Inputs.OperationFinished>("OperationFinished");
+            mInputFactory.Register<Inputs.StatusInput>("Status");
         }
         private void RegisterSystems()
         {  

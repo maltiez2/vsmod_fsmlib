@@ -1,10 +1,10 @@
-﻿using Vintagestory.API.Common;
-using Vintagestory.API.Datastructures;
-using MaltiezFSM.API;
-using Vintagestory.API.Client;
-using System.Text;
+﻿using MaltiezFSM.API;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
+using Vintagestory.API.Client;
+using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 
 #nullable enable
 
@@ -29,7 +29,7 @@ namespace MaltiezFSM.Framework
 
             Utils.Logger.Debug(api, this, $"Started FSM for: {collObj.Code}");
 
-            IFactoryProvider factories = api.ModLoader.GetModSystem<FiniteStateMachineSystem>();
+            FiniteStateMachineSystem factories = api.ModLoader.GetModSystem<FiniteStateMachineSystem>();
             mInputManager = api.ModLoader.GetModSystem<FiniteStateMachineSystem>().GetInputManager();
             IOperationInputInvoker? operationInputInvoker = api.ModLoader.GetModSystem<FiniteStateMachineSystem>().GetOperationInputInvoker();
 
@@ -38,14 +38,29 @@ namespace MaltiezFSM.Framework
 
             mFsm = new FiniteStateMachine(api, parser.GetOperations(), parser.GetSystems(), parser.GetInputs(), mProperties, collObj, operationInputInvoker);
 
-            foreach (var inputEntry in parser.GetInputs())
+            var operations = parser.GetOperations();
+
+            foreach ((string code, IInput input) in parser.GetInputs())
             {
-                mInputManager.RegisterInput(inputEntry.Value, mFsm.Process, collObj);
+                if (input is IOperationInput operationInput)
+                {
+                    if (operations.ContainsKey(operationInput.OperationCode))
+                    {
+                        operationInput.Operation = operations[operationInput.OperationCode];
+                    }
+                    else
+                    {
+                        Utils.Logger.Warn(api, this, $"Operation '{operationInput.OperationCode}' from input '{input}' is not found");
+                        continue;
+                    }
+                }
+
+                mInputManager.RegisterInput(input, mFsm.Process, collObj);
             }
 
-            foreach (var systemEntry in parser.GetSystems())
+            foreach ((string code, ISystem system) in parser.GetSystems())
             {
-                mSystems.Add(systemEntry.Value);
+                mSystems.Add(system);
             }
         }
 
