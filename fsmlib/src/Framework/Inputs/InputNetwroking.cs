@@ -132,7 +132,7 @@ internal sealed class InputPacketSenderServer : IDisposable
     }
     private void SendAggregatedPacket(float dt)
     {
-        foreach ((var player, var packet) in mAggregationQueue)
+        foreach ((IServerPlayer? player, List<InputPacket>? packet) in mAggregationQueue)
         {
             mServerNetworkChannel.SendPacket(new AggregatedInputPacket()
             {

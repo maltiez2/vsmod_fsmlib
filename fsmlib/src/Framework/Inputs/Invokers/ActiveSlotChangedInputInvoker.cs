@@ -47,7 +47,7 @@ public sealed class ActiveSlotChangedInputInvoker : IInputInvoker
 
         foreach (ISlotChangedAfter input in mInputsAfter)
         {
-            switch (input.GetEventType())
+            switch (input.EventType)
             {
                 case ISlotInput.SlotEventType.FromSlot:
                     _ = HandleInput(from, input);
@@ -66,9 +66,9 @@ public sealed class ActiveSlotChangedInputInvoker : IInputInvoker
 
         bool atLeastOneHandled = false;
 
-        foreach (ISlotChangedAfter input in mInputsAfter)
+        foreach (ISlotChangedBefore input in mInputsBefore)
         {
-            EnumHandling handled = input.GetEventType() switch
+            EnumHandling handled = input.EventType switch
             {
                 ISlotInput.SlotEventType.FromSlot => HandleInput(from, input),
                 ISlotInput.SlotEventType.ToSlot => HandleInput(to, input),
@@ -93,7 +93,7 @@ public sealed class ActiveSlotChangedInputInvoker : IInputInvoker
 
         bool handled = mInputs[input].Invoke(new(input.Slot, slot, mClientApi.World.Player), mClientApi.World.Player, input);
 
-        return handled ? EnumHandling.Handled : EnumHandling.PassThrough;
+        return handled ? (input as ISlotChangedBefore)?.Handling ?? EnumHandling.Handled : EnumHandling.PassThrough;
     }
 
     public void Dispose()

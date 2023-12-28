@@ -1,11 +1,13 @@
 ﻿using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using static MaltiezFSM.API.IKeyInput;
+
+#nullable enable
 
 namespace MaltiezFSM.API;
 
 public interface IStandardInput : IInput
 {
-
 }
 public interface IOperationInput : IStandardInput
 {
@@ -36,23 +38,21 @@ public interface IStatusInput : IStandardInput
     }
     string Activity { get; set; }
     bool Invert { get; set; }
-    StatusType GetStatusType();
-    bool CheckStatus();
+    StatusType Status { get; set; }
 }
-public interface IKeyInput : IStandardInput, IKeyRelated
+public interface IKeyInput : IStandardInput, IKeyPress
 {
     enum KeyEventType
     {
         KeyDown,
         KeyUp
     }
-    KeyEventType GetEventType();
+    KeyEventType EventType { get; }
+    string HotKey { get; }
+    string Name { get; }
     bool CheckIfShouldBeHandled(KeyEvent keyEvent, KeyEventType eventType);
-    string GetHotkeyCode();
-    string GetLangName();
-    void SetKey(string key);
 }
-public interface IMouseInput : IStandardInput, IKeyRelated
+public interface IMouseInput : IStandardInput, IKeyPress
 {
     enum MouseEventType
     {
@@ -60,7 +60,7 @@ public interface IMouseInput : IStandardInput, IKeyRelated
         MouseDown,
         MouseUp
     }
-    MouseEventType GetEventType();
+    KeyEventType EventType { get; }
     bool CheckIfShouldBeHandled(MouseEvent mouseEvent, MouseEventType eventType);
 }
 public interface ISlotInput : IStandardInput
@@ -70,7 +70,7 @@ public interface ISlotInput : IStandardInput
         FromSlot,
         ToSlot
     }
-    SlotEventType GetEventType();
+    SlotEventType EventType { get; }
 }
 public interface ISlotChangedAfter : ISlotInput
 {
@@ -78,7 +78,7 @@ public interface ISlotChangedAfter : ISlotInput
 }
 public interface ISlotChangedBefore : ISlotInput
 {
-    EnumHandling GetHandlingType();
+    EnumHandling Handling { get; }
 }
 public interface IItemDropped : IStandardInput
 {

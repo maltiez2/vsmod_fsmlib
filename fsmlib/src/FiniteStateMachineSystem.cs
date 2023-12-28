@@ -9,7 +9,7 @@ using System.Linq;
 
 namespace MaltiezFSM
 {
-    public class FiniteStateMachineSystem : ModSystem, IRegistry, IFactoryProvider
+    public class FiniteStateMachineSystem : ModSystem, IRegistry
     {
         private IFactory<IOperation> mOperationFactory;
         private IFactory<ISystem> mSystemFactory;
@@ -68,7 +68,7 @@ namespace MaltiezFSM
         }
         private void RegisterInputs()
         {
-            mInputFactory.Register<Inputs.BasicKey>("Key");
+            mInputFactory.Register<Inputs.KeyboardKey>("Key");
             mInputFactory.Register<Inputs.BasicMouse>("MouseKey");
             mInputFactory.Register<Inputs.BasicHotkey>("Hotkey");
             mInputFactory.Register<Inputs.SlotModified>("SlotModified");

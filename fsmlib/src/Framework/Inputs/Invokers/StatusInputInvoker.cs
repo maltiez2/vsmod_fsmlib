@@ -1,87 +1,85 @@
-﻿using System.Collections.Generic;
-using Vintagestory.API.Client;
-using MaltiezFSM.API;
-using Vintagestory.API.Common;
+﻿using MaltiezFSM.API;
+using System.Collections.Generic;
 using System.Linq;
-using ProtoBuf.Meta;
+using Vintagestory.API.Client;
+using Vintagestory.API.Common;
 
 #nullable enable
 
-namespace MaltiezFSM.Framework
+namespace MaltiezFSM.Framework;
+
+public sealed class StatusInputInvoker : IInputInvoker
 {
-    public sealed class StatusInputInvoker : IInputInvoker
+    private const int cCheckInterval_ms = 33;
+    private readonly ICoreClientAPI mClientApi;
+    private readonly Dictionary<IStatusInput, IInputInvoker.InputCallback> mCallbacks = new();
+    private readonly Dictionary<IInput, CollectibleObject> mCollectibles = new();
+    private readonly long mListener;
+    private bool mDisposed = false;
+
+    public StatusInputInvoker(ICoreClientAPI api)
     {
-        private const int cCheckInterval_ms = 33;
-        private readonly ICoreClientAPI mClientApi;
-        private readonly Dictionary<IStatusInput, IInputInvoker.InputCallback> mCallbacks = new();
-        private readonly Dictionary<IInput, CollectibleObject> mCollectibles = new();
-        private readonly long mListener;
-        private bool mDisposed = false;
+        mClientApi = api;
+        mListener = mClientApi.World.RegisterGameTickListener(_ => CheckStatuses(), cCheckInterval_ms);
+    }
 
-        public StatusInputInvoker(ICoreClientAPI api)
+    public void RegisterInput(IInput input, IInputInvoker.InputCallback callback, CollectibleObject collectible)
+    {
+        if (input is IStatusInput statusInput)
         {
-            mClientApi = api;
-            mListener = mClientApi.World.RegisterGameTickListener(_ => CheckStatuses(), cCheckInterval_ms);
+            mCallbacks.Add(statusInput, callback);
+            mCollectibles.Add(statusInput, collectible);
         }
+    }
 
-        public void RegisterInput(IInput input, IInputInvoker.InputCallback callback, CollectibleObject collectible)
+    private void CheckStatuses()
+    {
+        foreach ((IStatusInput input, _) in mCallbacks)
         {
-            if (input is IStatusInput statusInput)
+            if (CheckStatus(input) ^ input.Invert)
             {
-                mCallbacks.Add(statusInput, callback);
-                mCollectibles.Add(statusInput, collectible);
+                _ = HandleInput(input);
             }
         }
+    }
 
-        private void CheckStatuses()
+    private bool CheckStatus(IStatusInput input)
+    {
+        return input.Status switch
         {
-            foreach ((IStatusInput input, _) in mCallbacks)
-            {
-                if (CheckStatus(input) ^ input.Invert)
-                {
-                    _ = HandleInput(input);
-                }
-            }
+            IStatusInput.StatusType.Activity => mClientApi.World.Player.Entity.IsActivityRunning(input.Activity),
+            IStatusInput.StatusType.Swimming => mClientApi.World.Player.Entity.Swimming,
+            IStatusInput.StatusType.OnFire => mClientApi.World.Player.Entity.IsOnFire,
+            IStatusInput.StatusType.Collided => mClientApi.World.Player.Entity.Collided,
+            IStatusInput.StatusType.CollidedHorizontally => mClientApi.World.Player.Entity.CollidedHorizontally,
+            IStatusInput.StatusType.CollidedVertically => mClientApi.World.Player.Entity.CollidedVertically,
+            IStatusInput.StatusType.EyesSubmerged => mClientApi.World.Player.Entity.IsEyesSubmerged(),
+            IStatusInput.StatusType.FeetInLiquid => mClientApi.World.Player.Entity.FeetInLiquid,
+            IStatusInput.StatusType.InLava => mClientApi.World.Player.Entity.InLava,
+            IStatusInput.StatusType.OnGround => mClientApi.World.Player.Entity.OnGround,
+            _ => false,
+        };
+    }
+
+    private bool HandleInput(IStatusInput input)
+    {
+        Utils.SlotType slotType = input.Slot;
+
+        IEnumerable<Utils.SlotData> slots = Utils.SlotData.GetForAllSlots(slotType, mCollectibles[input], mClientApi.World.Player);
+
+        bool handled = false;
+        foreach (Utils.SlotData slotData in slots.Where(slotData => mCallbacks[input](slotData, mClientApi.World.Player, input)))
+        {
+            handled = true;
         }
 
-        private bool CheckStatus(IStatusInput input)
-        {
-            return input.GetStatusType() switch
-            {
-                IStatusInput.StatusType.Activity => mClientApi.World.Player.Entity.IsActivityRunning(input.Activity),
-                IStatusInput.StatusType.Swimming => mClientApi.World.Player.Entity.Swimming,
-                IStatusInput.StatusType.OnFire => mClientApi.World.Player.Entity.IsOnFire,
-                IStatusInput.StatusType.Collided => mClientApi.World.Player.Entity.Collided,
-                IStatusInput.StatusType.CollidedHorizontally => mClientApi.World.Player.Entity.CollidedHorizontally,
-                IStatusInput.StatusType.CollidedVertically => mClientApi.World.Player.Entity.CollidedVertically,
-                IStatusInput.StatusType.EyesSubmerged => mClientApi.World.Player.Entity.IsEyesSubmerged(),
-                IStatusInput.StatusType.FeetInLiquid => mClientApi.World.Player.Entity.FeetInLiquid,
-                IStatusInput.StatusType.InLava => mClientApi.World.Player.Entity.InLava,
-                IStatusInput.StatusType.OnGround => mClientApi.World.Player.Entity.OnGround,
-                _ => false,
-            };
-        }
+        return handled;
+    }
 
-        private bool HandleInput(IStatusInput input)
-        {
-            Utils.SlotType slotType = input.Slot;
-
-            IEnumerable<Utils.SlotData> slots = Utils.SlotData.GetForAllSlots(slotType, mCollectibles[input], mClientApi.World.Player);
-
-            bool handled = false;
-            foreach (Utils.SlotData slotData in slots.Where(slotData => mCallbacks[input](slotData, mClientApi.World.Player, input)))
-            {
-                handled = true;
-            }
-
-            return handled;
-        }
-
-        public void Dispose()
-        {
-            if (mDisposed) return;
-            mDisposed = true;
-            mClientApi.World.UnregisterGameTickListener(mListener);
-        }
+    public void Dispose()
+    {
+        if (mDisposed) return;
+        mDisposed = true;
+        mClientApi.World.UnregisterGameTickListener(mListener);
     }
 }

@@ -27,11 +27,10 @@ public interface IInput : IFactoryProduct
     WorldInteraction? GetInteractionInfo(ItemSlot slot);
 }
 
-public interface IKeyRelated
+public interface IKeyPress
 {
-    KeyPressModifiers GetModifiers();
-    string GetKey();
-    void SetModifiers(KeyPressModifiers modifiers);
+    KeyPressModifiers Modifiers { get; set; }
+    string KeyName { get; set; }
 }
 public struct KeyPressModifiers
 {

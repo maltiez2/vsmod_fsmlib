@@ -35,7 +35,7 @@ public sealed class OperationInputInvoker : IInputInvoker, IOperationInputInvoke
         foreach ((IOperationInput input, IInputInvoker.InputCallback callback) in inputs.Where((entry, _) => entry.Key.Operation == operation))
         {
             if (inSlot?.Itemstack?.Collectible != mCollectibles[input]) continue;
-            
+
             Utils.SlotData slotData = new(input.Slot, inSlot, player);
 
             if (callback.Invoke(slotData, player, input)) return true;
@@ -46,6 +46,6 @@ public sealed class OperationInputInvoker : IInputInvoker, IOperationInputInvoke
 
     public void Dispose()
     {
-        
+
     }
 }

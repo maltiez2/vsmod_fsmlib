@@ -55,12 +55,12 @@ public sealed class KeyInputInvoker : IInputInvoker
 
         if (input is IKeyInput keyInput)
         {
-            inputType = GetInputType(keyInput.GetEventType());
+            inputType = GetInputType(keyInput.EventType);
             mHotkeyMapper.RegisterKeyInput(keyInput);
         }
         else if (input is IMouseInput mouseInput)
         {
-            inputType = GetInputType(mouseInput.GetEventType());
+            inputType = GetInputType(mouseInput.EventType);
         }
 
         if (mInputs.ContainsKey(inputType))
@@ -94,11 +94,11 @@ public sealed class KeyInputInvoker : IInputInvoker
     private void HandleKeyDown(KeyEvent eventData)
     {
         if (!EventShouldBeHandled()) return;
-        
+
         foreach (IInput input in mInputs[InputType.KeyDown])
         {
             if (input is not IKeyInput keyInput) continue;
-            
+
             if (!keyInput.CheckIfShouldBeHandled(eventData, KeyEventType.KeyDown)) continue;
 
             if (HandleInput(input))

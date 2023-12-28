@@ -11,6 +11,7 @@ public interface IFactoryProduct
     int Id { get; }
 }
 
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S3246:Generic type parameters should be co/contravariant when possible", Justification = "Static analyzer is dumb sometimes")]
 public interface IFactory<TProductInterface>
 {
     Type TypeOf(string name);

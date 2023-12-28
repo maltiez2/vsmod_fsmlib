@@ -6,35 +6,27 @@ using Vintagestory.API.Client;
 using System;
 using System.Linq;
 
+#nullable enable
+
 namespace MaltiezFSM.Inputs
 {
-    public class BasicKey : BaseInput, IKeyInput
+    public class KeyboardKey : BaseInput, IKeyInput
     {
-        public const string keyAttrName = "key";
-        public const string keyPressTypeAttrName = "type";
-        public const string altAttrName = "alt";
-        public const string ctrlAttrName = "ctrl";
-        public const string shiftAttrName = "shift";
-        public const string hotkeyAttrName = "hotkey";
-        public const string nameAttrName = "name";
+        private readonly string mHotkey;
+        private readonly string mLangName;
+        private readonly KeyEventType mType;
 
         private string mKey;
-        private string mHotkey;
-        private string mLangName;
-        private KeyEventType mType;
         private int mKeyEnum;
         private KeyPressModifiers mModifiers;
-        private ICoreClientAPI mClientApi;
 
-        public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
+        public KeyboardKey(int id, string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api) : base(id, code, definition, collectible, api)
         {
-            base.Init(code, definition, collectible, api);
-
-            mKey = definition[keyAttrName].AsString();
-            mHotkey = definition[hotkeyAttrName].AsString();
-            mLangName = definition[nameAttrName].AsString(code);
+            mKey = definition["key"].AsString();
+            mHotkey = definition["hotkey"].AsString();
+            mLangName = definition["name"].AsString(code);
             mKeyEnum = (int)Enum.Parse(typeof(GlKeys), mKey);
-            switch (definition[keyPressTypeAttrName].AsString())
+            switch (definition["type"].AsString())
             {
                 case ("released"):
                     mType = KeyEventType.KeyUp;
@@ -49,12 +41,10 @@ namespace MaltiezFSM.Inputs
             }
             mModifiers = new KeyPressModifiers
             (
-                definition.KeyExists(altAttrName) ? definition[altAttrName].AsBool(false) : null,
-                definition.KeyExists(ctrlAttrName) ? definition[ctrlAttrName].AsBool(false) : null,
-                definition.KeyExists(shiftAttrName) ? definition[shiftAttrName].AsBool(false) : null
+                definition.KeyExists("alt") ? definition["alt"].AsBool(false) : null,
+                definition.KeyExists("ctrl") ? definition["ctrl"].AsBool(false) : null,
+                definition.KeyExists("shift") ? definition["shift"].AsBool(false) : null
             );
-
-            mClientApi = api as ICoreClientAPI;
         }
 
         public KeyEventType GetEventType()
@@ -63,8 +53,6 @@ namespace MaltiezFSM.Inputs
         }
         public bool CheckIfShouldBeHandled(KeyEvent keyEvent, KeyEventType eventType)
         {
-            if (mClientApi == null) throw new InvalidOperationException("BasicKey.CheckIfShouldBeHandled() called on server side");
-
             if (mType != eventType) return false;
             if (keyEvent.KeyCode != mKeyEnum && keyEvent.KeyCode2 != mKeyEnum) return false;
             if (mModifiers.Alt != null && keyEvent.AltPressed != mModifiers.Alt) return false;

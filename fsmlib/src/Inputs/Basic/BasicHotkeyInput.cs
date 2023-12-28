@@ -34,11 +34,11 @@ namespace MaltiezFSM.Inputs
             );
         }
 
-        KeyPressModifiers IKeyRelated.GetModifiers()
+        KeyPressModifiers IKeyPress.GetModifiers()
         {
             return mModifiers;
         }
-        string IKeyRelated.GetKey()
+        string IKeyPress.GetKey()
         {
             return mKey;
         }
