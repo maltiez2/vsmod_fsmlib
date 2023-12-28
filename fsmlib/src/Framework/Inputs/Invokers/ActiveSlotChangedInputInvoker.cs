@@ -91,7 +91,7 @@ public sealed class ActiveSlotChangedInputInvoker : IInputInvoker
         CollectibleObject? slotCollectible = slot?.Itemstack?.Collectible;
         if (slotCollectible != mCollectibles[input]) return EnumHandling.PassThrough;
 
-        bool handled = mInputs[input].Invoke(new(input.SlotType(), slot, mClientApi.World.Player), mClientApi.World.Player, input);
+        bool handled = mInputs[input].Invoke(new(input.Slot, slot, mClientApi.World.Player), mClientApi.World.Player, input);
 
         return handled ? EnumHandling.Handled : EnumHandling.PassThrough;
     }

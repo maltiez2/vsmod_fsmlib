@@ -89,7 +89,7 @@ namespace MaltiezFSM.Framework
 
             foreach (IInput input in mFsm.GetAvailableInputs(inSlot))
             {
-                WorldInteraction interactionHelp = input.GetInteractionInfo(inSlot);
+                WorldInteraction? interactionHelp = input.GetInteractionInfo(inSlot);
                 if (interactionHelp != null) interactionsHelp.Add(interactionHelp);
             }
 

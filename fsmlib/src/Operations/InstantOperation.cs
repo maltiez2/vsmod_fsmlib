@@ -9,27 +9,21 @@ using Vintagestory.API.Datastructures;
 
 namespace MaltiezFSM.Operations
 {
-    public class Instant : UniqueId, IOperation
+    public class Instant : FactoryProduct, IOperation
     {
         private readonly Dictionary<string, string> mStatesInitialData = new();
         private readonly List<Tuple<string, JsonObject>> mSystemsInitialData = new();
         private readonly Dictionary<IState, IState> mStates = new();
         private readonly List<Tuple<ISystem, JsonObject>> mSystems = new();
-
         protected readonly List<IOperation.Transition> mTransitions = new();
-        protected ICoreAPI? mApi;
 
-        private string? mCode;
         private bool mDisposed = false;
 
-        public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
+        public Instant(int id, string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api) : base(id, code, definition, collectible, api)
         {
-            mCode = code;
-            mApi = api;
-
             IEnumerable<string> inputs = ParseField(definition, "inputs").Select((input) => input.AsString());
             List<JsonObject> mainTransitions = ParseField(definition, "transitions");
-            
+
             foreach (JsonObject transition in mainTransitions)
             {
                 mStatesInitialData.Add(transition["initial"].AsString(), transition["final"].AsString());

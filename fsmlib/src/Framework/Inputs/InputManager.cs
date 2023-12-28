@@ -15,7 +15,7 @@ public sealed class InputManager : IInputManager
     private readonly List<IInput> mInputs = new();
     private readonly List<InputCallback> mCallbacks = new();
     private readonly List<CollectibleObject> mCollectibles = new();
-    private readonly List<(Type, IInputInvoker)> mInputInvokers = new();
+    private readonly HashSet<(Type, IInputInvoker)> mInputInvokers = new();
     private readonly InputPacketSenderClient? mClientPacketSender;
     private readonly InputPacketSenderServer? mServerPacketSender;
     private bool mDisposed;
@@ -35,7 +35,10 @@ public sealed class InputManager : IInputManager
 
     public void RegisterInvoker(IInputInvoker invoker, Type inputType)
     {
-        mInputInvokers.Add((inputType, invoker));
+        if (!mInputInvokers.Contains((inputType, invoker)))
+        {
+            mInputInvokers.Add((inputType, invoker));
+        }
     }
     public void RegisterInput(IInput input, InputCallback callback, CollectibleObject collectible)
     {

@@ -1,7 +1,10 @@
 ﻿using MaltiezFSM.Framework;
 using System;
+using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+
+#nullable enable
 
 namespace MaltiezFSM.API;
 
@@ -16,103 +19,40 @@ public interface IInputInvoker : IDisposable
     public delegate bool InputCallback(Utils.SlotData slot, IPlayer player, IInput input);
     void RegisterInput(IInput input, InputCallback callback, CollectibleObject collectible);
 }
+public interface IInput : IFactoryProduct
+{
+    public int Index { get; internal set; }
+    public bool Handle {  get; }
+    public Utils.SlotType Slot {  get; }
+    WorldInteraction? GetInteractionInfo(ItemSlot slot);
+}
 
-public interface IKeyRelatedInput
+public interface IKeyRelated
 {
     KeyPressModifiers GetModifiers();
     string GetKey();
     void SetModifiers(KeyPressModifiers modifiers);
 }
-public interface IInput : IFactoryProduct
+public struct KeyPressModifiers
 {
-    public int Index { get; set; }
-    string GetName();
-    bool Handled();
-    Utils.SlotType SlotType();
-    WorldInteraction GetInteractionInfo(ItemSlot slot);
-}
-public interface IOperationInput : IInput
-{
-    IOperation Operation { get; set; }
-}
-public interface IOperationStarted : IOperationInput
-{
+    public bool? Alt { get; set; }
+    public bool? Ctrl { get; set; }
+    public bool? Shift { get; set; }
+    public readonly HashSet<string> Codes => GetCodes();
 
-}
-public interface IOperationFinished : IOperationInput
-{
+    public KeyPressModifiers(bool? alt, bool? ctrl, bool? shift)
+    {
+        Alt = alt;
+        Ctrl = ctrl;
+        Shift = shift;
+    }
 
-}
-public interface IStatusInput : IInput
-{
-    enum StatusType
+    private readonly HashSet<string> GetCodes()
     {
-        Activity,
-        Swimming,
-        OnFire,
-        Collided,
-        CollidedHorizontally,
-        CollidedVertically,
-        EyesSubmerged,
-        FeetInLiquid,
-        InLava,
-        OnGround
+        HashSet<string> codes = new();
+        if (Alt == true) codes.Add("alt");
+        if (Ctrl == true) codes.Add("ctrl");
+        if (Shift == true) codes.Add("shift");
+        return codes;
     }
-    string Activity { get; set; }
-    bool Invert { get; set; }
-    StatusType GetStatusType();
-    bool CheckStatus();
-}
-public interface IHotkeyInput : IInput, IKeyRelatedInput
-{
-    string GetLangName();
-}
-public interface IEventInput : IInput
-{
-
-}
-public interface IKeyInput : IEventInput, IKeyRelatedInput
-{
-    enum KeyEventType
-    {
-        KeyDown,
-        KeyUp
-    }
-    KeyEventType GetEventType();
-    bool CheckIfShouldBeHandled(KeyEvent keyEvent, KeyEventType eventType);
-    string GetHotkeyCode();
-    string GetLangName();
-    void SetKey(string key);
-}
-public interface IMouseInput : IEventInput, IKeyRelatedInput
-{
-    enum MouseEventType
-    {
-        MouseMove,
-        MouseDown,
-        MouseUp
-    }
-    MouseEventType GetEventType();
-    bool CheckIfShouldBeHandled(MouseEvent mouseEvent, MouseEventType eventType);
-    bool IsRepeatable();
-}
-public interface ISlotInput : IEventInput
-{
-    enum SlotEventType
-    {
-        FromSlot,
-        ToSlot
-    }
-}
-public interface ISlotChangedAfter : ISlotInput
-{
-    SlotEventType GetEventType();
-}
-public interface ISlotChangedBefore : ISlotInput
-{
-    SlotEventType GetEventType();
-    EnumHandling GetHandlingType();
-}
-public interface IItemDropped : ISlotInput
-{
 }

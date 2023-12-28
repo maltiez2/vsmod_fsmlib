@@ -1,53 +1,44 @@
 ﻿using MaltiezFSM.API;
+using MaltiezFSM.Framework;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
 namespace MaltiezFSM.Systems
 {
-    public class BaseSystem : UniqueId, ISystem
+    public abstract class BaseSystem : FactoryProduct, ISystem
     {
-        protected ICoreAPI mApi;
-        protected CollectibleObject mCollectible;
-        protected string mCode;
-
-        public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
+        protected BaseSystem(int id, string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api) : base(id, code, definition, collectible, api)
         {
-            mApi = api;
-            mCode = code;
-            mCollectible = collectible;
-
-            if (definition == null) mApi?.Logger.Error("[FSMlib] [Init] System '" + mCode + "' received 'null' definition");
-            if (collectible == null) mApi?.Logger.Error("[FSMlib] [Init] System '" + mCode + "' received 'null' collectible");
         }
 
         virtual public string[] GetDescription(ItemSlot slot, IWorldAccessor world)
         {
             if (slot == null)
             {
-                mApi?.Logger.Warning("[FSMlib] [GetDescription] System '" + mCode + "' received 'null' slot");
+                Utils.Logger.Warn(mApi, this, $" [GetDescription] (system: {mCode}) Slot is null");
             }
 
             return System.Array.Empty<string>();
         }
 
-        virtual public bool Process(ItemSlot slot, EntityAgent player, JsonObject parameters)
+        virtual public bool Process(ItemSlot slot, IPlayer player, JsonObject parameters)
         {
             if (slot  == null)
             {
-                mApi?.Logger.Error("[FSMlib] [Process] System '" + mCode + "' received 'null' slot");
+                Utils.Logger.Error(mApi, this, $"[Process()] (system: {mCode}) slot is null");
                 return false;
             }
 
             if (player == null)
             {
-                mApi?.Logger.Error("[FSMlib] [Process] System '" + mCode + "' received 'null' player");
+                Utils.Logger.Warn(mApi, this, $"[Process()] (system: {mCode}) player is null");
                 return false;
             }
 
             if (parameters == null)
             {
-                mApi?.Logger.Error("[FSMlib] [Process] System '" + mCode + "' received 'null' parameters");
+                Utils.Logger.Warn(mApi, this, $"[Process()] (system: {mCode}) parameters are null");
                 return false;
             }
 
@@ -59,23 +50,23 @@ namespace MaltiezFSM.Systems
             
         }
 
-        virtual public bool Verify(ItemSlot slot, EntityAgent player, JsonObject parameters)
+        virtual public bool Verify(ItemSlot slot, IPlayer player, JsonObject parameters)
         {
             if (slot == null)
             {
-                mApi?.Logger.Error("[FSMlib] [Verify] System '" + mCode + "' received 'null' slot");
+                Utils.Logger.Error(mApi, this, $"[Verify()] (system: {mCode}) slot is null");
                 return false;
             }
 
             if (player == null)
             {
-                mApi?.Logger.Error("[FSMlib] [Verify] System '" + mCode + "' received 'null' player");
+                Utils.Logger.Warn(mApi, this, $"[Verify()] (system: {mCode}) player is null");
                 return false;
             }
 
             if (parameters == null)
             {
-                mApi?.Logger.Error("[FSMlib] [Verify] System '" + mCode + "' received 'null' parameters");
+                Utils.Logger.Warn(mApi, this, $"[Verify()] (system: {mCode}) parameters are null");
                 return false;
             }
 

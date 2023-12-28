@@ -9,7 +9,7 @@ using System.Linq;
 
 namespace MaltiezFSM
 {
-    public class FiniteStateMachineSystem : ModSystem, IFactoryProvider
+    public class FiniteStateMachineSystem : ModSystem, IRegistry, IFactoryProvider
     {
         private IFactory<IOperation> mOperationFactory;
         private IFactory<ISystem> mSystemFactory;
@@ -34,9 +34,9 @@ namespace MaltiezFSM
 
             if (api.Side == EnumAppSide.Server) (api as ICoreServerAPI).Event.PlayerJoin += (byPlayer) => AddPlayerBehavior(byPlayer.Entity);
 
-            mOperationFactory = new Framework.Factory<IOperation, Framework.UniqueIdGeneratorForFactory>(api);
-            mSystemFactory = new Framework.Factory<ISystem, Framework.UniqueIdGeneratorForFactory>(api);
-            mInputFactory = new Framework.Factory<IInput, Framework.UniqueIdGeneratorForFactory>(api);
+            mOperationFactory = new Framework.Factory<IOperation>(api, new Framework.UniqueIdGeneratorForFactory(1));
+            mSystemFactory = new Framework.Factory<ISystem>(api, new Framework.UniqueIdGeneratorForFactory(2));
+            mInputFactory = new Framework.Factory<IInput>(api, new Framework.UniqueIdGeneratorForFactory(3));
             mInputManager = new Framework.InputManager(api);
 
             RegisterSystems();
@@ -60,14 +60,24 @@ namespace MaltiezFSM
             mInputManager.RegisterInvoker(activeSlotChanged, typeof(ISlotChangedAfter));
             mInputManager.RegisterInvoker(activeSlotChanged, typeof(ISlotChangedBefore));
         }
-
         private void RegisterInputInvokers(ICoreServerAPI api)
         {
             mOperationInputInvoker = new Framework.OperationInputInvoker();
 
             mInputManager.RegisterInvoker(mOperationInputInvoker as Framework.OperationInputInvoker, typeof(IOperationInput));
         }
-
+        private void RegisterInputs()
+        {
+            mInputFactory.Register<Inputs.BasicKey>("Key");
+            mInputFactory.Register<Inputs.BasicMouse>("MouseKey");
+            mInputFactory.Register<Inputs.BasicHotkey>("Hotkey");
+            mInputFactory.Register<Inputs.SlotModified>("SlotModified");
+            mInputFactory.Register<Inputs.BasicSlotBefore>("SlotChange");
+            mInputFactory.Register<Inputs.BasicSlotAfter>("SlotSelected");
+            mInputFactory.Register<Inputs.ItemDropped>("ItemDropped");
+            mInputFactory.Register<Inputs.Swimming>("Swimming");
+            mInputFactory.Register<Inputs.Blank>("Blank");
+        }
         private void RegisterSystems()
         {  
             mSystemFactory.Register<Systems.BasicSoundSystem>("Sound");
@@ -100,24 +110,22 @@ namespace MaltiezFSM
             mOperationFactory.Register<Operations.Continuous>("Continuous");
         }
 
-        private void RegisterInputs()
-        {
-            mInputFactory.Register<Inputs.BasicKey>("Key");
-            mInputFactory.Register<Inputs.BasicMouse>("MouseKey");
-            mInputFactory.Register<Inputs.BasicHotkey>("Hotkey");
-            mInputFactory.Register<Inputs.SlotModified>("SlotModified");
-            mInputFactory.Register<Inputs.BasicSlotBefore>("SlotChange");
-            mInputFactory.Register<Inputs.BasicSlotAfter>("SlotSelected");
-            mInputFactory.Register<Inputs.ItemDropped>("ItemDropped");
-            mInputFactory.Register<Inputs.Swimming>("Swimming");
-            mInputFactory.Register<Inputs.Blank>("Blank");
-        }
+        internal IFactory<IOperation> GetOperationFactory() => mOperationFactory;
+        internal IFactory<ISystem> GetSystemFactory() => mSystemFactory;
+        internal IFactory<IInput> GetInputFactory() => mInputFactory;
+        internal IInputManager GetInputManager() => mInputManager;
+        internal IOperationInputInvoker? GetOperationInputInvoker() => mOperationInputInvoker;
 
-        public IFactory<IOperation> GetOperationFactory() => mOperationFactory;
-        public IFactory<ISystem> GetSystemFactory() => mSystemFactory;
-        public IFactory<IInput> GetInputFactory() => mInputFactory;
-        public IInputManager GetInputManager() => mInputManager;
-        public IOperationInputInvoker? GetOperationInputInvoker() => mOperationInputInvoker;
+        public void RegisterOperation<TProductClass>(string name) where TProductClass : FactoryProduct, IOperation => mOperationFactory.Register<TProductClass>(name);
+        public void RegisterSystem<TProductClass>(string name) where TProductClass : FactoryProduct, ISystem => mSystemFactory.Register<TProductClass>(name);
+        public void RegisterInput<TProductClass>(string name) where TProductClass : FactoryProduct, IStandardInput => mInputFactory.Register<TProductClass>(name);
+        public void RegisterInput<TProductClass, TInputInterface>(string name, IInputInvoker invoker)
+            where TInputInterface : IInput
+            where TProductClass : FactoryProduct, IInput
+        {
+            mInputManager.RegisterInvoker(invoker, typeof(TInputInterface));
+            mInputFactory.Register<TProductClass>(name);
+        }
 
         private struct BehaviorAsJsonObj
         {
@@ -173,5 +181,7 @@ namespace MaltiezFSM
 
             base.Dispose();
         }
+
+        
     }
 }

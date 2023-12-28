@@ -173,7 +173,7 @@ namespace MaltiezFSM.Framework
 
             if (result.Outcome == IOperation.Outcome.Finished) mOperationInputInvoker.Finished(operation, slot, player);
 
-            return input.Handled();
+            return input.Handle;
         }
         private State ReadStateFrom(ItemSlot slot)
         {

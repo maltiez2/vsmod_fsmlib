@@ -4,14 +4,11 @@ namespace MaltiezFSM.Framework
 {
     internal class UniqueIdGeneratorForFactory : IUniqueIdGeneratorForFactory
     {
-        public const int factoryIdFactor = 10000;
-
-        private static int sFactoryNextId = 0;
         private int mNextProductId = 0;
-        private readonly int mFactoryId;
+        private readonly short mFactoryId;
 
-        public UniqueIdGeneratorForFactory() => mFactoryId = sFactoryNextId++;
-        public int GenerateInstanceId() => mFactoryId * factoryIdFactor + mNextProductId++;
-        public int GetFactoryId() => mFactoryId;
+        public UniqueIdGeneratorForFactory(short factoryId) => mFactoryId = factoryId;
+        public int GenerateInstanceId() => mFactoryId + short.MaxValue * mNextProductId++;
+        public short GetFactoryId() => mFactoryId;
     }
 }

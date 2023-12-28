@@ -3,40 +3,9 @@ using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
+#nullable enable
+
 namespace MaltiezFSM.API;
-
-public struct KeyPressModifiers
-{
-    public bool? Alt { get; set; }
-    public bool? Ctrl { get; set; }
-    public bool? Shift { get; set; }
-
-    public KeyPressModifiers(bool? alt, bool? ctrl, bool? shift)
-    {
-        Alt = alt;
-        Ctrl = ctrl;
-        Shift = shift;
-    }
-
-    public bool AltAsBool(bool defaultValue = false) => Alt == null ? defaultValue : (bool)Alt;
-    public bool CtrlAsBool(bool defaultValue = false) => Ctrl == null ? defaultValue : (bool)Ctrl;
-    public bool ShiftAsBool(bool defaultValue = false) => Shift == null ? defaultValue : (bool)Shift;
-    public string[] GetCodes()
-    {
-        List<string> codes = new();
-        if (Alt == true) codes.Add("alt");
-        if (Ctrl == true) codes.Add("ctrl");
-        if (Shift == true) codes.Add("shift");
-        return codes.ToArray();
-    }
-}
-
-public interface IFactoryProduct
-{
-    void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api);
-    void SetId(int id);
-    int GetId();
-}
 
 public interface IState
 {
@@ -117,13 +86,6 @@ public interface ISystem : IFactoryProduct
     string[] GetDescription(ItemSlot slot, IWorldAccessor world);
 }
 
-public interface IFactory<TProductClass>
-{
-    Type TypeOf(string name);
-    void Register<TObjectClass>(string name) where TObjectClass : TProductClass, new();
-    void SubstituteWith<TObjectClass>(string name) where TObjectClass : TProductClass, new();
-    TProductClass Instantiate(string code, string name, JsonObject definition, CollectibleObject collectible);
-}
 public interface IBehaviourAttributesParser
 {
     bool ParseDefinition(IFactory<IOperation> operationTypes, IFactory<ISystem> systemTypes, IFactory<IInput> inputTypes, JsonObject behaviourAttributes, CollectibleObject collectible);
@@ -141,16 +103,4 @@ public interface IOperationInputInvoker
 {
     bool Started(IOperation operation, ItemSlot inSlot, IPlayer player);
     bool Finished(IOperation operation, ItemSlot inSlot, IPlayer player);
-}
-
-public interface IFactoryProvider
-{
-    IFactory<IOperation> GetOperationFactory();
-    IFactory<ISystem> GetSystemFactory();
-    IFactory<IInput> GetInputFactory();
-}
-public interface IUniqueIdGeneratorForFactory
-{
-    int GenerateInstanceId();
-    int GetFactoryId();
 }

@@ -62,10 +62,9 @@ namespace MaltiezFSM.Framework
             };
         }
 
-
         private bool HandleInput(IStatusInput input)
         {
-            Utils.SlotType slotType = input.SlotType();
+            Utils.SlotType slotType = input.Slot;
 
             IEnumerable<Utils.SlotData> slots = Utils.SlotData.GetForAllSlots(slotType, mCollectibles[input], mClientApi.World.Player);
 
@@ -77,7 +76,6 @@ namespace MaltiezFSM.Framework
 
             return handled;
         }
-
 
         public void Dispose()
         {

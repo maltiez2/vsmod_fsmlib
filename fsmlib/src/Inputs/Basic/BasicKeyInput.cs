@@ -109,7 +109,7 @@ namespace MaltiezFSM.Inputs
             {
                 ActionLangCode = mLangName,
                 MouseButton = EnumMouseButton.None,
-                HotKeyCodes = mModifiers.GetCodes().AsEnumerable().Append(mHotkey).ToArray()
+                HotKeyCodes = mModifiers.Codes.Append(mHotkey).ToArray()
             };
         }
     }

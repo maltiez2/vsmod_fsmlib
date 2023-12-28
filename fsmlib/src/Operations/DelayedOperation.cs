@@ -11,10 +11,8 @@ using static MaltiezFSM.API.IOperation;
 
 namespace MaltiezFSM.Operations
 {
-    public class Delayed : UniqueId, IOperation
+    public class Delayed : FactoryProduct, IOperation
     {
-        protected ICoreAPI? mApi;
-        protected string? mCode;
         private bool mDisposed = false;
 
         protected struct TransitionTriggerInitial
@@ -89,11 +87,8 @@ namespace MaltiezFSM.Operations
         protected readonly Dictionary<TransitionTrigger, TimeSpan?> mTimers = new();
         protected readonly HashSet<IState> mTransitionalStates = new();
 
-        public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
+        public Delayed(int id, string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api) : base(id, code, definition, collectible, api)
         {
-            mCode = code;
-            mApi = api;
-
             List<TransitionsBranchInitial> transitions = ParseTransitions(definition);
             HashSet<string> finalStates = CollectFinalStates(transitions);
 

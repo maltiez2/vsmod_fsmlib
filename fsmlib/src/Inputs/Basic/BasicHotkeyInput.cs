@@ -34,11 +34,11 @@ namespace MaltiezFSM.Inputs
             );
         }
 
-        KeyPressModifiers IKeyRelatedInput.GetModifiers()
+        KeyPressModifiers IKeyRelated.GetModifiers()
         {
             return mModifiers;
         }
-        string IKeyRelatedInput.GetKey()
+        string IKeyRelated.GetKey()
         {
             return mKey;
         }
@@ -48,7 +48,7 @@ namespace MaltiezFSM.Inputs
             {
                 ActionLangCode = mLangName,
                 MouseButton = EnumMouseButton.None,
-                HotKeyCodes = mModifiers.GetCodes().AsEnumerable().Append(mCode).ToArray()
+                HotKeyCodes = mModifiers.Codes.Append(mCode).ToArray()
             };
         }
 

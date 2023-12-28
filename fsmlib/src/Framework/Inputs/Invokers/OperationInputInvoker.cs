@@ -36,7 +36,7 @@ public sealed class OperationInputInvoker : IInputInvoker, IOperationInputInvoke
         {
             if (inSlot?.Itemstack?.Collectible != mCollectibles[input]) continue;
             
-            Utils.SlotData slotData = new(input.SlotType(), inSlot, player);
+            Utils.SlotData slotData = new(input.Slot, inSlot, player);
 
             if (callback.Invoke(slotData, player, input)) return true;
         }

@@ -179,7 +179,7 @@ public sealed class KeyInputInvoker : IInputInvoker
 
     private bool HandleInput(IInput input)
     {
-        Utils.SlotType slotType = input.SlotType();
+        Utils.SlotType slotType = input.Slot;
 
         IEnumerable<Utils.SlotData> slots = Utils.SlotData.GetForAllSlots(slotType, mCollectibles[input], mClientApi.World.Player);
 
