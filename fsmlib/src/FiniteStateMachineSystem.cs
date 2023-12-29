@@ -16,6 +16,7 @@ namespace MaltiezFSM
         private IFactory<IInput> mInputFactory;
         private IInputManager mInputManager;
         private IOperationInputInvoker? mOperationInputInvoker;
+        private ICustomInputInvoker mCustomInputInvoker;
 
         public override void Start(ICoreAPI api)
         {
@@ -52,6 +53,7 @@ namespace MaltiezFSM
             Framework.StatusInputInvoker statusInput = new(api);
             Framework.DropItemsInputInvoker dropItems = new(api);
             Framework.ActiveSlotChangedInputInvoker activeSlotChanged = new(api);
+            Framework.CustomInputInvoker customInput = new();
 
             mInputManager.RegisterInvoker(keyInput, typeof(IKeyInput));
             mInputManager.RegisterInvoker(keyInput, typeof(IMouseInput));
@@ -59,12 +61,19 @@ namespace MaltiezFSM
             mInputManager.RegisterInvoker(dropItems, typeof(IItemDropped));
             mInputManager.RegisterInvoker(activeSlotChanged, typeof(ISlotChangedAfter));
             mInputManager.RegisterInvoker(activeSlotChanged, typeof(ISlotChangedBefore));
+            mInputManager.RegisterInvoker(customInput, typeof(ICustomInput));
+
+            mCustomInputInvoker = customInput;
         }
         private void RegisterInputInvokers(ICoreServerAPI api)
         {
             mOperationInputInvoker = new Framework.OperationInputInvoker();
+            Framework.CustomInputInvoker customInput = new();
 
             mInputManager.RegisterInvoker(mOperationInputInvoker as Framework.OperationInputInvoker, typeof(IOperationInput));
+            mInputManager.RegisterInvoker(customInput, typeof(ICustomInput));
+
+            mCustomInputInvoker = customInput;
         }
         private void RegisterInputs()
         {
@@ -88,14 +97,13 @@ namespace MaltiezFSM
             mSystemFactory.Register<Systems.BasicPlayerStats>("PlayerStats");
             mSystemFactory.Register<Systems.BasicParticles>("Particles");
             mSystemFactory.Register<Systems.BasicAim>("Aiming");
-            mSystemFactory.Register<Systems.NoSway>("NoSway");
             mSystemFactory.Register<Systems.NoSprint>("NoSprint");
             mSystemFactory.Register<Systems.ChangeGroup>("ChangeGroup");
             mSystemFactory.Register<Systems.BasicMelee>("BasicMelee");
             mSystemFactory.Register<Systems.BasicDurabilityDamage>("DurabilityDamage");
             mSystemFactory.Register<Systems.BasicDurability>("Durability");
             mSystemFactory.Register<Systems.ItemStackGiver>("ItemStackGiver");
-            mSystemFactory.Register<Systems.SimpleMelee>("SimpleMelee");
+            mSystemFactory.Register<Systems.Melee>("SimpleMelee");
             mSystemFactory.Register<Systems.PlayerAnimation>("ProceduralPlayerAnimation");
             mSystemFactory.Register<Systems.ItemAnimation>("ProceduralItemAnimation");
             mSystemFactory.Register<Systems.BasicParry<Additional.EntityBehaviorResists>>("BasicParry");
@@ -115,6 +123,7 @@ namespace MaltiezFSM
         internal IInputManager GetInputManager() => mInputManager;
         internal IOperationInputInvoker? GetOperationInputInvoker() => mOperationInputInvoker;
 
+        public ICustomInputInvoker CustomInputInvoker => mCustomInputInvoker;
         public void RegisterOperation<TProductClass>(string name) where TProductClass : FactoryProduct, IOperation => mOperationFactory.Register<TProductClass>(name);
         public void RegisterSystem<TProductClass>(string name) where TProductClass : FactoryProduct, ISystem => mSystemFactory.Register<TProductClass>(name);
         public void RegisterInput<TProductClass>(string name) where TProductClass : FactoryProduct, IStandardInput => mInputFactory.Register<TProductClass>(name);

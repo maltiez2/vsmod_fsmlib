@@ -3,6 +3,7 @@ using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 
 #nullable enable
@@ -11,7 +12,7 @@ namespace MaltiezFSM.Systems;
 
 internal interface ISound
 {
-    void Play(IPlayer player);
+    void Play(IWorldAccessor world, Entity target);
 }
 
 internal sealed class SingleSound : ISound
@@ -28,9 +29,9 @@ internal sealed class SingleSound : ISound
         if (definition.KeyExists("volume")) mVolume = definition["volume"].AsFloat(1.0f);
         if (definition.KeyExists("randomizePitch")) mRandomizePitch = definition["randomizePitch"].AsBool(false);
     }
-    public void Play(IPlayer player)
+    public void Play(IWorldAccessor world, Entity target)
     {
-        player.Entity.World.PlaySoundAt(mLocation, player.Entity, null, mRandomizePitch, mRange, mVolume);
+        world.PlaySoundAt(mLocation, target, null, mRandomizePitch, mRange, mVolume);
     }
 }
 
@@ -53,10 +54,10 @@ internal sealed class RandomizedSound : ISound
         if (definition.KeyExists("volume")) mVolume = definition["volume"].AsFloat(1.0f);
         if (definition.KeyExists("randomizePitch")) mRandomizePitch = definition["randomizePitch"].AsBool(false);
     }
-    public void Play(IPlayer player)
+    public void Play(IWorldAccessor world, Entity target)
     {
         int locationIndex = (int)Math.Floor((decimal)(sRand.NextDouble() * (mLocations.Count - 1)));
-        player.Entity.World.PlaySoundAt(mLocations[locationIndex], player.Entity, null, mRandomizePitch, mRange, mVolume);
+        world.PlaySoundAt(mLocations[locationIndex], target, null, mRandomizePitch, mRange, mVolume);
     }
 }
 
@@ -69,30 +70,30 @@ internal sealed class TimedSound
 internal sealed class SoundSequenceTimer
 {
     private readonly List<TimedSound> mSounds;
-    private readonly ICoreAPI mApi;
-    private readonly IPlayer mPlayer;
+    private readonly IWorldAccessor mWorld;
+    private readonly Entity mTarget;
     private long mCurrentTimer;
     private int mCurrentSound;
 
-    public SoundSequenceTimer(ICoreAPI api, IPlayer player, List<TimedSound> sounds)
+    public SoundSequenceTimer(IWorldAccessor world, Entity target, List<TimedSound> sounds)
     {
         mSounds = sounds;
-        mPlayer = player;
-        mApi = api;
+        mWorld = world;
+        mTarget = target;
 
         mCurrentSound = 0;
-        mCurrentTimer = mApi.World.RegisterGameTickListener(Play, (int)mSounds[mCurrentSound].Time.TotalMilliseconds);
+        mCurrentTimer = mWorld.RegisterGameTickListener(Play, (int)mSounds[mCurrentSound].Time.TotalMilliseconds);
     }
     private void Play(float dt)
     {
-        mSounds[mCurrentSound].Sound.Play(mPlayer);
+        mSounds[mCurrentSound].Sound.Play(mWorld, mTarget);
         mCurrentSound++;
         if (mCurrentSound >= mSounds.Count) return;
-        mCurrentTimer = mApi.World.RegisterGameTickListener(Play, (int)(mSounds[mCurrentSound].Time.TotalMilliseconds - dt * 1000));
+        mCurrentTimer = mWorld.RegisterGameTickListener(Play, (int)(mSounds[mCurrentSound].Time.TotalMilliseconds - dt * 1000));
     }
     public void Stop()
     {
-        mApi.World.UnregisterCallback(mCurrentTimer);
+        mWorld.UnregisterCallback(mCurrentTimer);
     }
 }
 
@@ -114,9 +115,9 @@ internal sealed class SoundSequence
 
         mSounds.Sort((first, second) => TimeSpan.Compare(first.Time, second.Time));
     }
-    public SoundSequenceTimer Play(ICoreAPI api, IPlayer player)
+    public SoundSequenceTimer Play(IWorldAccessor world, Entity target)
     {
-        return new SoundSequenceTimer(api, player, mSounds);
+        return new SoundSequenceTimer(world, target, mSounds);
     }
     private static ISound ConstructSound(JsonObject definition)
     {
@@ -217,12 +218,26 @@ public class Sounds : BaseSystem, ISoundSystem
 
         if (mSounds.ContainsKey(soundCode))
         {
-            mSounds[soundCode].Play(player);
+            mSounds[soundCode].Play(player.Entity.World, player.Entity);
         }
         else if (mSequences.ContainsKey(soundCode))
         {
-            var timer = mSequences[soundCode].Play(mApi, player);
+            var timer = mSequences[soundCode].Play(player.Entity.World, player.Entity);
             mTimers.Add((player.Entity.EntityId, soundCode), timer);
+        }
+    }
+    public void PlaySound(string soundCode, Entity target)
+    {
+        if (mApi.Side != EnumAppSide.Server) return;
+
+        if (mSounds.ContainsKey(soundCode))
+        {
+            mSounds[soundCode].Play(mApi.World, target);
+        }
+        else if (mSequences.ContainsKey(soundCode))
+        {
+            var timer = mSequences[soundCode].Play(mApi.World, target);
+            mTimers.Add((target.EntityId, soundCode), timer);
         }
     }
     public void StopSound(string soundCode, IPlayer player)
@@ -232,6 +247,15 @@ public class Sounds : BaseSystem, ISoundSystem
         if (mTimers.ContainsKey((player.Entity.EntityId, soundCode)))
         {
             mTimers[(player.Entity.EntityId, soundCode)].Stop();
+        }
+    }
+    public void StopSound(string soundCode, Entity target)
+    {
+        if (mApi.Side != EnumAppSide.Server || mSequences.ContainsKey(soundCode)) return;
+
+        if (mTimers.ContainsKey((target.EntityId, soundCode)))
+        {
+            mTimers[(target.EntityId, soundCode)].Stop();
         }
     }
 }

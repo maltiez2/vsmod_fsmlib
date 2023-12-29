@@ -1,6 +1,5 @@
 ﻿using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using static MaltiezFSM.API.IKeyInput;
 
 #nullable enable
 
@@ -88,4 +87,8 @@ public interface ISlotChangedBefore : ISlotInput
 }
 public interface IItemDropped : IStandardInput
 {
+}
+public interface ICustomInput : IStandardInput
+{
+    string Code { get; }
 }

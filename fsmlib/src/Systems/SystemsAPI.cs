@@ -1,5 +1,6 @@
 ﻿using System;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
@@ -7,20 +8,22 @@ namespace MaltiezFSM.Systems
 {
     public interface IVariantsAnimation
     {
-        int StartAnimation(int firstVariant, int lastVariant, ItemSlot slot, EntityAgent player);
+        int StartAnimation(int firstVariant, int lastVariant, ItemSlot slot, IPlayer player);
         void CancelAnimation(int animationId);
-        void SetVariant(int variant, ItemSlot slot, EntityAgent player);
+        void SetVariant(int variant, ItemSlot slot, IPlayer player);
     }
 
     public interface ISoundSystem
     {
         void PlaySound(string soundCode, IPlayer player);
+        void PlaySound(string soundCode, Entity target);
         void StopSound(string soundCode, IPlayer player);
+        void StopSound(string soundCode, Entity target);
     }
 
     public interface IPlayerAnimationSystem
     {
-        void PlayAnimation(string code, ItemSlot slot, EntityAgent player);
+        void PlayAnimation(string code, ItemSlot slot, IPlayer player);
     }
 
     public interface ITranformAnimationSystem
@@ -39,7 +42,7 @@ namespace MaltiezFSM.Systems
             }
         }
         
-        void PlayAnimation(ItemSlot slot, EntityAgent player, AnimationData animationData, Action finishCallback = null, string action = "forward");
+        void PlayAnimation(ItemSlot slot, IPlayer player, AnimationData animationData, Action finishCallback = null, string action = "forward");
     }
 
     public interface IAnimationSystem
@@ -56,7 +59,7 @@ namespace MaltiezFSM.Systems
             }
         }
 
-        void PlayAnimation(ItemSlot slot, EntityAgent player, string code, string category, string action = "start");
+        void PlayAnimation(ItemSlot slot, IPlayer player, string code, string category, string action = "start");
     }
 
     public interface IAmmoSelector
@@ -67,7 +70,7 @@ namespace MaltiezFSM.Systems
 
     public interface IItemStackProvider
     {
-        ItemStack GetItemStack(ItemSlot slot, EntityAgent player);
+        ItemStack GetItemStack(ItemSlot slot, IPlayer player);
     }
 
     public interface IAimingSystem
@@ -82,7 +85,7 @@ namespace MaltiezFSM.Systems
                 return new DirectionOffset() { pitch = parameters.pitch, yaw = parameters.yaw };
             }
         }
-        DirectionOffset GetShootingDirectionOffset(ItemSlot slot, EntityAgent player);
+        DirectionOffset GetShootingDirectionOffset(ItemSlot slot, IPlayer player);
     }
 
     static public class ProgressModifiers

@@ -26,6 +26,10 @@ public interface IInput : IFactoryProduct
     public Utils.SlotType Slot {  get; }
     WorldInteraction? GetInteractionInfo(ItemSlot slot);
 }
+public interface ICustomInputInvoker
+{
+    public bool Invoke(string input, IPlayer player, ItemSlot? inSlot = null);
+}
 
 public struct KeyPressModifiers
 {
