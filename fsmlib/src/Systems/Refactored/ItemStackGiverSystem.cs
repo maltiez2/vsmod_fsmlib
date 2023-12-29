@@ -2,22 +2,28 @@
 using Vintagestory.API.Common;
 using System;
 
+#nullable enable
+
 namespace MaltiezFSM.Systems
 {
     public class ItemStackGiver : BaseSystem
     {
-        public override bool Process(ItemSlot slot, EntityAgent player, JsonObject parameters)
+        public ItemStackGiver(int id, string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api) : base(id, code, definition, collectible, api)
+        {
+        }
+
+        public override bool Process(ItemSlot slot, IPlayer player, JsonObject parameters)
         {
             if (!base.Process(slot, player, parameters)) return false;
 
-            ItemStack item = GenItemStack(parameters);
+            ItemStack? item = GenItemStack(parameters);
 
             if (item == null) return false;
 
-            return player.TryGiveItemStack(item);
+            return player.Entity.TryGiveItemStack(item);
         }
 
-        private ItemStack GenItemStack(JsonObject itemStackDefinition)
+        private ItemStack? GenItemStack(JsonObject itemStackDefinition)
         {
             string itemCode = itemStackDefinition["code"].AsString();
             string itemDomain = itemStackDefinition["domain"].AsString();

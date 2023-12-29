@@ -1,11 +1,17 @@
 ﻿using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
+#nullable enable
+
 namespace MaltiezFSM.Systems
 {
     public class ChangeGroup : BaseSystem
     {
-        public override bool Process(ItemSlot slot, EntityAgent player, JsonObject parameters)
+        public ChangeGroup(int id, string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api) : base(id, code, definition, collectible, api)
+        {
+        }
+
+        public override bool Process(ItemSlot slot, IPlayer player, JsonObject parameters)
         {
             if (!base.Process(slot, player, parameters)) return false;
 
@@ -16,7 +22,7 @@ namespace MaltiezFSM.Systems
             return true;
         }
 
-        public void TryChangeVariant(ItemStack stack, ICoreAPI api, string variantName, string variantValue, bool saveAttributes = true) // Author: Dana (VS discord server)
+        private static void TryChangeVariant(ItemStack stack, ICoreAPI api, string variantName, string variantValue, bool saveAttributes = true) // Author: Dana (VS discord server)
         {
             if (stack?.Collectible?.Variant?.ContainsKey(variantName) == null) return;
 
