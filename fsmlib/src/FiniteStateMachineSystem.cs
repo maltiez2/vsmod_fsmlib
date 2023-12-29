@@ -79,7 +79,7 @@ namespace MaltiezFSM
         }
         private void RegisterSystems()
         {  
-            mSystemFactory.Register<Systems.BasicSoundSystem>("Sound");
+            mSystemFactory.Register<Systems.Sounds>("Sounds");
             mSystemFactory.Register<Systems.BasicReload>("Reload");
             mSystemFactory.Register<Systems.BasicShooting>("Shooting");
             mSystemFactory.Register<Systems.BasicVariantsAnimation<Systems.TickBasedAnimation>>("VariantsAnimation");

@@ -14,7 +14,8 @@ namespace MaltiezFSM.Systems
 
     public interface ISoundSystem
     {
-        void PlaySound(string soundCode, ItemSlot slot, EntityAgent player);
+        void PlaySound(string soundCode, IPlayer player);
+        void StopSound(string soundCode, IPlayer player);
     }
 
     public interface IPlayerAnimationSystem

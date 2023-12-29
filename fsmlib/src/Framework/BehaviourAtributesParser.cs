@@ -2,6 +2,7 @@
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using MaltiezFSM.API;
+using Newtonsoft.Json.Linq;
 
 namespace MaltiezFSM.Framework
 {
@@ -13,19 +14,19 @@ namespace MaltiezFSM.Framework
 
         bool IBehaviourAttributesParser.ParseDefinition(IFactory<IOperation> operationTypes, IFactory<ISystem> systemTypes, IFactory<IInput> inputTypes, JsonObject behaviourAttributes, CollectibleObject collectible)
         {
-            foreach (JsonObject systemDefinition in behaviourAttributes["systems"].AsArray())
+            foreach ((string code, JToken definition) in (behaviourAttributes["systems"].Token as JObject))
             {
-                AddObject(systemDefinition, collectible, systemTypes, mSystems); 
+                AddObject(code, new JsonObject(definition), collectible, systemTypes, mSystems);
             }
 
-            foreach (JsonObject systemDefinition in behaviourAttributes["operations"].AsArray())
+            foreach ((string code, JToken definition) in (behaviourAttributes["operations"].Token as JObject))
             {
-                AddObject(systemDefinition, collectible, operationTypes, mOperations);
+                AddObject(code, new JsonObject(definition), collectible, operationTypes, mOperations);
             }
 
-            foreach (JsonObject systemDefinition in behaviourAttributes["inputs"].AsArray())
+            foreach ((string code, JToken definition) in (behaviourAttributes["inputs"].Token as JObject))
             {
-                AddObject(systemDefinition, collectible, inputTypes, mInputs);
+                AddObject(code, new JsonObject(definition), collectible, inputTypes, mInputs);
             }
 
             return true;
@@ -34,9 +35,8 @@ namespace MaltiezFSM.Framework
         Dictionary<string, ISystem> IBehaviourAttributesParser.GetSystems() => mSystems;
         Dictionary<string, IInput> IBehaviourAttributesParser.GetInputs() => mInputs;
 
-        static private void AddObject<TObjectInterface>(JsonObject definition, CollectibleObject collectible, IFactory<TObjectInterface> factory, Dictionary<string, TObjectInterface> container)
+        static private void AddObject<TObjectInterface>(string objectCode, JsonObject definition, CollectibleObject collectible, IFactory<TObjectInterface> factory, Dictionary<string, TObjectInterface> container)
         {
-            string objectCode = definition["code"].AsString();
             string objectClass = definition["class"].AsString();
             TObjectInterface objectInstance = factory.Instantiate(objectCode, objectClass, definition, collectible);
             if (objectInstance != null) container.Add(objectCode, objectInstance);
