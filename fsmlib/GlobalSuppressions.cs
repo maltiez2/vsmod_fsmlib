@@ -6,3 +6,4 @@
 using System.Diagnostics.CodeAnalysis;
 
 [assembly: SuppressMessage("Major Code Smell", "S3966:Objects should not be disposed more than once", Justification = "All the disposable classes here can be disposed multiple times and there no way to know if it was already disposed when disposing", Scope = "member", Target = "~M:MaltiezFSM.Framework.FiniteStateMachine.Dispose")]
+[assembly: SuppressMessage("Major Code Smell", "S3966:Objects should not be disposed more than once", Justification = "Same", Scope = "member", Target = "~M:MaltiezFSM.Framework.InputManager.Dispose")]

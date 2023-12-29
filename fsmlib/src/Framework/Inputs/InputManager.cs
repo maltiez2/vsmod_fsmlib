@@ -19,7 +19,7 @@ public sealed class InputManager : IInputManager
     private readonly InputPacketSenderClient? mClientPacketSender;
     private readonly InputPacketSenderServer? mServerPacketSender;
     private bool mDisposed;
-    private const string cNetworkChannelName = "maltiezfierarms.inputManager";
+    private const string cNetworkChannelName = "fsmlib.inputManager";
 
     public InputManager(ICoreAPI api)
     {
@@ -83,12 +83,10 @@ public sealed class InputManager : IInputManager
     {
         if (!mDisposed)
         {
-#pragma warning disable S3966 // Objects should not be disposed more than once
             foreach ((_, IInputInvoker invoker) in mInputInvokers)
             {
                 invoker.Dispose();
             }
-#pragma warning restore S3966
 
             mClientPacketSender?.Dispose();
             mServerPacketSender?.Dispose();

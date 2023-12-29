@@ -37,8 +37,10 @@ namespace MaltiezFSM.Framework
             {
                 if (sDebugLogging) api?.Logger?.Debug(Format(caller, format), arguments);
             }
-            private static string Format(object caller, string format) => $"{cPrefix} [{TypeName(caller)}] {format}";
-            private static string TypeName(object caller)
+            public static void Verbose(object caller, string format, params object[] arguments) => sLogger?.VerboseDebug(Format(caller, format), arguments);
+            public static void Verbose(ICoreAPI api, object caller, string format, params object[] arguments) => api?.Logger?.VerboseDebug(Format(caller, format), arguments);
+            public static string Format(object caller, string format) => $"{cPrefix} [{TypeName(caller)}] {format}";
+            public static string TypeName(object caller)
             {
                 Type type = caller.GetType();
 
@@ -51,6 +53,18 @@ namespace MaltiezFSM.Framework
 
                 return type.Name;
             }
+        }
+
+        public static string TypeName(Type type)
+        {
+            if (type.IsGenericType)
+            {
+                string namePrefix = type.Name.Split(new[] { '`' }, StringSplitOptions.RemoveEmptyEntries)[0];
+                string genericParameters = type.GetGenericArguments().Select(TypeName).Aggregate((first, second) => $"{first},{second}");
+                return $"{namePrefix}<{genericParameters}>";
+            }
+
+            return type.Name;
         }
 
         static public ModelTransform ToTransformFrom(JsonObject transform, float multiplier = 1)

@@ -38,13 +38,13 @@ namespace MaltiezFSM.Framework
         private readonly Dictionary<IOperation, HashSet<State>> mStatesByOperationForTimer = new();
         private readonly Dictionary<long, Utils.DelayedCallback> mTimers = new();
         private readonly List<IOperation> mOperations = new();
-        private readonly IOperationInputInvoker mOperationInputInvoker;
+        private readonly IOperationInputInvoker? mOperationInputInvoker;
         private readonly CollectibleObject mCollectible;
         private readonly ICoreAPI mApi;
 
         private bool mDisposed = false;
 
-        public FiniteStateMachine(ICoreAPI api, Dictionary<string, IOperation> operations, Dictionary<string, ISystem> systems, Dictionary<string, IInput> inputs, JsonObject behaviourAttributes, CollectibleObject collectible, IOperationInputInvoker invoker)
+        public FiniteStateMachine(ICoreAPI api, Dictionary<string, IOperation> operations, Dictionary<string, ISystem> systems, Dictionary<string, IInput> inputs, JsonObject behaviourAttributes, CollectibleObject collectible, IOperationInputInvoker? invoker)
         {
             mCollectible = collectible;
             mInitialState = behaviourAttributes[cInitialStateAttribute].AsString();
@@ -158,7 +158,7 @@ namespace MaltiezFSM.Framework
 
             if (outcome == IOperation.Outcome.Failed) return false;
 
-            if ((outcome == IOperation.Outcome.Started || outcome == IOperation.Outcome.StartedAndFinished) && mOperationInputInvoker.Started(operation, slot, player))
+            if ((outcome == IOperation.Outcome.Started || outcome == IOperation.Outcome.StartedAndFinished) && mOperationInputInvoker?.Started(operation, slot, player) == true)
             {
                 return false;
             }
@@ -171,7 +171,7 @@ namespace MaltiezFSM.Framework
 
             if (result.Timeout == IOperation.Timeout.Start) mTimers[player.Entity.EntityId] = new(mApi, (int)result.TimeoutDelay.TotalMilliseconds, () => OnTimer(slot, player, input, operation));
 
-            if (result.Outcome == IOperation.Outcome.Finished) mOperationInputInvoker.Finished(operation, slot, player);
+            if (result.Outcome == IOperation.Outcome.Finished) mOperationInputInvoker?.Finished(operation, slot, player);
 
             return input.Handle;
         }

@@ -85,6 +85,7 @@ namespace MaltiezFSM.Operations
 
         protected readonly Dictionary<TransitionTrigger, TransitionResult> mTransitions = new();
         protected readonly Dictionary<TransitionTrigger, TimeSpan?> mTimers = new();
+        protected readonly Dictionary<ISystem, string> mSystemsCodes = new();
         protected readonly HashSet<IState> mTransitionalStates = new();
 
         public Delayed(int id, string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api) : base(id, code, definition, collectible, api)
@@ -149,6 +150,7 @@ namespace MaltiezFSM.Operations
                     }
 
                     transitionSystems.Add(new(systems[system], request));
+                    mSystemsCodes.Add(systems[system], system);
                 }
 
                 mTransitions.Add((states[trigger.state], inputs[trigger.input]), (states[result.state], transitionSystems, result.Outcome));
@@ -182,9 +184,17 @@ namespace MaltiezFSM.Operations
 
             foreach ((ISystem system, JsonObject request) in transitionResult.SystemsRequests)
             {
-                if (!system.Verify(slot, player, request))
+                try
                 {
-                    return Outcome.Failed;
+                    if (!system.Verify(slot, player, request))
+                    {
+                        return Outcome.Failed;
+                    }
+                }
+                catch (Exception exception)
+                {
+                    Utils.Logger.Error(mApi, this, $"System '{mSystemsCodes[system]}' crashed while verification in '{mCode}' operation in '{mCollectible.Code}' collectible");
+                    Utils.Logger.Verbose(mApi, this, $"System '{mSystemsCodes[system]}' crashed while verification in '{mCode}' operation in '{mCollectible.Code}' collectible.\n\nRequest:{request}\n\nException:{exception}");
                 }
             }
 
@@ -196,7 +206,15 @@ namespace MaltiezFSM.Operations
 
             foreach ((ISystem system, JsonObject request) in transitionResult.SystemsRequests)
             {
-                system.Process(slot, player, request);
+                try
+                {
+                    system.Process(slot, player, request);
+                }
+                catch (Exception exception)
+                {
+                    Utils.Logger.Error(mApi, this, $"System '{mSystemsCodes[system]}' crashed while processing in '{mCode}' operation in '{mCollectible.Code}' collectible");
+                    Utils.Logger.Verbose(mApi, this, $"System '{mSystemsCodes[system]}' crashed while processing in '{mCode}' operation in '{mCollectible.Code}' collectible.\n\nRequest:{request}\n\nException:{exception}");
+                }
             }
 
             Timeout timeout = transitionResult.Outcome switch

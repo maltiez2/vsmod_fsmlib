@@ -1,9 +1,11 @@
 ﻿using MaltiezFSM.API;
+using MaltiezFSM.Framework;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
+using static MaltiezFSM.API.IOperation;
 
 #nullable enable
 
@@ -15,7 +17,8 @@ namespace MaltiezFSM.Operations
         private readonly List<Tuple<string, JsonObject>> mSystemsInitialData = new();
         private readonly Dictionary<IState, IState> mStates = new();
         private readonly List<Tuple<ISystem, JsonObject>> mSystems = new();
-        protected readonly List<IOperation.Transition> mTransitions = new();
+        protected readonly List<Transition> mTransitions = new();
+        protected readonly Dictionary<ISystem, string> mSystemsCodes = new();
 
         private bool mDisposed = false;
 
@@ -58,62 +61,79 @@ namespace MaltiezFSM.Operations
             return transitions;
         }
 
-        public virtual List<IOperation.Transition> GetTransitions()
+        public virtual List<Transition> GetTransitions()
         {
             return mTransitions;
         }
         public virtual void SetInputsStatesSystems(Dictionary<string, IInput> inputs, Dictionary<string, IState> states, Dictionary<string, ISystem> systems)
         {
-            foreach (KeyValuePair<string, string> entry in mStatesInitialData)
+            foreach ((string first, string second) in mStatesInitialData)
             {
-                if (!states.ContainsKey(entry.Key))
+                if (!states.ContainsKey(first))
                 {
-                    mApi?.Logger.Warning("[FSMlib] [BasicInstant: {0}] State '{1}' not found.", mCode, entry.Key);
+                    mApi?.Logger.Warning("[FSMlib] [BasicInstant: {0}] State '{1}' not found.", mCode, first);
                     continue;
                 }
 
-                if (!states.ContainsKey(entry.Value))
+                if (!states.ContainsKey(second))
                 {
-                    mApi?.Logger.Warning("[FSMlib] [BasicInstant: {0}] State '{1}' not found.", mCode, entry.Value);
+                    mApi?.Logger.Warning("[FSMlib] [BasicInstant: {0}] State '{1}' not found.", mCode, second);
                     continue;
                 }
 
-                mStates.Add(states[entry.Key], states[entry.Value]);
+                mStates.Add(states[first], states[second]);
             }
             mStatesInitialData.Clear();
 
-            foreach (Tuple<string, JsonObject> entry in mSystemsInitialData)
+            foreach ((string system, JsonObject definition) in mSystemsInitialData)
             {
-                if (!systems.ContainsKey(entry.Item1))
+                if (!systems.ContainsKey(system))
                 {
-                    mApi?.Logger.Warning("[FSMlib] [BasicInstant: {0}] System '{1}' not found.", mCode, entry.Item1);
+                    mApi?.Logger.Warning("[FSMlib] [BasicInstant: {0}] System '{1}' not found.", mCode, system);
                     continue;
                 }
 
-                mSystems.Add(new(systems[entry.Item1], entry.Item2));
+                mSystems.Add(new(systems[system], definition));
+                mSystemsCodes.Add(systems[system], system);
             }
             mSystemsInitialData.Clear();
         }
-        public virtual IOperation.Outcome Verify(ItemSlot slot, IPlayer player, IState state, IInput input)
+        public virtual Outcome Verify(ItemSlot slot, IPlayer player, IState state, IInput input)
         {
-            foreach (Tuple<ISystem, JsonObject> entry in mSystems)
+            foreach ((ISystem system, JsonObject request) in mSystems)
             {
-                if (!entry.Item1.Verify(slot, player, entry.Item2["attributes"]))
+                try
                 {
-                    return IOperation.Outcome.Failed;
+                    if (!system.Verify(slot, player, request))
+                    {
+                        return Outcome.Failed;
+                    }
+                }
+                catch (Exception exception)
+                {
+                    Utils.Logger.Error(mApi, this, $"System '{mSystemsCodes[system]}' crashed while verification in '{mCode}' operation in '{mCollectible.Code}' collectible");
+                    Utils.Logger.Verbose(mApi, this, $"System '{mSystemsCodes[system]}' crashed while verification in '{mCode}' operation in '{mCollectible.Code}' collectible.\n\nRequest:{request}\n\nException:{exception}");
                 }
             }
 
-            return IOperation.Outcome.StartedAndFinished;
+            return Outcome.StartedAndFinished;
         }
-        public virtual IOperation.Result Perform(ItemSlot slot, IPlayer player, IState state, IInput input)
+        public virtual Result Perform(ItemSlot slot, IPlayer player, IState state, IInput input)
         {
-            foreach (Tuple<ISystem, JsonObject> entry in mSystems)
+            foreach ((ISystem system, JsonObject request) in mSystems)
             {
-                entry.Item1.Process(slot, player, entry.Item2["attributes"]);
+                try
+                {
+                    system.Process(slot, player, request);
+                }
+                catch (Exception exception)
+                {
+                    Utils.Logger.Error(mApi, this, $"System '{mSystemsCodes[system]}' crashed while processing in '{mCode}' operation in '{mCollectible.Code}' collectible");
+                    Utils.Logger.Verbose(mApi, this, $"System '{mSystemsCodes[system]}' crashed while processing in '{mCode}' operation in '{mCollectible.Code}' collectible.\n\nRequest:{request}\n\nException:{exception}");
+                }
             }
 
-            return new(mStates[state], IOperation.Outcome.StartedAndFinished, IOperation.Timeout.Ignore);
+            return new(mStates[state], Outcome.StartedAndFinished, Timeout.Ignore);
         }
 
         protected virtual void Dispose(bool disposing)

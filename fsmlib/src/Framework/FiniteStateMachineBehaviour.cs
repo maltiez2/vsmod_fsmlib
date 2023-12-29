@@ -1,7 +1,10 @@
 ﻿using MaltiezFSM.API;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection.Emit;
 using System.Text;
+using System.Xml.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -27,7 +30,13 @@ namespace MaltiezFSM.Framework
         {
             base.OnLoaded(api);
 
-            Utils.Logger.Debug(api, this, $"Started FSM for: {collObj.Code}");
+            if (mProperties == null)
+            {
+                Utils.Logger.Error(api, this, $"Null behavior properties on initializing FSM for: {collObj.Code}");
+                return;
+            }
+
+            Utils.Logger.Debug(api, this, $"Initializing FSM for: {collObj.Code}");
 
             FiniteStateMachineSystem factories = api.ModLoader.GetModSystem<FiniteStateMachineSystem>();
             mInputManager = api.ModLoader.GetModSystem<FiniteStateMachineSystem>().GetInputManager();
@@ -55,7 +64,16 @@ namespace MaltiezFSM.Framework
                     }
                 }
 
-                mInputManager.RegisterInput(input, mFsm.Process, collObj);
+                try
+                {
+                    mInputManager.RegisterInput(input, mFsm.Process, collObj);
+                }
+                catch (Exception exception)
+                {
+                    Utils.Logger.Error(api, this, $"Exception on registering input '{Utils.TypeName(input.GetType())}' with code '{code}' for collectible '{collObj.Code}'");
+                    Utils.Logger.Verbose(api, this, $"Exception on registering input '{Utils.TypeName(input.GetType())}' with code '{code}' for collectible '{collObj.Code}'.\n\nException:{exception}");
+                }
+                
             }
 
             foreach ((string code, ISystem system) in parser.GetSystems())

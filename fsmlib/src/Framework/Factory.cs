@@ -8,8 +8,8 @@ using MaltiezFSM.API;
 
 namespace MaltiezFSM.Framework
 {
-    internal class Factory<TProductClass> : IFactory<TProductClass>
-        where TProductClass : IFactoryProduct
+    internal sealed class Factory<TProduct> : IFactory<TProduct>
+        where TProduct : IFactoryProduct
     {
         private readonly Dictionary<string, Type> mProducts = new();
         private readonly IUniqueIdGeneratorForFactory mIdGenerator;
@@ -24,22 +24,34 @@ namespace MaltiezFSM.Framework
         {
             return mProducts[name];
         }
-        public void Register<TObjectClass>(string name) where TObjectClass : FactoryProduct, TProductClass
+        public void Register<TObjectClass>(string name) where TObjectClass : FactoryProduct, TProduct
         {
-            mProducts.Add(name, typeof(TObjectClass));
+            mProducts.TryAdd(name, typeof(TObjectClass));
         }
-        public void SubstituteWith<TObjectClass>(string name) where TObjectClass : FactoryProduct, TProductClass
+        public void SubstituteWith<TObjectClass>(string name) where TObjectClass : FactoryProduct, TProduct
         {
             mProducts[name] = typeof(TObjectClass);
         }
-        public TProductClass? Instantiate(string code, string name, JsonObject definition, CollectibleObject collectible)
+        public TProduct? Instantiate(string code, string name, JsonObject definition, CollectibleObject collectible)
         {
             if (!mProducts.ContainsKey(name))
             {
                 Utils.Logger.Warn(mApi, this, $"Type '{name}' (code: '{code}') is not registered, will skip it.");
                 return default;
             }
-            TProductClass? product = (TProductClass?)Activator.CreateInstance(mProducts[name], mIdGenerator.GenerateInstanceId(), code, definition, collectible, mApi);
+            
+            TProduct? product = default;
+            
+            try
+            {
+                product = (TProduct?)Activator.CreateInstance(mProducts[name], mIdGenerator.GenerateInstanceId(), code, definition, collectible, mApi);
+            }
+            catch (Exception exception)
+            {
+                Utils.Logger.Error(mApi, this, $"Exception on instantiating {name} ({Utils.TypeName(mProducts[name])}) with code '{code}' for collectible '{collectible?.Code}'");
+                Utils.Logger.Verbose(mApi, this, $"Exception on instantiating {name} ({Utils.TypeName(mProducts[name])}) with code '{code}' for collectible '{collectible?.Code}'.\n\nDefinition:{definition}\n\nException:{exception}");
+            }
+
             return product;
         }
     }

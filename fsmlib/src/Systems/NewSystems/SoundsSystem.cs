@@ -178,10 +178,10 @@ public class Sounds : BaseSystem, ISoundSystem
         if (!base.Verify(slot, player, parameters)) return false;
 
         if (
-            parameters.KeyExists("code") &&
+            parameters.KeyExists("sound") &&
             ( 
-                mSounds.ContainsKey(parameters["code"].AsString()) ||
-                mSequences.ContainsKey(parameters["code"].AsString())
+                mSounds.ContainsKey(parameters["sound"].AsString()) ||
+                mSequences.ContainsKey(parameters["sound"].AsString())
             )
         )
         {
@@ -196,7 +196,7 @@ public class Sounds : BaseSystem, ISoundSystem
 
         if (mApi.Side != EnumAppSide.Server) return true;
         
-        string soundCode = parameters["code"].AsString();
+        string soundCode = parameters["sound"].AsString();
         string action = parameters["action"].AsString("play");
 
         switch (action)
