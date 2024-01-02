@@ -73,7 +73,7 @@ public class Requirements : BaseSystem, IItemStackHolder
     {
         if (!base.Process(slot, player, parameters)) return false;
 
-        string code = parameters["code"].AsString();
+        string code = parameters["requirement"].AsString();
         string action = parameters["type"].AsString();
 
         if (!mRequirements.ContainsKey(code))
@@ -121,6 +121,43 @@ public class Requirements : BaseSystem, IItemStackHolder
         }
 
         return output.ToArray();
+    }
+
+    public List<ItemStack> Get(ItemSlot slot, IPlayer player) => ReadStacks(slot);
+    public List<ItemStack> TakeAll(ItemSlot slot, IPlayer player)
+    {
+        List<ItemStack> result = ReadStacks(slot);
+        ClearStacks(slot);
+        return result;
+    }
+    public List<ItemStack> TakeAmount(ItemSlot slot, IPlayer player, int amount)
+    {
+        List<ItemStack> stacks = ReadStacks(slot);
+        List<ItemSlot> slots = stacks.Select((stack) => new DummySlot(stack) as ItemSlot).ToList();
+        List<ItemStack> result = AmountRequirement.CollectFromSlots(slots, amount);
+        List<ItemStack> remained = slots.Where((slot) => slot.StackSize > 0).Select((slot) => slot.Itemstack).ToList();
+        ClearStacks(slot);
+        WriteStacks(slot, remained);
+        return result;
+    }
+    public List<ItemStack> TakeDurability(ItemSlot slot, IPlayer player, int durability, bool destroy = true, bool overflow = false)
+    {
+        List<ItemStack> stacks = ReadStacks(slot);
+        List<ItemSlot> slots = stacks.Select((stack) => new DummySlot(stack) as ItemSlot).ToList();
+        List<ItemStack> result = DurabilityRequirement.CollectFromSlots(slots, player, durability, destroy, overflow);
+        List<ItemStack> remained = slots.Where((slot) => slot.StackSize > 0).Select((slot) => slot.Itemstack).ToList();
+        ClearStacks(slot);
+        WriteStacks(slot, remained);
+        return result;
+    }
+    public void Put(ItemSlot slot, IPlayer player, List<ItemStack> items)
+    {
+        ClearStacks(slot);
+        WriteStacks(slot, items);
+    }
+    public void Clear(ItemSlot slot, IPlayer player)
+    {
+        ClearStacks(slot);
     }
 
     private void Take(ItemSlot slot, IPlayer player, string code)
@@ -189,42 +226,5 @@ public class Requirements : BaseSystem, IItemStackHolder
             slot.Itemstack.Attributes.RemoveAttribute($"{mStackAttrName}.{index}");
         }
         slot.Itemstack.Attributes.RemoveAttribute($"{mStackAttrName}.count");
-    }
-
-    public List<ItemStack> Get(ItemSlot slot, IPlayer player) => ReadStacks(slot);
-    public List<ItemStack> TakeAll(ItemSlot slot, IPlayer player)
-    {
-        List<ItemStack> result = ReadStacks(slot);
-        ClearStacks(slot);
-        return result;
-    }
-    public List<ItemStack> TakeAmount(ItemSlot slot, IPlayer player, int amount)
-    {
-        List<ItemStack> stacks = ReadStacks(slot);
-        List<ItemSlot> slots = stacks.Select((stack) => new DummySlot(stack) as ItemSlot).ToList();
-        List<ItemStack> result = AmountRequirement.CollectFromSlots(slots, amount);
-        List<ItemStack> remained = slots.Where((slot) => slot.StackSize > 0).Select((slot) => slot.Itemstack).ToList();
-        ClearStacks(slot);
-        WriteStacks(slot, remained);
-        return result;
-    }
-    public List<ItemStack> TakeDurability(ItemSlot slot, IPlayer player, int durability, bool destroy = true, bool overflow = false)
-    {
-        List<ItemStack> stacks = ReadStacks(slot);
-        List<ItemSlot> slots = stacks.Select((stack) => new DummySlot(stack) as ItemSlot).ToList();
-        List<ItemStack> result = DurabilityRequirement.CollectFromSlots(slots, player, durability, destroy, overflow);
-        List<ItemStack> remained = slots.Where((slot) => slot.StackSize > 0).Select((slot) => slot.Itemstack).ToList();
-        ClearStacks(slot);
-        WriteStacks(slot, remained);
-        return result;
-    }
-    public void Put(ItemSlot slot, IPlayer player, List<ItemStack> items)
-    {
-        ClearStacks(slot);
-        WriteStacks(slot, items);
-    }
-    public void Clear(ItemSlot slot, IPlayer player)
-    {
-        ClearStacks(slot);
     }
 }

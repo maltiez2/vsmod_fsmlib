@@ -22,7 +22,7 @@ namespace MaltiezFSM.Systems
             return true;
         }
 
-        private static void TryChangeVariant(ItemStack stack, ICoreAPI api, string variantName, string variantValue, bool saveAttributes = true) // Author: Dana (VS discord server)
+        private static void TryChangeVariant(ItemStack stack, ICoreAPI api, string variantName, string variantValue, bool saveAttributes = true)
         {
             if (stack?.Collectible?.Variant?.ContainsKey(variantName) == null) return;
 

@@ -18,6 +18,7 @@ namespace MaltiezFSM
         private IInputManager mInputManager;
         private IOperationInputInvoker? mOperationInputInvoker;
         private ICustomInputInvoker mCustomInputInvoker;
+        private Additional.ParticleEffectsManager? mParticleEffectsManager;
 
         public override void Start(ICoreAPI api)
         {
@@ -51,6 +52,10 @@ namespace MaltiezFSM
             {
                 clientApi_2.Gui.RegisterDialog(new ItemSelectGuiDialog(clientApi_2));
             }
+        }
+        public override void AssetsLoaded(ICoreAPI api)
+        {
+            mParticleEffectsManager = new(api);
         }
 
         private void RegisterInputInvokers(ICoreClientAPI api)
@@ -95,19 +100,16 @@ namespace MaltiezFSM
         private void RegisterSystems()
         {  
             mSystemFactory.Register<Systems.Sounds>("Sounds");
-            mSystemFactory.Register<Systems.BasicReload>("Reload");
             mSystemFactory.Register<Systems.RangeAttack>("Shooting");
             mSystemFactory.Register<Systems.BasicVariantsAnimation<Systems.TickBasedAnimation>>("VariantsAnimation");
             mSystemFactory.Register<Systems.Requirements>("Requirements");
             mSystemFactory.Register<Systems.BasicPlayerAnimation>("PlayerAnimation");
-            mSystemFactory.Register<Systems.BasicPlayerStats>("PlayerStats");
-            mSystemFactory.Register<Systems.BasicParticles>("Particles");
+            mSystemFactory.Register<Systems.Stats>("PlayerStats");
+            mSystemFactory.Register<Systems.Particles>("Particles");
             mSystemFactory.Register<Systems.BasicAim>("Aiming");
             mSystemFactory.Register<Systems.NoSprint>("NoSprint");
             mSystemFactory.Register<Systems.ChangeGroup>("ChangeGroup");
-            mSystemFactory.Register<Systems.BasicMelee>("BasicMelee");
-            mSystemFactory.Register<Systems.BasicDurabilityDamage>("DurabilityDamage");
-            mSystemFactory.Register<Systems.BasicDurability>("Durability");
+            mSystemFactory.Register<Systems.Durability>("Durability");
             mSystemFactory.Register<Systems.ItemStackGiver>("ItemStackGiver");
             mSystemFactory.Register<Systems.Melee>("SimpleMelee");
             mSystemFactory.Register<Systems.PlayerAnimation>("ProceduralPlayerAnimation");
@@ -129,6 +131,7 @@ namespace MaltiezFSM
         internal IInputManager GetInputManager() => mInputManager;
         internal IOperationInputInvoker? GetOperationInputInvoker() => mOperationInputInvoker;
 
+        public Additional.ParticleEffectsManager? ParticleEffects => mParticleEffectsManager;
         public ICustomInputInvoker CustomInputInvoker => mCustomInputInvoker;
         public void RegisterOperation<TProductClass>(string name) where TProductClass : FactoryProduct, IOperation => mOperationFactory.Register<TProductClass>(name);
         public void RegisterSystem<TProductClass>(string name) where TProductClass : FactoryProduct, ISystem => mSystemFactory.Register<TProductClass>(name);
@@ -195,7 +198,5 @@ namespace MaltiezFSM
 
             base.Dispose();
         }
-
-        
     }
 }
