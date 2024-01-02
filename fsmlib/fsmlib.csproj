@@ -66,8 +66,4 @@
   </Content>
 </ItemGroup>
 
-<ItemGroup>
-  <Folder Include="src\Systems\Other\" />
-</ItemGroup>
-
 </Project>

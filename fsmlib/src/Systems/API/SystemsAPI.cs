@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
@@ -26,25 +27,6 @@ namespace MaltiezFSM.Systems
         void PlayAnimation(string code, ItemSlot slot, IPlayer player);
     }
 
-    public interface ITranformAnimationSystem
-    {
-        public class AnimationData
-        {
-            public string code { get; set; }
-            public int? duration { get; set; }
-            public ProgressModifiers.ProgressModifier dynamic { get; set; }
-
-            public AnimationData(JsonObject definition)
-            {
-                code = definition["code"].AsString();
-                duration = definition.KeyExists("duration") ? definition["duration"].AsInt(0) : null;
-                dynamic = ProgressModifiers.Get(definition["dynamic"].AsString("Linear"));
-            }
-        }
-        
-        void PlayAnimation(ItemSlot slot, IPlayer player, AnimationData animationData, Action finishCallback = null, string action = "forward");
-    }
-
     public interface IAnimationSystem
     {
         public class AnimationData
@@ -62,15 +44,14 @@ namespace MaltiezFSM.Systems
         void PlayAnimation(ItemSlot slot, IPlayer player, string code, string category, string action = "start");
     }
 
-    public interface IAmmoSelector
+    public interface IItemStackHolder
     {
-        ItemStack GetSelectedAmmo(ItemSlot slot);
-        ItemStack TakeSelectedAmmo(ItemSlot slot, int amount = -1);
-    }
-
-    public interface IItemStackProvider
-    {
-        ItemStack GetItemStack(ItemSlot slot, IPlayer player);
+        List<ItemStack> Get(ItemSlot slot, IPlayer player);
+        List<ItemStack> TakeAll(ItemSlot slot, IPlayer player);
+        List<ItemStack> TakeAmount(ItemSlot slot, IPlayer player, int amount);
+        List<ItemStack> TakeDurability(ItemSlot slot, IPlayer player, int durability, bool destroy = true, bool overflow = false);
+        void Put(ItemSlot slot, IPlayer player, List<ItemStack> items);
+        void Clear(ItemSlot slot, IPlayer player);
     }
 
     public interface IAimingSystem

@@ -393,227 +393,6 @@ namespace MaltiezFSM.Framework
             }
         }
 
-        public static AssetLocation[] GetAssetLocations(JsonObject definition)
-        {
-            if (definition.IsArray())
-            {
-                List<AssetLocation> locations = new();
-                foreach (JsonObject location in definition.AsArray())
-                {
-                    locations.Add(new(location.AsString()));
-                }
-                return locations.ToArray();
-            }
-            else
-            {
-                return new AssetLocation[] { new AssetLocation(definition.AsString()) };
-            }
-        }
-
-        public enum RequirementSlotType
-        {
-            mainhand,
-            offhand,
-            inventory
-        }
-
-        public enum RequirementSearchMode
-        {
-            whitelist,
-            blacklist
-        }
-
-        public enum RequirementItemProcessMode
-        {
-            none,
-            durabilityChange,
-            durabilityDamage,
-            consumeAmount
-        }
-
-        public class ItemRequirement
-        {
-            public RequirementSlotType slot { get; set; }
-            public RequirementSearchMode mode { get; set; }
-            public RequirementItemProcessMode process { get; set; }
-            public AssetLocation[] locations { get; set; }
-            public int processParameter { get; set; }
-
-            public ItemRequirement(JsonObject definition)
-            {
-                slot = (RequirementSlotType)Enum.Parse(typeof(RequirementSlotType), definition["slot"].AsString("inventory"));
-                mode = (RequirementSearchMode)Enum.Parse(typeof(RequirementSearchMode), definition["mode"].AsString("whitelist"));
-                process = (RequirementItemProcessMode)Enum.Parse(typeof(RequirementItemProcessMode), definition["process"].AsString("none"));
-                locations = definition.KeyExists("location") ? GetAssetLocations(definition["location"]) : Array.Empty<AssetLocation>();
-                processParameter = definition["amount"].AsInt(0);
-            }
-
-            public ItemSlot GetSlot(EntityAgent entity)
-            {
-                ItemSlot itemSlot = null;
-                switch (slot)
-                {
-                    case RequirementSlotType.mainhand:
-                        itemSlot = entity.RightHandItemSlot;
-                        break;
-                    case RequirementSlotType.offhand:
-                        itemSlot = entity.LeftHandItemSlot;
-                        break;
-                    case RequirementSlotType.inventory:
-                        List<ItemSlot> slots = CheckInventory(entity, false);
-                        if (slots.Count == 0)
-                        {
-                            return null;
-                        }
-                        else
-                        {
-                            return slots[0];
-                        }
-                }
-
-                if (!CheckSlot(itemSlot)) return null;
-
-                return itemSlot;
-            }
-
-            public List<ItemSlot> GetSlots(EntityAgent entity)
-            {
-                List<ItemSlot> itemSlots = new();
-                switch (slot)
-                {
-                    case RequirementSlotType.mainhand:
-                        if (!CheckSlot(entity.RightHandItemSlot)) itemSlots.Add(entity.RightHandItemSlot);
-                        break;
-                    case RequirementSlotType.offhand:
-                        if (!CheckSlot(entity.LeftHandItemSlot)) itemSlots.Add(entity.LeftHandItemSlot);
-                        break;
-                    case RequirementSlotType.inventory:
-                        List<ItemSlot> slots = CheckInventory(entity);
-                        return slots;
-                }
-
-                return itemSlots;
-            }
-
-            public void Process(List<ItemSlot> slots, EntityAgent byEntity)
-            {
-                foreach (ItemSlot slot in slots)
-                {
-                    Process(slot, byEntity);
-                }
-            }
-
-            public void Process(ItemSlot slot, EntityAgent byEntity)
-            {
-                switch (process)
-                {
-                    case RequirementItemProcessMode.none:
-                        break;
-                    case RequirementItemProcessMode.durabilityChange:
-                        ChangeDurability(slot.Itemstack, processParameter);
-                        break;
-                    case RequirementItemProcessMode.durabilityDamage:
-                        if (processParameter > 0)
-                        {
-                            slot.Itemstack.Item.DamageItem(byEntity.World, byEntity, slot, processParameter);
-                        }
-                        else if (processParameter < 0)
-                        {
-                            int currentDurability = slot.Itemstack.Collectible.GetRemainingDurability(slot.Itemstack);
-                            int maxDurability = slot.Itemstack.Collectible.GetMaxDurability(slot.Itemstack);
-                            int newDurability = Math.Clamp(currentDurability - processParameter, 0, maxDurability);
-                            slot.Itemstack.Attributes.SetInt("durability", newDurability);
-                        }
-                        break;
-                    case RequirementItemProcessMode.consumeAmount:
-                        slot.TakeOut(processParameter);
-                        break;
-                }
-            }
-
-            public bool CheckSlot(ItemSlot slot)
-            {
-                CollectibleObject collectible = slot?.Itemstack?.Collectible;
-
-                bool match = collectible?.WildCardMatch(locations) == true;
-
-                if (match)
-                {
-                    switch (process)
-                    {
-                        case RequirementItemProcessMode.none:
-                            break;
-                        case RequirementItemProcessMode.durabilityChange:
-                            if (processParameter > 0)
-                            {
-                                int durabilityMissing = collectible.GetMaxDurability(slot.Itemstack) - slot.Itemstack.Attributes.GetInt("durability");
-                                match = durabilityMissing >= processParameter;
-                            }
-                            else if (processParameter < 0)
-                            {
-                                match = -processParameter >= slot.Itemstack.Attributes.GetInt("durability");
-                            }
-                            break;
-                        case RequirementItemProcessMode.durabilityDamage:
-                            break;
-                        case RequirementItemProcessMode.consumeAmount:
-                            if (processParameter > 0)
-                            {
-                                match = processParameter >= slot.Itemstack.StackSize;
-                            }
-                            break;
-                    }
-                }
-
-                switch (mode)
-                {
-                    case RequirementSearchMode.whitelist:
-                        break;
-                    case RequirementSearchMode.blacklist:
-                        match = !match;
-                        break;
-                }
-
-                return match;
-            }
-
-            private void ChangeDurability(ItemStack itemstack, int amount)
-            {
-                if (amount >= 0 && itemstack.Collectible.GetRemainingDurability(itemstack) >= itemstack.Collectible.GetMaxDurability(itemstack))
-                {
-                    return;
-                }
-
-                int remainingDurability = itemstack.Collectible.GetRemainingDurability(itemstack) + amount;
-                remainingDurability = Math.Min(itemstack.Collectible.GetMaxDurability(itemstack), remainingDurability);
-
-                if (remainingDurability < 0)
-                {
-                    return;
-                }
-
-                itemstack.Attributes.SetInt("durability", Math.Max(remainingDurability, 0));
-            }
-
-            private List<ItemSlot> CheckInventory(EntityAgent byEntity, bool foundAll = true)
-            {
-                List<ItemSlot> slots = new();
-
-                byEntity.WalkInventory((inventorySlot) =>
-                {
-                    if (CheckSlot(inventorySlot))
-                    {
-                        slots.Add(inventorySlot);
-                        return foundAll;
-                    }
-
-                    return true;
-                });
-
-                return slots;
-            }
-        }
-
         public class TickBasedTimer
         {
             private readonly ICoreAPI mApi;
@@ -883,6 +662,58 @@ namespace MaltiezFSM.Framework
                         break;
                     default:
                         slots.Add(new(type));
+                        break;
+                }
+
+                return slots;
+            }
+
+            public static IEnumerable<ItemSlot> GetValidatedSlots(SlotType type, IPlayer player, System.Func<ItemSlot, bool> validator)
+            {
+                HashSet<ItemSlot> slots = new();
+
+                switch (type)
+                {
+                    case SlotType.HotBar:
+                        foreach (ItemSlot hotbarSlot in player.InventoryManager.GetHotbarInventory().Where(validator))
+                        {
+                            slots.Add(hotbarSlot);
+                        }
+                        break;
+                    case SlotType.Inventory:
+                        foreach ((_, IInventory inventory) in player.InventoryManager.Inventories)
+                        {
+                            foreach (ItemSlot inventorySlot in inventory.Where(validator))
+                            {
+                                slots.Add(inventorySlot);
+                            }
+                        }
+                        break;
+                    case SlotType.MainHand:
+                        if (validator(player?.Entity?.RightHandItemSlot)) slots.Add(player?.Entity?.RightHandItemSlot);
+                        break;
+                    case SlotType.OffHand:
+                        if (validator(player?.Entity?.LeftHandItemSlot)) slots.Add(player?.Entity?.LeftHandItemSlot);
+                        break;
+                    case SlotType.Character:
+                        foreach (ItemSlot characterSlot in player.InventoryManager.GetOwnInventory(GlobalConstants.characterInvClassName).Where(validator))
+                        {
+                            slots.Add(characterSlot);
+                        }
+                        break;
+                    case SlotType.Backpack:
+                        foreach (ItemSlot backpackSlot in player.InventoryManager.GetOwnInventory(GlobalConstants.backpackInvClassName).Where(validator))
+                        {
+                            slots.Add(backpackSlot);
+                        }
+                        break;
+                    case SlotType.Crafting:
+                        foreach (ItemSlot craftingSlot in player.InventoryManager.GetOwnInventory(GlobalConstants.craftingInvClassName).Where(validator))
+                        {
+                            slots.Add(craftingSlot);
+                        }
+                        break;
+                    default:
                         break;
                 }
 

@@ -23,7 +23,7 @@ namespace MaltiezFSM.Systems
         private readonly Dictionary<string, AnimationMetaData> mInstantAnimations = new();
         private readonly Dictionary<string, Dictionary<string, string>> mAttachmentsNames = new();
         private readonly Dictionary<string, Dictionary<string, JsonObject>> mAttachmentsTransforms = new();
-        private readonly Dictionary<string, Dictionary<string, IItemStackProvider>> mAttachments = new();
+        private readonly Dictionary<string, Dictionary<string, IItemStackHolder>> mAttachments = new();
 
         public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
         {
@@ -89,7 +89,7 @@ namespace MaltiezFSM.Systems
                 mAttachments.Add(code, new());
                 foreach ((string attachment, string system) in systemsNames)
                 {
-                    mAttachments[code].Add(attachment, systems[system] as IItemStackProvider);
+                    mAttachments[code].Add(attachment, systems[system] as IItemStackHolder);
                 }
             }
 
@@ -133,7 +133,7 @@ namespace MaltiezFSM.Systems
         {
             if (!mClientSide) return;
 
-            foreach ((string attachment, IItemStackProvider system) in mAttachments[code])
+            foreach ((string attachment, IItemStackHolder system) in mAttachments[code])
             {
                 ItemStack stack = system.GetItemStack(slot, player);
                 if (stack == null) continue;

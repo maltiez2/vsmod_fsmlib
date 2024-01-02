@@ -6,6 +6,7 @@ using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using System.Linq;
+using MaltiezFSM.Systems.ItemSelection;
 
 namespace MaltiezFSM
 {
@@ -45,6 +46,11 @@ namespace MaltiezFSM
             if (api is ICoreClientAPI clientApi) RegisterInputInvokers(clientApi);
             if (api is ICoreServerAPI serverApi) RegisterInputInvokers(serverApi);
             RegisterInputs();
+
+            if (api is ICoreClientAPI clientApi_2)
+            {
+                clientApi_2.Gui.RegisterDialog(new ItemSelectGuiDialog(clientApi_2));
+            }
         }
 
         private void RegisterInputInvokers(ICoreClientAPI api)
@@ -90,9 +96,9 @@ namespace MaltiezFSM
         {  
             mSystemFactory.Register<Systems.Sounds>("Sounds");
             mSystemFactory.Register<Systems.BasicReload>("Reload");
-            mSystemFactory.Register<Systems.BasicShooting>("Shooting");
+            mSystemFactory.Register<Systems.RangeAttack>("Shooting");
             mSystemFactory.Register<Systems.BasicVariantsAnimation<Systems.TickBasedAnimation>>("VariantsAnimation");
-            mSystemFactory.Register<Systems.BasicRequirements>("Requirements");
+            mSystemFactory.Register<Systems.Requirements>("Requirements");
             mSystemFactory.Register<Systems.BasicPlayerAnimation>("PlayerAnimation");
             mSystemFactory.Register<Systems.BasicPlayerStats>("PlayerStats");
             mSystemFactory.Register<Systems.BasicParticles>("Particles");

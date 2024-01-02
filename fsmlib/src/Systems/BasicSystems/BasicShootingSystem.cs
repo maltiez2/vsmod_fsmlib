@@ -9,9 +9,11 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.GameContent;
 
+#nullable enable
+
 namespace MaltiezFSM.Systems
 {
-    public class BasicShooting : BaseSystem
+    public class RangeAttack : BaseSystem
     {
         public const string ammoSelectorSystemAttrName = "reloadSystem";
         public const string aimingSystemAttrName = "aimingSystem";
@@ -29,16 +31,14 @@ namespace MaltiezFSM.Systems
         private float mProjectileDamage;
         private float mProjectileDamageMultiplier;
 
-        public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
+        public RangeAttack(int id, string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api) : base(id, code, definition, collectible, api)
         {
-            base.Init(code, definition, collectible, api);
-
             mReloadSystemName = definition[ammoSelectorSystemAttrName].AsString();
             mProjectileVelocity = definition[velocityAttrName].AsFloat(1);
             mProjectileDamage = definition[damageAttrName].AsFloat(0);
             mProjectileDamageMultiplier = definition[damageMultiplierAttrName].AsFloat(0);
             mDescription = definition[descriptionAttrName].AsString();
-            
+
             if (definition[aimingSystemAttrName].IsArray())
             {
                 foreach (var item in definition[aimingSystemAttrName].AsArray())
@@ -51,6 +51,7 @@ namespace MaltiezFSM.Systems
                 mAimingSystemsName.Add(definition[aimingSystemAttrName].AsString());
             }
         }
+
         public override void SetSystems(Dictionary<string, ISystem> systems)
         {
             mReloadSystem = systems[mReloadSystemName] as IAmmoSelector;
