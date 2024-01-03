@@ -42,7 +42,7 @@ namespace MaltiezFSM.Systems
                 case "check":
                     break;
                 default:
-                    Utils.Logger.Error(mApi, this, $"System '{mCode}'. Wrong action '{action}'. Available actions: 'change', 'check'.");
+                    LogActions(action, "change", "check");
                     return false;
             }
 

@@ -18,7 +18,7 @@ namespace MaltiezFSM.Systems
         {
             if (definition.Token is not JObject definitionObject)
             {
-                Utils.Logger.Error(mApi, this, $"System '{mCode}'. Wrong definition format.");
+                LogError($"Wrong definition format.");
                 return;
             }
             
@@ -43,7 +43,7 @@ namespace MaltiezFSM.Systems
                 }
                 catch (Exception exception)
                 {
-                    Utils.Logger.Debug(mApi, this, $"System '{mCode}'. Exception while spawning particle effect '{effect}':\n{exception}");
+                    LogDebug($"Exception while spawning particle effect '{effect}':\n{exception}");
                 }
             }
 

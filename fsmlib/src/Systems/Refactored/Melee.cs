@@ -35,7 +35,7 @@ public sealed class Melee : BaseSystem
 
         if (!definition.KeyExists("attacks") || definition["attacks"].Token is not JObject attacks)
         {
-            Utils.Logger.Error(mApi, this, $"Melee system '{mCode}' received attacks data in wrong format or haven't received it at all");
+            LogError($"Received attacks data in wrong format or haven't received it at all");
             return;
         }
 
@@ -50,13 +50,13 @@ public sealed class Melee : BaseSystem
     {
         if (systems.ContainsKey(mAnimationSystemCode) || systems[mAnimationSystemCode] is not IAnimationSystem animationSystem)
         {
-            Utils.Logger.Error(mApi, this, $"Animation system '{mAnimationSystemCode}' was not found while setting systems for '{mCode}'");
+            LogError($"Animation system '{mAnimationSystemCode}' was not found while setting systems for '{mCode}'");
             return;
         }
 
         if (systems.ContainsKey(mSoundSystemCode) || systems[mSoundSystemCode] is not ISoundSystem soundSystem)
         {
-            Utils.Logger.Error(mApi, this, $"Sound system '{mSoundSystemCode}' was not found while setting systems for '{mCode}'");
+            LogError($"Sound system '{mSoundSystemCode}' was not found while setting systems for '{mCode}'");
             return;
         }
 
@@ -81,7 +81,7 @@ public sealed class Melee : BaseSystem
 
         if (!mAttacks.ContainsKey(attack))
         {
-            Utils.Logger.Error(mApi, this, $"Attack with code '{attack}' was not found");
+            LogError($"Attack with code '{attack}' was not found");
             return false;
         }
 
@@ -103,7 +103,7 @@ public sealed class Melee : BaseSystem
                 mAttacks[attack].StopAnimation(slot, player);
                 break;
             default:
-                Utils.Logger.Error(mApi, this, $"Wrong action '{action}'. Available actions: 'start', 'stop'.");
+                LogActions(action, "start", "stop");
                 return false;
         }
         return true;

@@ -14,6 +14,13 @@ public abstract class BaseSystem : FactoryProduct, ISystem
     {
     }
 
+    protected void LogError(string message) => Utils.Logger.Error(mApi, this, $"[system: {mCode}] {message}");
+    protected void LogWarn(string message) => Utils.Logger.Warn(mApi, this, $"[system: {mCode}] {message}");
+    protected void LogNotify(string message) => Utils.Logger.Notify(mApi, this, $"[system: {mCode}] {message}");
+    protected void LogDebug(string message) => Utils.Logger.Debug(mApi, this, $"[system: {mCode}] {message}");
+    protected void LogVerbose(string message) => Utils.Logger.Verbose(mApi, this, $"[system: {mCode}] {message}");
+    protected void LogActions(string action, params string[] actions) => Utils.Logger.Error(mApi, this, $"[system: {mCode}] Wrong action '{action}'. Available actions: {Utils.PrintList(actions)}");
+
     virtual public string[]? GetDescription(ItemSlot slot, IWorldAccessor world)
     {
         if (slot == null)

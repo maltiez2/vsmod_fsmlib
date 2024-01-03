@@ -8,9 +8,7 @@ using Vintagestory.API.Datastructures;
 using System.Linq;
 using MaltiezFSM.Systems.ItemSelection;
 using HarmonyLib;
-using Vintagestory.ServerMods.NoObf;
 using Vintagestory.GameContent;
-using MaltiezFSM.Systems;
 
 namespace MaltiezFSM;
 
@@ -29,15 +27,14 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         base.Start(api);
 
         Framework.Utils.Logger.Init(api.Logger);
-
-        Framework.Utils.Logger.Notify(this, "Started");
+        Framework.Utils.Logger.Debug(api, this, "Stared initializing");
 
         Patch();
 
         api.RegisterItemClass("NoMelee", typeof(NoMelee));
         api.RegisterItemClass("NoMeleeStrict", typeof(NoMeleeStrict));
         api.RegisterCollectibleBehaviorClass("FiniteStateMachine", typeof(Framework.FiniteStateMachineBehaviour<Framework.BehaviourAttributesParser>));
-        api.RegisterCollectibleBehaviorClass("FSMAdvancedProjectile", typeof(AdvancedProjectileBehavior));
+        api.RegisterCollectibleBehaviorClass("FSMAdvancedProjectile", typeof(Systems.AdvancedProjectileBehavior));
 
         api.RegisterEntityBehaviorClass("constresist", typeof(Additional.EntityBehaviorConstResists<Additional.ConstResist>));
         api.RegisterEntityBehaviorClass("tempresists", typeof(Additional.EntityBehaviorResists));
@@ -59,6 +56,8 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         {
             clientApi_2.Gui.RegisterDialog(new ItemSelectGuiDialog(clientApi_2));
         }
+
+        Framework.Utils.Logger.Debug(api, this, "Finished initializing");
     }
     public override void AssetsLoaded(ICoreAPI api)
     {
@@ -121,7 +120,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         mSystemFactory.Register<Systems.Melee>("SimpleMelee");
         mSystemFactory.Register<Systems.PlayerAnimation>("ProceduralPlayerAnimation");
         mSystemFactory.Register<Systems.ItemAnimation>("ProceduralItemAnimation");
-        mSystemFactory.Register<Systems.BasicParry<Additional.EntityBehaviorResists>>("BasicParry");
+        mSystemFactory.Register<Systems.Parry<Additional.EntityBehaviorResists>>("BasicParry");
         mSystemFactory.Register<Systems.BasicBlock<Additional.EntityBehaviorResists>>("BasicBlock");
         mSystemFactory.Register<Systems.SmoothAnimation>("SmoothAnimation");
     }
@@ -132,14 +131,14 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         mOperationFactory.Register<Operations.Continuous>("Continuous");
     }
 
-    private void Patch()
+    private static void Patch()
     {
         new Harmony("fsmlib").Patch(
                     typeof(EntityProjectile).GetMethod("impactOnEntity", AccessTools.all),
-                    prefix: new HarmonyMethod(AccessTools.Method(typeof(AdvancedEntityProjectile), nameof(AdvancedEntityProjectile.ImpactOnEntity)))
+                    prefix: new HarmonyMethod(AccessTools.Method(typeof(Systems.AdvancedEntityProjectile), nameof(Systems.AdvancedEntityProjectile.ImpactOnEntity)))
                     );
     }
-    private void Unpatch()
+    private static void Unpatch()
     {
         new Harmony("fsmlib").Unpatch(typeof(EntityProjectile).GetMethod("impactOnEntity", AccessTools.all), HarmonyPatchType.Prefix, "fsmlib");
     }

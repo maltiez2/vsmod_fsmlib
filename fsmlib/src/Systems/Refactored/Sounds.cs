@@ -143,7 +143,7 @@ public class Sounds : BaseSystem, ISoundSystem
     {
         if (definition["sounds"].Token is not JObject sounds)
         {
-            Utils.Logger.Error(mApi, this, $"Sounds system {mCode} has wrong definition format");
+            LogError($"Wrong definition format");
             return;
         }
         
@@ -208,6 +208,9 @@ public class Sounds : BaseSystem, ISoundSystem
             case "stop":
                 StopSound(soundCode, player);
                 break;
+            default:
+                LogActions(action, "play", "stop");
+                return false;
         }
 
         return true;

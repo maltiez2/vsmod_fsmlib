@@ -54,7 +54,7 @@ public class Aiming : BaseSystem, IAimingSystem
             if (!systems.ContainsKey(mSoundSystemName) || systems[mSoundSystemName] is not ISoundSystem)
             {
                 IEnumerable<string> soundSystems = systems.Where((entry, _) => entry.Value is ISoundSystem).Select((entry, _) => entry.Key);
-                Utils.Logger.Error(mApi, this, $"System {mCode}. Sound system '{mSoundSystemName}' not found. Available sound systems: {Utils.PrintList(soundSystems)}.");
+                LogError($"Sound system '{mSoundSystemName}' not found. Available sound systems: {Utils.PrintList(soundSystems)}.");
                 return;
             }
 
@@ -82,7 +82,7 @@ public class Aiming : BaseSystem, IAimingSystem
                 mIsAiming = false;
                 break;
             default:
-                mApi.Logger.Error("[FSMlib] [BasicAim] [Process] Action does not exists: " + action);
+                LogActions(action, "start", "stop");
                 return false;
         }
         return true;

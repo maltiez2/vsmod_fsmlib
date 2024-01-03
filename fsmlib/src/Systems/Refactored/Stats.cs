@@ -28,7 +28,7 @@ internal class Stats : BaseSystem
 
         if (code == null)
         {
-            Utils.Logger.Error(mApi, this, $"System '{mCode}'.No stat code was specified.");
+            LogError($"No stat code was specified.");
             return false;
         }
 
@@ -55,7 +55,7 @@ internal class Stats : BaseSystem
 
     void Revert(float time, IPlayer player, string category, float defaultValue)
     {
-        Utils.Logger.Verbose(mApi, this, $"System '{mCode}'. Timeout triggered for '{category}' after {time} seconds.");
+        LogVerbose($"Timeout triggered for '{category}' after {time} seconds.");
         player.Entity.Stats.Set(category, mStatCode, defaultValue, true);
         mStats.Remove(category);
     }

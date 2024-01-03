@@ -53,7 +53,7 @@ public class Requirements : BaseSystem, IItemStackHolder
 
         if (!mRequirements.ContainsKey(code))
         {
-            Utils.Logger.Error(mApi, this, $"System '{mCode}'. Requirement with code '{code}' not found.");
+            LogError($"Requirement with code '{code}' not found.");
             return false;
         }
 
@@ -78,7 +78,7 @@ public class Requirements : BaseSystem, IItemStackHolder
 
         if (!mRequirements.ContainsKey(code))
         {
-            Utils.Logger.Error(mApi, this, $"System '{mCode}'. Requirement with code '{code}' not found.");
+            LogError($"Requirement with code '{code}' not found.");
             return false;
         }
 
@@ -96,7 +96,7 @@ public class Requirements : BaseSystem, IItemStackHolder
                 Clear(slot);
                 break;
             default:
-                Utils.Logger.Error(mApi, this, $"System '{mCode}'. Wrong action '{action}'. Available actions: 'check', 'take', 'put', 'clear'.");
+                LogActions(action, "check", "take", "put", "clear");
                 return false;
         }
 

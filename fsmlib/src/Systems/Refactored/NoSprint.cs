@@ -28,7 +28,7 @@ namespace MaltiezFSM.Systems
                     player.Entity.ServerControls.Sprint = true;
                     break;
                 default:
-                    Utils.Logger.Error(mApi, this, $"System '{mCode}'. Wrong action '{action}'. Available actions: 'start', 'stop'.");
+                    LogActions(action, "start", "stop");
                     return false;
             }
             return true;
