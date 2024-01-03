@@ -1,4 +1,4 @@
-﻿using MaltiezFSM.API;
+﻿ using MaltiezFSM.API;
 using MaltiezFSM.Framework;
 using Newtonsoft.Json.Linq;
 using System;
@@ -91,7 +91,7 @@ public sealed class Melee : BaseSystem
                 if (mApi is ICoreServerAPI serverApi)
                 {
                     player.Entity.Attributes.SetInt("didattack", 0);
-                    mTimers[playerId] = new(mApi, mAttacks[attack].Duration, (float progress) => mAttacks[attack].TryAttack(slot, player, serverApi, progress));
+                    mTimers[playerId] = new(mApi, mAttacks[attack].GetDuration(player), (float progress) => mAttacks[attack].TryAttack(slot, player, serverApi, progress));
                 }
                 mAttacks[attack].StartAnimation(slot, player);
                 break;
@@ -112,8 +112,6 @@ public sealed class Melee : BaseSystem
 
 internal sealed class MeleeAttack
 {
-    public TimeSpan Duration { get; }
-
     private readonly HitWindow mHitWindow;
     private readonly List<AttackDamageType> mDamageTypes = new();
     private readonly ICustomInputInvoker mCustomInputInvoker;
@@ -121,18 +119,20 @@ internal sealed class MeleeAttack
     private readonly bool mStopOnHandled = false;
     private readonly string? mAnimationCode = null;
     private readonly string? mAnimationCategory = null;
+    private readonly TimeSpan mDuration;
+    private readonly StatsModifier? mDurationModifier;
     private IAnimationSystem? mAnimationPlayer;
-
 
     public MeleeAttack(JsonObject definition, ICoreAPI api)
     {
-        Duration = TimeSpan.FromMilliseconds(definition["duration"].AsInt());
+        mDuration = TimeSpan.FromMilliseconds(definition["duration"].AsInt());
         mHitWindow = new(definition);
         mCustomInputInvoker = api.ModLoader.GetModSystem<FiniteStateMachineSystem>().CustomInputInvoker;
         if (definition.KeyExists("hitInput")) mCustomInput = definition["hitInput"].AsString();
         if (definition.KeyExists("stopOnInput")) mStopOnHandled = definition["stopOnInput"].AsBool();
         if (definition.KeyExists("animationCode")) mAnimationCode = definition["animationCode"].AsString();
         if (definition.KeyExists("animationCategory")) mAnimationCategory = definition["animationCategory"].AsString();
+        if (definition.KeyExists("duration_stats")) mDurationModifier = new(api, definition["duration_stats"].AsString());
 
         foreach (JsonObject damageType in definition["damageTypes"].AsArray())
         {
@@ -151,7 +151,7 @@ internal sealed class MeleeAttack
     }
     public bool TryAttack(ItemSlot slot, IPlayer player, ICoreServerAPI api, float attackProgress)
     {
-        if (!mHitWindow.Check(attackProgress, Duration)) return false;
+        if (!mHitWindow.Check(attackProgress, mDuration)) return false;
 
         if (player.Entity.Attributes.GetInt("didattack") == 0 && Attack(player, api))
         {
@@ -166,7 +166,8 @@ internal sealed class MeleeAttack
     {
         if (mAnimationPlayer != null && mAnimationCode != null && mAnimationCategory != null)
         {
-            mAnimationPlayer.PlayAnimation(slot, player, mAnimationCode, mAnimationCategory, "start");
+            double durationModifier = GetDuration(player) / mDuration;
+            mAnimationPlayer.PlayAnimation(slot, player, mAnimationCode, mAnimationCategory, "start", (float)durationModifier);
         }
     }
     public void StopAnimation(ItemSlot slot, IPlayer player)
@@ -175,6 +176,12 @@ internal sealed class MeleeAttack
         {
             mAnimationPlayer.PlayAnimation(slot, player, mAnimationCode, mAnimationCategory, "stop");
         }
+    }
+    public TimeSpan GetDuration(IPlayer player)
+    {
+        if (mDurationModifier == null) return mDuration;
+
+        return mDurationModifier.CalcMilliseconds(player, mDuration);
     }
 
     private bool InvokeInput(ItemSlot slot, IPlayer player)
@@ -241,14 +248,16 @@ internal readonly struct HitWindow
     }
 }
 
-internal sealed class AttackDamageType
+public sealed class AttackDamageType
 {
     private readonly float mDamage;
     private readonly float mKnockback;
     private readonly string mSound;
     private readonly EnumDamageType mDamageType;
     private readonly Tuple<float, float> mReachWindow;
-    private readonly List<Tuple<string, Utils.DamageModifiers.Modifier>> mModifiers = new();
+    private readonly StatsModifier? mDamageModifier;
+    private readonly StatsModifier? mReachModifier;
+    private readonly StatsModifier? mKnockbackModifier;
 
     private ISoundSystem? mSoundSystem;
 
@@ -268,27 +277,16 @@ internal sealed class AttackDamageType
 
         mDamageType = (EnumDamageType)Enum.Parse(typeof(EnumDamageType), definition["type"].AsString("PiercingAttack"));
 
-        if (definition.KeyExists("stats"))
-        {
-            foreach (JsonObject stat in definition["stats"].AsArray())
-            {
-                mModifiers.Add(new(stat["code"].AsString(), Utils.DamageModifiers.Get(stat["type"].AsString("Multiply"))));
-            }
-        }
+        if (definition.KeyExists("damage_stats")) mDamageModifier = new(api, definition["damage_stats"].AsString());
+        if (definition.KeyExists("reach_stats")) mReachModifier = new(api, definition["reach_stats"].AsString());
+        if (definition.KeyExists("knockback_stats")) mKnockbackModifier = new(api, definition["knockback_stats"].AsString());
     }
 
     public void SetSoundSystem(ISoundSystem system) => mSoundSystem = system;
 
     public bool Attack(IPlayer attacker, Entity target, float distance)
     {
-        if (!(mReachWindow.Item1 < distance && distance < mReachWindow.Item2)) return false;
-
-        float damage = mDamage;
-
-        foreach ((string stat, Utils.DamageModifiers.Modifier? modifier) in mModifiers)
-        {
-            modifier(ref damage, attacker.Entity.Stats.GetBlended(stat));
-        }
+        if (!(mReachWindow.Item1 < distance && distance < GetReach(attacker))) return false;
 
         bool damageReceived = target.ReceiveDamage(new DamageSource()
         {
@@ -296,16 +294,32 @@ internal sealed class AttackDamageType
             SourceEntity = null,
             CauseEntity = attacker.Entity,
             Type = mDamageType
-        }, damage);
+        }, GetDamage(attacker));
 
         if (damageReceived)
         {
-            Vec3f knockback = (target.Pos.XYZFloat - attacker.Entity.Pos.XYZFloat).Normalize() * mKnockback / 10f * target.Properties.KnockbackResistance;
+            Vec3f knockback = (target.Pos.XYZFloat - attacker.Entity.Pos.XYZFloat).Normalize() * GetKnockback(attacker) / 10f * target.Properties.KnockbackResistance;
             target.SidedPos.Motion.Add(knockback);
 
             if (mSound != null) mSoundSystem?.PlaySound(mSound, target);
         }
 
         return damageReceived;
+    }
+
+    private float GetReach(IPlayer attacker)
+    {
+        if (mReachModifier == null) return mReachWindow.Item2;
+        return mReachModifier.Calc(attacker, mReachWindow.Item2);
+    }
+    private float GetDamage(IPlayer attacker)
+    {
+        if (mDamageModifier == null) return mDamage;
+        return mDamageModifier.Calc(attacker, mDamage);
+    }
+    private float GetKnockback(IPlayer attacker)
+    {
+        if (mKnockbackModifier == null) return mKnockback;
+        return mKnockbackModifier.Calc(attacker, mKnockback);
     }
 }

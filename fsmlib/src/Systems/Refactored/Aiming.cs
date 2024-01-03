@@ -20,9 +20,9 @@ public class Aiming : BaseSystem, IAimingSystem
     private readonly TimeSpan mAimTime;
     private readonly string mDescription;
     private readonly string mTimeAttrName;
-    private readonly StatModifier? mMinAccuracyStat;
-    private readonly StatModifier? mMaxAccuracyStat;
-    private readonly StatModifier? mAimingTime;
+    private readonly StatsModifier? mMinAccuracyStat;
+    private readonly StatsModifier? mMaxAccuracyStat;
+    private readonly StatsModifier? mAimingTime;
     private readonly Dictionary<long, float> mAimingTimes = new();
     private readonly Dictionary<long, float> mMinDispersions = new();
     private readonly Dictionary<long, float> mMaxDispersions = new();
@@ -107,12 +107,12 @@ public class Aiming : BaseSystem, IAimingSystem
 
         if (mAimingTime != null)
         {
-            return TimeSpan.FromSeconds(mAimingTime.Calc(player, (float)mAimTime.TotalSeconds));
+            return mAimingTime.CalcSeconds(player, mAimTime);
         }
 
         return mAimTime;
     }
-    public override string[] GetDescription(ItemSlot slot, IWorldAccessor world)
+    public override string[]? GetDescription(ItemSlot slot, IWorldAccessor world)
     {
         if (mDescription == null) return null;
 

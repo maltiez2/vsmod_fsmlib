@@ -42,7 +42,7 @@ namespace MaltiezFSM.Systems
             }
         }
 
-        void PlayAnimation(ItemSlot slot, IPlayer player, string code, string category, string action = "start");
+        void PlayAnimation(ItemSlot slot, IPlayer player, string code, string category, string action = "start", float durationMultiplier = 1);
     }
 
     public interface IItemStackHolder

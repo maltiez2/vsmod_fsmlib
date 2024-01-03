@@ -14,7 +14,7 @@ public abstract class BaseSystem : FactoryProduct, ISystem
     {
     }
 
-    virtual public string[] GetDescription(ItemSlot slot, IWorldAccessor world)
+    virtual public string[]? GetDescription(ItemSlot slot, IWorldAccessor world)
     {
         if (slot == null)
         {

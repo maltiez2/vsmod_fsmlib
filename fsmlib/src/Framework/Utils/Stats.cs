@@ -1,19 +1,17 @@
-﻿using MaltiezFSM.Framework;
-using SimpleExpressionEngine;
+﻿using SimpleExpressionEngine;
 using System;
-using System.Dynamic;
 using Vintagestory.API.Common;
 
 #nullable enable
 
-namespace MaltiezFSM.Systems;
+namespace MaltiezFSM.Framework;
 
-public class StatModifier : DynamicObject
+public class StatsModifier
 {
     private readonly Node mFormula;
     private readonly ICoreAPI mApi;
 
-    public StatModifier(ICoreAPI api, string formula)
+    public StatsModifier(ICoreAPI api, string formula)
     {
         mFormula = Parser.Parse(formula);
         mApi = api;
@@ -22,6 +20,14 @@ public class StatModifier : DynamicObject
     public float Calc(IPlayer player, float value)
     {
         return (float)mFormula.Eval(new StatsContext(mApi, player, value));
+    }
+    public TimeSpan CalcMilliseconds(IPlayer player, TimeSpan value)
+    {
+        return TimeSpan.FromMilliseconds(mFormula.Eval(new StatsContext(mApi, player, (float)value.TotalMilliseconds)));
+    }
+    public TimeSpan CalcSeconds(IPlayer player, TimeSpan value)
+    {
+        return TimeSpan.FromSeconds(mFormula.Eval(new StatsContext(mApi, player, (float)value.TotalSeconds)));
     }
 }
 

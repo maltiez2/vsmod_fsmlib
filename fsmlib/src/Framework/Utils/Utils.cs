@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -754,6 +755,30 @@ namespace MaltiezFSM.Framework
                 }
             }
             return result.ToString();
+        }
+
+        public sealed class Field<TValue, TInstance>
+        {
+            public TValue? Value
+            {
+                get
+                {
+                    return (TValue?)mFieldInfo?.GetValue(mInstance);
+                }
+                set
+                {
+                    mFieldInfo?.SetValue(mInstance, value);
+                }
+            }
+
+            private readonly FieldInfo? mFieldInfo;
+            private readonly TInstance mInstance;
+
+            public Field(Type from, string field, TInstance instance)
+            {
+                mInstance = instance;
+                mFieldInfo = from.GetField(field, BindingFlags.NonPublic | BindingFlags.Instance);
+            }
         }
     }
 }

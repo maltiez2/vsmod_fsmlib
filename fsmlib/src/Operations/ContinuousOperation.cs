@@ -27,10 +27,8 @@ namespace MaltiezFSM.Operations
         protected readonly Dictionary<int, List<SystemRequest>> mTimedSystems = new();
         protected readonly Dictionary<long, List<long>> mSystemsTimers = new();
 
-        public override void Init(string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
+        public Continuous(int id, string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api) : base(id, code, definition, collectible, api)
         {
-            base.Init(code, definition, collectible, api);
-
             foreach (JsonObject system in definition["systems"]["timed"].AsArray())
             {
                 string systemCode = system["code"].AsString();

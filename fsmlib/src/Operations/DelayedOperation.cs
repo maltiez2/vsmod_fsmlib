@@ -87,6 +87,7 @@ namespace MaltiezFSM.Operations
         protected readonly Dictionary<TransitionTrigger, TimeSpan?> mTimers = new();
         protected readonly Dictionary<ISystem, string> mSystemsCodes = new();
         protected readonly HashSet<IState> mTransitionalStates = new();
+        protected readonly StatsModifier? mDelayModifier;
 
         public Delayed(int id, string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api) : base(id, code, definition, collectible, api)
         {
@@ -109,6 +110,7 @@ namespace MaltiezFSM.Operations
             }
 
             int? timeout = definition.KeyExists("timeout") ? definition["timeout"].AsInt() : null;
+            if (definition.KeyExists("timeout_stats")) mDelayModifier = new(mApi, definition["timeout_stats"].AsString());
 
             foreach (TransitionsBranchInitial transition in transitions)
             {
@@ -223,9 +225,8 @@ namespace MaltiezFSM.Operations
                 Outcome.Finished => mTransitionalStates.Contains(transitionResult.State) ? Timeout.Stop : Timeout.Ignore,
                 _ => Timeout.Ignore,
             };
-            TimeSpan? timeoutDelay = mTimers.ContainsKey((state, input)) ? mTimers[(state, input)] : null;
 
-            return new(transitionResult.State, transitionResult.Outcome, timeout, timeoutDelay);
+            return new(transitionResult.State, transitionResult.Outcome, timeout, GetTimeout(player, state, input));
         }
 
         protected List<TransitionsBranchInitial> ParseTransitions(JsonObject definition)
@@ -333,7 +334,17 @@ namespace MaltiezFSM.Operations
             }
             mTriggerConditions.Add(Transition.TimeoutTrigger(intermediateState, timeoutState));
         }
+        protected TimeSpan? GetTimeout(IPlayer player, IState state, IInput input)
+        {
+            TimeSpan? timeoutDelay = mTimers.ContainsKey((state, input)) ? mTimers[(state, input)] : null;
 
+            if (timeoutDelay != null && mDelayModifier != null)
+            {
+                timeoutDelay = mDelayModifier.CalcMilliseconds(player, timeoutDelay.Value);
+            }
+
+            return timeoutDelay;
+        }
         protected static List<JsonObject> ParseField(JsonObject definition, string field)
         {
             List<JsonObject> transitions = new();

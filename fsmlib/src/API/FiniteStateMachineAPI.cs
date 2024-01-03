@@ -83,7 +83,7 @@ public interface ISystem : IFactoryProduct
     void SetSystems(Dictionary<string, ISystem> systems);
     bool Verify(ItemSlot slot, IPlayer player, JsonObject parameters);
     bool Process(ItemSlot slot, IPlayer player, JsonObject parameters);
-    string[] GetDescription(ItemSlot slot, IWorldAccessor world);
+    string[]? GetDescription(ItemSlot slot, IWorldAccessor world);
 }
 
 public interface IBehaviourAttributesParser
