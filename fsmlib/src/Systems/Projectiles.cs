@@ -8,7 +8,7 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
-#nullable enable
+
 
 namespace MaltiezFSM.Systems;
 
@@ -58,7 +58,7 @@ public class Projectiles : BaseSystem
         if (!systems.ContainsKey(mReloadSystemName))
         {
             IEnumerable<string> reloadSystems = systems.Where((entry, _) => entry.Value is IItemStackHolder).Select((entry, _) => entry.Key);
-            Utils.Logger.Error(mApi, this, $"System {mCode}. Reload system '{mReloadSystemName}' not found. Available sound systems: {Utils.PrintList(reloadSystems)}.");
+            Logger.Error(mApi, this, $"System {mCode}. Reload system '{mReloadSystemName}' not found. Available sound systems: {Utils.PrintList(reloadSystems)}.");
             return;
         }
 
@@ -70,7 +70,7 @@ public class Projectiles : BaseSystem
 
         if (mAimingSystems.Count == 0)
         {
-            Utils.Logger.Warn(mApi, this, $"System {mCode}. No aiming systems provided or found.");
+            Logger.Warn(mApi, this, $"System {mCode}. No aiming systems provided or found.");
         }
     }
 
@@ -116,8 +116,8 @@ public class Projectiles : BaseSystem
         foreach (IAimingSystem item in mAimingSystems)
         {
             Utils.DirectionOffset offset = item.GetShootingDirectionOffset(slot, player);
-            dispersion.pitch += offset.pitch;
-            dispersion.yaw += offset.yaw;
+            dispersion.Pitch += offset.Pitch;
+            dispersion.Yaw += offset.Yaw;
         }
         return dispersion;
     }
@@ -141,7 +141,7 @@ public class Projectiles : BaseSystem
     private Vec3d ProjectileVelocity(IPlayer player, Utils.DirectionOffset dispersion)
     {
         Vec3d pos = player.Entity.ServerPos.XYZ.Add(0, player.Entity.LocalEyePos.Y, 0);
-        Vec3d aheadPos = pos.AheadCopy(1, player.Entity.SidedPos.Pitch + dispersion.pitch, player.Entity.SidedPos.Yaw + dispersion.yaw);
+        Vec3d aheadPos = pos.AheadCopy(1, player.Entity.SidedPos.Pitch + dispersion.Pitch, player.Entity.SidedPos.Yaw + dispersion.Yaw);
         return (aheadPos - pos).Normalize() * GetSpeed(player);
     }
     private void SpawnProjectile(ItemStack projectileStack, IPlayer player, Vec3d position, Vec3d velocity, float damageMultiplier)
@@ -152,7 +152,7 @@ public class Projectiles : BaseSystem
 
         if (damageTypes == null || damageTypes.Count == 0)
         {
-            Utils.Logger.Warn(mApi, this, $"System '{mCode}'. Failed to retrieve damage types from '{projectileStack.Item.Code}'. Try adding FSMAdvancedProjectile behavior to projectile itemtype/blocktype.");
+            Logger.Warn(mApi, this, $"System '{mCode}'. Failed to retrieve damage types from '{projectileStack.Item.Code}'. Try adding FSMAdvancedProjectile behavior to projectile itemtype/blocktype.");
             return;
         }
 
@@ -162,14 +162,14 @@ public class Projectiles : BaseSystem
 
         if (entityType == null)
         {
-            Utils.Logger.Warn(mApi, this, $"System '{mCode}'. Failed to create entity '{entityTypeAsset}'.");
+            Logger.Warn(mApi, this, $"System '{mCode}'. Failed to create entity '{entityTypeAsset}'.");
             return;
         }
 
 
         if (mApi.ClassRegistry.CreateEntity(entityType) is not AdvancedEntityProjectile projectile)
         {
-            Utils.Logger.Warn(mApi, this, $"System '{mCode}'. Entity '{entityTypeAsset}' should have 'AdvancedEntityProjectile' class or its subclass.");
+            Logger.Warn(mApi, this, $"System '{mCode}'. Entity '{entityTypeAsset}' should have 'AdvancedEntityProjectile' class or its subclass.");
             return;
         }
 

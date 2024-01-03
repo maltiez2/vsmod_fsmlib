@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 
-#nullable enable
+
 
 namespace MaltiezFSM.API;
 
@@ -22,8 +22,8 @@ public interface IInputInvoker : IDisposable
 public interface IInput : IFactoryProduct
 {
     public int Index { get; internal set; }
-    public bool Handle {  get; }
-    public Utils.SlotType Slot {  get; }
+    public bool Handle { get; }
+    public Utils.SlotType Slot { get; }
     WorldInteraction? GetInteractionInfo(ItemSlot slot);
 }
 public interface ICustomInputInvoker

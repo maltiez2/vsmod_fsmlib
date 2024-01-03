@@ -2,7 +2,7 @@
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
-#nullable enable
+
 
 namespace MaltiezFSM.API;
 
@@ -22,9 +22,9 @@ public interface IFactory<TProductInterface>
 
 internal interface IFactoryProvider
 {
-    IFactory<IOperation> GetOperationFactory();
-    IFactory<ISystem> GetSystemFactory();
-    IFactory<IInput> GetInputFactory();
+    IFactory<IOperation>? GetOperationFactory();
+    IFactory<ISystem>? GetSystemFactory();
+    IFactory<IInput>? GetInputFactory();
 }
 public interface IRegistry
 {

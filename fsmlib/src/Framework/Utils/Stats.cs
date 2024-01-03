@@ -2,7 +2,7 @@
 using System;
 using Vintagestory.API.Common;
 
-#nullable enable
+
 
 namespace MaltiezFSM.Framework;
 
@@ -57,8 +57,8 @@ public class StatsContext : IContext
 
     public double CallFunction(string name, double[] arguments)
     {
-        return name switch 
-        { 
+        return name switch
+        {
             "sin" => Math.Sin(arguments[0]),
             "cos" => Math.Cos(arguments[0]),
             "abs" => Math.Abs(arguments[0]),
@@ -78,7 +78,7 @@ public class StatsContext : IContext
 
     private double UnimplementedFunction(string name)
     {
-        Utils.Logger.Error(mApi, this, $"Math function '{name}' is not implemented. Implemented functions: sin, cos, abs, sqrt, ceiling, floor, clamp, exp, max, min, log, round, sign.");
+        Logger.Error(mApi, this, $"Math function '{name}' is not implemented. Implemented functions: sin, cos, abs, sqrt, ceiling, floor, clamp, exp, max, min, log, round, sign.");
         return 0;
     }
 }

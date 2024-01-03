@@ -32,13 +32,13 @@ namespace MaltiezFSM.Systems
     {
         public class AnimationData
         {
-            public string code { get; set; }
-            public float? duration { get; set; }
+            public string Code { get; set; }
+            public float? Duration { get; set; }
 
             public AnimationData(JsonObject definition)
             {
-                code = definition["code"].AsString();
-                duration = definition.KeyExists("duration") ? definition["duration"].AsFloat() : null;
+                Code = definition["code"].AsString();
+                Duration = definition.KeyExists("duration") ? definition["duration"].AsFloat() : null;
             }
         }
 
@@ -73,16 +73,16 @@ namespace MaltiezFSM.Systems
 
         public static ProgressModifier Get(string name)
         {
-            switch (name)
+            return name switch
             {
-                case "Linear": return Linear;
-                case "Quadratic": return Quadratic;
-                case "Cubic": return Cubic;
-                case "Sqrt": return Sqrt;
-                case "Sin": return Sin;
-                case "SinQuadratic": return SinQuadratic;
-                default: throw new NotImplementedException();
-            }
+                "Linear" => Linear,
+                "Quadratic" => Quadratic,
+                "Cubic" => Cubic,
+                "Sqrt" => Sqrt,
+                "Sin" => Sin,
+                "SinQuadratic" => SinQuadratic,
+                _ => throw new NotImplementedException(),
+            };
         }
     }
 }

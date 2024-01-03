@@ -1,19 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Vintagestory.API.Client;
-using Vintagestory.API.Common;
-using Vintagestory.API.Datastructures;
-using Vintagestory.API.Config;
-
-namespace MaltiezFSM.Systems.ItemSelection;
+﻿
+//namespace MaltiezFSM.Systems.ItemSelection;
 
 /// <summary>
 /// Based on code by TeacupAngel (https://github.com/TeacupAngel/VSBullseye)
 /// </summary>
-public class BullseyeInventoryAmmoSelect : InventoryBase
+/*public class BullseyeInventoryAmmoSelect : InventoryBase
 {
     static int dummyId = 1;
     public string AmmoCategory { get; set; }
@@ -121,5 +112,5 @@ public class BullseyeInventoryAmmoSelect : InventoryBase
     {
         return 0;
     }
-}
+}*/
 

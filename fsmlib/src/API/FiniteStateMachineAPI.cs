@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
-#nullable enable
+
 
 namespace MaltiezFSM.API;
 
@@ -53,7 +53,7 @@ public interface IOperation : IFactoryProduct, IDisposable
             Input,
             Timeout
         }
-            
+
         public TriggerType Trigger { get; set; }
         public string? Input { get; set; }
         public string FromState { get; set; }
@@ -88,7 +88,7 @@ public interface ISystem : IFactoryProduct
 
 public interface IBehaviourAttributesParser
 {
-    bool ParseDefinition(IFactory<IOperation> operationTypes, IFactory<ISystem> systemTypes, IFactory<IInput> inputTypes, JsonObject behaviourAttributes, CollectibleObject collectible);
+    bool ParseDefinition(IFactory<IOperation>? operationTypes, IFactory<ISystem>? systemTypes, IFactory<IInput>? inputTypes, JsonObject behaviourAttributes, CollectibleObject collectible);
     Dictionary<string, IOperation> GetOperations();
     Dictionary<string, ISystem> GetSystems();
     Dictionary<string, IInput> GetInputs();

@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 
-#nullable enable
-
 namespace MaltiezFSM.Framework;
 
 public sealed class ActiveSlotChangedInputInvoker : IInputInvoker

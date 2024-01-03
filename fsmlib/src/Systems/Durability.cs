@@ -1,9 +1,8 @@
-﻿using MaltiezFSM.Framework;
-using System;
+﻿using System;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
-#nullable enable
+
 
 namespace MaltiezFSM.Systems
 {

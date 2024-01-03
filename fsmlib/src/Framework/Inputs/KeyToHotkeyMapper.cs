@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 
-#nullable enable
+
 
 namespace MaltiezFSM.Framework;
 
@@ -27,7 +27,7 @@ public sealed class KeyToHotkeyMapper : IDisposable
         if (hotkeyCode == null) return;
 
         KeyPressModifiers modifiers = input.Modifiers;
-        
+
 
         if (!mInputs.ContainsKey(hotkeyCode))
         {

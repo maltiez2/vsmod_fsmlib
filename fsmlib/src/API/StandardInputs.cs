@@ -1,7 +1,7 @@
 ﻿using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 
-#nullable enable
+
 
 namespace MaltiezFSM.API;
 
@@ -10,7 +10,7 @@ public interface IStandardInput : IInput
 }
 public interface IOperationInput : IStandardInput
 {
-    IOperation Operation { get; set; }
+    IOperation? Operation { get; set; }
     string OperationCode { get; set; }
 }
 public interface IOperationStarted : IOperationInput

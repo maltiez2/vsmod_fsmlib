@@ -7,7 +7,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using static MaltiezFSM.API.IOperation;
 
-#nullable enable
+
 
 namespace MaltiezFSM.Operations
 {
@@ -17,33 +17,33 @@ namespace MaltiezFSM.Operations
 
         protected struct TransitionTriggerInitial
         {
-            public string state { get; set; }
-            public string input { get; set; }
+            public string State { get; set; }
+            public string Input { get; set; }
 
             public static implicit operator TransitionTriggerInitial((string state, string input) parameters)
             {
-                return new TransitionTriggerInitial() { state = parameters.state, input = parameters.input };
+                return new TransitionTriggerInitial() { State = parameters.state, Input = parameters.input };
             }
         }
         protected struct TransitionResultInitial
         {
-            public string state { get; set; }
-            public List<(string, JsonObject)> systemsRequests { get; set; }
+            public string State { get; set; }
+            public List<(string, JsonObject)> SystemsRequests { get; set; }
             public Outcome Outcome { get; set; }
 
             public static implicit operator TransitionResultInitial((string state, List<(string, JsonObject)> systemsRequests, Outcome outcome) parameters)
             {
-                return new TransitionResultInitial() { state = parameters.state, systemsRequests = parameters.systemsRequests, Outcome = parameters.outcome };
+                return new TransitionResultInitial() { State = parameters.state, SystemsRequests = parameters.systemsRequests, Outcome = parameters.outcome };
             }
         }
         protected struct TransitionTrigger
         {
-            public IState state { get; set; }
-            public IInput input { get; set; }
+            public IState State { get; set; }
+            public IInput Input { get; set; }
 
             public static implicit operator TransitionTrigger((IState state, IInput input) parameters)
             {
-                return new TransitionTrigger() { state = parameters.state, input = parameters.input };
+                return new TransitionTrigger() { State = parameters.state, Input = parameters.input };
             }
         }
         protected struct TransitionResult
@@ -59,22 +59,22 @@ namespace MaltiezFSM.Operations
         }
         protected struct TransitionsBranchInitial
         {
-            public string initial { get; set; }
-            public string intermediate { get; set; }
-            public string timeout { get; set; }
-            public string[] final { get; set; }
+            public string Initial { get; set; }
+            public string Intermediate { get; set; }
+            public string Timeout { get; set; }
+            public string[] Final { get; set; }
 
             public TransitionsBranchInitial(string initial, string intermediate, string timeout, params string[] final)
             {
-                this.initial = initial;
-                this.timeout = timeout;
-                this.intermediate = intermediate;
-                this.final = final;
+                Initial = initial;
+                Timeout = timeout;
+                Intermediate = intermediate;
+                Final = final;
             }
 
             public static implicit operator TransitionsBranchInitial((string initial, string intermediate, string timeout, string[] final) parameters)
             {
-                return new TransitionsBranchInitial() { initial = parameters.initial, intermediate = parameters.intermediate, timeout = parameters.timeout, final = parameters.final };
+                return new TransitionsBranchInitial() { Initial = parameters.initial, Intermediate = parameters.intermediate, Timeout = parameters.timeout, Final = parameters.final };
             }
         }
 
@@ -114,14 +114,14 @@ namespace MaltiezFSM.Operations
 
             foreach (TransitionsBranchInitial transition in transitions)
             {
-                mTransitionalStatesInitialData.Add(transition.intermediate);
-                AddTransition(transition.initial, transition.intermediate, inputsInitial, systemsInitial, Outcome.Started);
-                AddTransition(transition.intermediate, transition.intermediate, inputsContinue, systemsContinue, Outcome.None);
-                AddTransitionForTimeout(timeout, transition.initial, transition.intermediate, transition.timeout, inputsInitial, systemsTimeout);
+                mTransitionalStatesInitialData.Add(transition.Intermediate);
+                AddTransition(transition.Initial, transition.Intermediate, inputsInitial, systemsInitial, Outcome.Started);
+                AddTransition(transition.Intermediate, transition.Intermediate, inputsContinue, systemsContinue, Outcome.None);
+                AddTransitionForTimeout(timeout, transition.Initial, transition.Intermediate, transition.Timeout, inputsInitial, systemsTimeout);
 
-                foreach (string finalState in transition.final)
+                foreach (string finalState in transition.Final)
                 {
-                    AddTransition(transition.intermediate, finalState, inputsFinal[finalState], systemsFinal[finalState], Outcome.Finished);
+                    AddTransition(transition.Intermediate, finalState, inputsFinal[finalState], systemsFinal[finalState], Outcome.Finished);
                 }
             }
         }
@@ -130,20 +130,20 @@ namespace MaltiezFSM.Operations
         {
             foreach ((TransitionTriggerInitial trigger, TransitionResultInitial result) in mTransitionsInitialData)
             {
-                if (!states.ContainsKey(trigger.state))
+                if (!states.ContainsKey(trigger.State))
                 {
-                    mApi?.Logger.Warning("[FSMlib] [Delayed: {0}] State '{1}' not found.", mCode, trigger.state);
+                    mApi?.Logger.Warning("[FSMlib] [Delayed: {0}] State '{1}' not found.", mCode, trigger.State);
                     continue;
                 }
 
-                if (!inputs.ContainsKey(trigger.input))
+                if (!inputs.ContainsKey(trigger.Input))
                 {
-                    mApi?.Logger.Warning("[FSMlib] [Delayed: {0}] Input '{1}' not found.", mCode, trigger.input);
+                    mApi?.Logger.Warning("[FSMlib] [Delayed: {0}] Input '{1}' not found.", mCode, trigger.Input);
                     continue;
                 }
 
                 List<(ISystem, JsonObject)> transitionSystems = new();
-                foreach ((string system, JsonObject request) in result.systemsRequests)
+                foreach ((string system, JsonObject request) in result.SystemsRequests)
                 {
                     if (!systems.ContainsKey(system))
                     {
@@ -155,24 +155,24 @@ namespace MaltiezFSM.Operations
                     mSystemsCodes.Add(systems[system], system);
                 }
 
-                mTransitions.Add((states[trigger.state], inputs[trigger.input]), (states[result.state], transitionSystems, result.Outcome));
+                mTransitions.Add((states[trigger.State], inputs[trigger.Input]), (states[result.State], transitionSystems, result.Outcome));
             }
 
             foreach ((TransitionTriggerInitial trigger, int? delay) in mTimersInitialData)
             {
-                if (!states.ContainsKey(trigger.state))
+                if (!states.ContainsKey(trigger.State))
                 {
-                    mApi?.Logger.Warning("[FSMlib] [Delayed: {0}] State '{1}' not found.", mCode, trigger.state);
+                    mApi?.Logger.Warning("[FSMlib] [Delayed: {0}] State '{1}' not found.", mCode, trigger.State);
                     continue;
                 }
 
-                if (!inputs.ContainsKey(trigger.input))
+                if (!inputs.ContainsKey(trigger.Input))
                 {
-                    mApi?.Logger.Warning("[FSMlib] [Delayed: {0}] Input '{1}' not found.", mCode, trigger.input);
+                    mApi?.Logger.Warning("[FSMlib] [Delayed: {0}] Input '{1}' not found.", mCode, trigger.Input);
                     continue;
                 }
 
-                mTimers.Add((states[trigger.state], inputs[trigger.input]), delay != null ? TimeSpan.FromMilliseconds(delay.Value) : null);
+                mTimers.Add((states[trigger.State], inputs[trigger.Input]), delay != null ? TimeSpan.FromMilliseconds(delay.Value) : null);
             }
 
             mTransitionsInitialData.Clear();
@@ -195,8 +195,8 @@ namespace MaltiezFSM.Operations
                 }
                 catch (Exception exception)
                 {
-                    Utils.Logger.Error(mApi, this, $"System '{mSystemsCodes[system]}' crashed while verification in '{mCode}' operation in '{mCollectible.Code}' collectible");
-                    Utils.Logger.Verbose(mApi, this, $"System '{mSystemsCodes[system]}' crashed while verification in '{mCode}' operation in '{mCollectible.Code}' collectible.\n\nRequest:{request}\n\nException:{exception}");
+                    Logger.Error(mApi, this, $"System '{mSystemsCodes[system]}' crashed while verification in '{mCode}' operation in '{mCollectible.Code}' collectible");
+                    Logger.Verbose(mApi, this, $"System '{mSystemsCodes[system]}' crashed while verification in '{mCode}' operation in '{mCollectible.Code}' collectible.\n\nRequest:{request}\n\nException:{exception}");
                 }
             }
 
@@ -214,8 +214,8 @@ namespace MaltiezFSM.Operations
                 }
                 catch (Exception exception)
                 {
-                    Utils.Logger.Error(mApi, this, $"System '{mSystemsCodes[system]}' crashed while processing in '{mCode}' operation in '{mCollectible.Code}' collectible");
-                    Utils.Logger.Verbose(mApi, this, $"System '{mSystemsCodes[system]}' crashed while processing in '{mCode}' operation in '{mCollectible.Code}' collectible.\n\nRequest:{request}\n\nException:{exception}");
+                    Logger.Error(mApi, this, $"System '{mSystemsCodes[system]}' crashed while processing in '{mCode}' operation in '{mCollectible.Code}' collectible");
+                    Logger.Verbose(mApi, this, $"System '{mSystemsCodes[system]}' crashed while processing in '{mCode}' operation in '{mCollectible.Code}' collectible.\n\nRequest:{request}\n\nException:{exception}");
                 }
             }
 
@@ -247,18 +247,18 @@ namespace MaltiezFSM.Operations
         {
             if (!transition.KeyExists("initial"))
             {
-                Utils.Logger.Error(mApi, this, $"A transition from '{mCode}' operation does not contain 'initial' field");
+                Logger.Error(mApi, this, $"A transition from '{mCode}' operation does not contain 'initial' field");
                 return null;
             }
             string initial = transition["initial"].AsString();
 
             if (!transition.KeyExists("timeout"))
             {
-                Utils.Logger.Error(mApi, this, $"A transition from '{mCode}' operation does not contain 'timeout' field");
+                Logger.Error(mApi, this, $"A transition from '{mCode}' operation does not contain 'timeout' field");
                 return null;
             }
             string timeout = transition["timeout"].AsString();
-            
+
             string intermediate = $"{initial}_to_{timeout}_op.{mCode}";
             if (transition.KeyExists("transitional"))
             {
@@ -279,7 +279,7 @@ namespace MaltiezFSM.Operations
 
             foreach (TransitionsBranchInitial transition in transitions)
             {
-                foreach (string finalState in transition.final.Where(state => !states.Contains(state)))
+                foreach (string finalState in transition.Final.Where(state => !states.Contains(state)))
                 {
                     states.Add(finalState);
                 }
@@ -292,17 +292,17 @@ namespace MaltiezFSM.Operations
             List<(string, JsonObject)> systemsRequests = new();
             if (!definition.KeyExists(systemsType))
             {
-                Utils.Logger.Debug(mApi, this, $"No systems in '{systemsType}' category in '{mCode}' operation");
+                Logger.Debug(mApi, this, $"No systems in '{systemsType}' category in '{mCode}' operation");
                 return systemsRequests;
             }
             foreach (JsonObject system in definition["systems"][systemsType].AsArray())
             {
                 if (!system.KeyExists("code"))
                 {
-                    Utils.Logger.Error(mApi, this, $"A system request from '{systemsType}' category from '{mCode}' operation does not contain 'code' field");
+                    Logger.Error(mApi, this, $"A system request from '{systemsType}' category from '{mCode}' operation does not contain 'code' field");
                     continue;
                 }
-                
+
                 systemsRequests.Add(new(system["code"].AsString(), system));
             }
             return systemsRequests;
@@ -311,10 +311,10 @@ namespace MaltiezFSM.Operations
         {
             if (!definition.KeyExists("inputs"))
             {
-                Utils.Logger.Error(mApi, this, $"An operation '{mCode}' does not contain 'inputs' field");
+                Logger.Error(mApi, this, $"An operation '{mCode}' does not contain 'inputs' field");
                 return new();
             }
-            
+
             return ParseField(definition["inputs"], inputsType).Select((input) => input.AsString()).ToList();
         }
         protected void AddTransition(string stateFrom, string stateTo, List<string> inputs, List<(string, JsonObject)> systems, Outcome outcome)

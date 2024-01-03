@@ -5,7 +5,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
-#nullable enable
+
 
 namespace MaltiezFSM.Inputs;
 
@@ -23,7 +23,7 @@ public class BaseInput : FactoryProduct, IInput
     {
         if (definition == null)
         {
-            Utils.Logger.Error(api, this, $"Input '{code}' got empty definition");
+            LogError("Empty definition");
             return;
         }
 

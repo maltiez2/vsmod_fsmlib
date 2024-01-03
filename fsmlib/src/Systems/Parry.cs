@@ -9,7 +9,7 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
-#nullable enable
+
 
 namespace MaltiezFSM.Systems;
 
@@ -82,14 +82,14 @@ public class Parry<TResistBehavior> : BaseSystem
         if (mCallbacks.ContainsKey(entityId)) mApi.World.UnregisterCallback(mCallbacks[entityId]);
         mCallbacks[entityId] = mApi.World.RegisterCallback(_ => StartParry(player, code), mParries[code].windowStart);
     }
-    
+
     private void StartParry(IPlayer player, string code)
     {
         if (mResists.ContainsKey(player.Entity.EntityId)) StopParry(player);
         ITempResistEntityBehavior behavior = player.Entity.GetBehavior<TResistBehavior>();
         if (behavior == null)
         {
-            mApi.Logger.Error("[FSMlib] [BasicParry] No IResistEntityBehavior found");
+            LogError($"No IResistEntityBehavior found at {player.PlayerName} ({player.Entity.Class}:{player.Entity.Code})");
             return;
         }
         IResist resist = mParries[code].AddToBehavior(behavior);

@@ -1,7 +1,7 @@
 ﻿using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
-#nullable enable
+
 
 namespace MaltiezFSM.Systems
 {
@@ -26,9 +26,9 @@ namespace MaltiezFSM.Systems
         {
             if (stack?.Collectible?.Variant?.ContainsKey(variantName) == null) return;
 
-            var clonedAttributes = stack.Attributes.Clone();
+            ITreeAttribute clonedAttributes = stack.Attributes.Clone();
             int size = stack.StackSize;
-            var newStack = new ItemStack();
+            ItemStack newStack = new();
 
             switch (stack.Collectible.ItemClass)
             {

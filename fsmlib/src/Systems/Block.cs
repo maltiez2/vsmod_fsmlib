@@ -9,7 +9,7 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
-#nullable enable
+
 
 namespace MaltiezFSM.Systems;
 
@@ -119,7 +119,7 @@ public class Block<TResistBehavior> : BaseSystem
 
     private void PlayBlockSound(Entity player, string sound)
     {
-        mSoundSystem?.PlaySound(sound, player as IPlayer);
+        mSoundSystem?.PlaySound(sound, player);
     }
 }
 

@@ -11,7 +11,7 @@ public abstract class OperationInput : BaseInput, IOperationInput
         OperationCode = definition["operation"].AsString();
     }
 
-    public IOperation Operation { get; set; }
+    public IOperation? Operation { get; set; }
     public string OperationCode { get; set; }
 }
 

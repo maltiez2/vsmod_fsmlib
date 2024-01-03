@@ -6,7 +6,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Server;
 using static MaltiezFSM.API.IInputManager;
 
-#nullable enable
+
 
 namespace MaltiezFSM.Framework;
 
@@ -76,7 +76,9 @@ public sealed class InputManager : IInputManager
         }
 
         InputCallback callback = mCallbacks[input.Index];
-        return callback.Invoke(slot.Slot(player), player, input);
+        ItemSlot? playerSlot = slot.Slot(player);
+        if (playerSlot == null) return false;
+        return callback.Invoke(playerSlot, player, input);
     }
 
     public void Dispose()

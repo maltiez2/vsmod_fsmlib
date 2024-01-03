@@ -8,14 +8,14 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.GameContent;
 
-#nullable enable
+
 
 namespace MaltiezFSM.Systems;
 
 public class AdvancedProjectileBehavior : CollectibleBehavior
 {
     public List<ProjectileDamageType> DamageTypes { get; set; } = new();
-    
+
     private JsonObject? mProperties;
 
     public AdvancedProjectileBehavior(CollectibleObject collObj) : base(collObj)
@@ -25,7 +25,7 @@ public class AdvancedProjectileBehavior : CollectibleBehavior
     public override void OnLoaded(ICoreAPI api)
     {
         if (mProperties == null) return;
-        
+
         foreach (JsonObject damageType in mProperties["damageTypes"].AsArray())
         {
             DamageTypes.Add(new(damageType, api));
@@ -56,9 +56,11 @@ public class AdvancedEntityProjectile : EntityProjectile
     public void ImpactOnEntity(Entity entity)
     {
         if (!CanDamage(entity) || World.Side != EnumAppSide.Server) return;
-
-        Utils.Field<float, AdvancedEntityProjectile> msCollide = new(typeof(EntityProjectile), "msCollide", this);
-        msCollide.Value = World.ElapsedMilliseconds;
+        
+        _ = new Utils.Field<float, AdvancedEntityProjectile>(typeof(EntityProjectile), "msCollide", this)
+        {
+            Value = World.ElapsedMilliseconds
+        };
 
         if (ImpactSound != null) World.PlaySoundAt(new AssetLocation(ImpactSound), this, null, false, 24);
 

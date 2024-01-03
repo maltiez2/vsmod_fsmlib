@@ -6,7 +6,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using static MaltiezFSM.API.IMouseInput;
 
-#nullable enable
+
 
 namespace MaltiezFSM.Inputs;
 

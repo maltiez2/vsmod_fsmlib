@@ -1,33 +1,32 @@
-﻿using Vintagestory.API.Common;
+﻿using HarmonyLib;
 using MaltiezFSM.API;
-using Vintagestory.API.Client;
-using Vintagestory.API.Server;
 using Newtonsoft.Json.Linq;
+using System.Linq;
+using Vintagestory.API.Client;
+using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
-using System.Linq;
-using MaltiezFSM.Systems.ItemSelection;
-using HarmonyLib;
+using Vintagestory.API.Server;
 using Vintagestory.GameContent;
 
 namespace MaltiezFSM;
 
 public class FiniteStateMachineSystem : ModSystem, IRegistry
 {
-    private IFactory<IOperation> mOperationFactory;
-    private IFactory<ISystem> mSystemFactory;
-    private IFactory<IInput> mInputFactory;
-    private IInputManager mInputManager;
+    private IFactory<IOperation>? mOperationFactory;
+    private IFactory<ISystem>? mSystemFactory;
+    private IFactory<IInput>? mInputFactory;
+    private IInputManager? mInputManager;
     private IOperationInputInvoker? mOperationInputInvoker;
-    private ICustomInputInvoker mCustomInputInvoker;
+    private ICustomInputInvoker? mCustomInputInvoker;
     private Additional.ParticleEffectsManager? mParticleEffectsManager;
 
     public override void Start(ICoreAPI api)
     {
         base.Start(api);
 
-        Framework.Utils.Logger.Init(api.Logger);
-        Framework.Utils.Logger.Debug(api, this, "Stared initializing");
+        Framework.Logger.Init(api.Logger);
+        Framework.Logger.Debug(api, this, "Stared initializing");
 
         Patch();
 
@@ -39,8 +38,6 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         api.RegisterEntityBehaviorClass("constresist", typeof(Additional.EntityBehaviorConstResists<Additional.ConstResist>));
         api.RegisterEntityBehaviorClass("tempresists", typeof(Additional.EntityBehaviorResists));
 
-        if (api.Side == EnumAppSide.Server) (api as ICoreServerAPI).Event.PlayerJoin += (byPlayer) => AddPlayerBehavior(byPlayer.Entity);
-
         mOperationFactory = new Framework.Factory<IOperation>(api, new Framework.UniqueIdGeneratorForFactory(1));
         mSystemFactory = new Framework.Factory<ISystem>(api, new Framework.UniqueIdGeneratorForFactory(2));
         mInputFactory = new Framework.Factory<IInput>(api, new Framework.UniqueIdGeneratorForFactory(3));
@@ -48,16 +45,19 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
 
         RegisterSystems();
         RegisterOperations();
-        if (api is ICoreClientAPI clientApi) RegisterInputInvokers(clientApi);
-        if (api is ICoreServerAPI serverApi) RegisterInputInvokers(serverApi);
+        if (api is ICoreClientAPI clientApi)
+        {
+            RegisterInputInvokers(clientApi);
+            // @TODO clientApi.Gui.RegisterDialog(new ItemSelectGuiDialog(clientApi_2))
+        }
+        if (api is ICoreServerAPI serverApi)
+        {
+            RegisterInputInvokers();
+            serverApi.Event.PlayerJoin += (byPlayer) => AddPlayerBehavior(byPlayer.Entity);
+        }
         RegisterInputs();
 
-        if (api is ICoreClientAPI clientApi_2)
-        {
-            clientApi_2.Gui.RegisterDialog(new ItemSelectGuiDialog(clientApi_2));
-        }
-
-        Framework.Utils.Logger.Debug(api, this, "Finished initializing");
+        Framework.Logger.Debug(api, this, "Finished initializing");
     }
     public override void AssetsLoaded(ICoreAPI api)
     {
@@ -66,6 +66,8 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
 
     private void RegisterInputInvokers(ICoreClientAPI api)
     {
+        if (mInputManager == null) return;
+
         Framework.KeyInputInvoker keyInput = new(api);
         Framework.StatusInputInvoker statusInput = new(api);
         Framework.DropItemsInputInvoker dropItems = new(api);
@@ -82,18 +84,23 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
 
         mCustomInputInvoker = customInput;
     }
-    private void RegisterInputInvokers(ICoreServerAPI api)
+    private void RegisterInputInvokers()
     {
-        mOperationInputInvoker = new Framework.OperationInputInvoker();
+        if (mInputManager == null) return;
+
+        Framework.OperationInputInvoker invoker = new();
+        mOperationInputInvoker = invoker;
         Framework.CustomInputInvoker customInput = new();
 
-        mInputManager.RegisterInvoker(mOperationInputInvoker as Framework.OperationInputInvoker, typeof(IOperationInput));
+        mInputManager.RegisterInvoker(invoker, typeof(IOperationInput));
         mInputManager.RegisterInvoker(customInput, typeof(ICustomInput));
 
         mCustomInputInvoker = customInput;
     }
     private void RegisterInputs()
     {
+        if (mInputFactory == null) return;
+
         mInputFactory.Register<Inputs.KeyboardKey>("Key");
         mInputFactory.Register<Inputs.MouseKey>("Mouse");
         mInputFactory.Register<Inputs.BeforeSlotChanged>("SlotChange");
@@ -104,28 +111,32 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         mInputFactory.Register<Inputs.StatusInput>("Status");
     }
     private void RegisterSystems()
-    {  
-        mSystemFactory.Register<Systems.Sounds>("Sounds");
-        mSystemFactory.Register<Systems.Projectiles>("Shooting");
-        mSystemFactory.Register<Systems.BasicVariantsAnimation<Systems.TickBasedAnimation>>("VariantsAnimation");
-        mSystemFactory.Register<Systems.Requirements>("Requirements");
-        mSystemFactory.Register<Systems.BasicPlayerAnimation>("PlayerAnimation");
-        mSystemFactory.Register<Systems.Stats>("PlayerStats");
-        mSystemFactory.Register<Systems.Particles>("Particles");
+    {
+        if (mSystemFactory == null) return;
+
         mSystemFactory.Register<Systems.Aiming>("Aiming");
-        mSystemFactory.Register<Systems.NoSprint>("NoSprint");
+        mSystemFactory.Register<Systems.Block<Additional.EntityBehaviorResists>>("Block");
         mSystemFactory.Register<Systems.ChangeGroup>("ChangeGroup");
         mSystemFactory.Register<Systems.Durability>("Durability");
         mSystemFactory.Register<Systems.ItemStackGiver>("ItemStackGiver");
-        mSystemFactory.Register<Systems.Melee>("SimpleMelee");
-        mSystemFactory.Register<Systems.PlayerAnimation>("ProceduralPlayerAnimation");
-        mSystemFactory.Register<Systems.ItemAnimation>("ProceduralItemAnimation");
-        mSystemFactory.Register<Systems.Parry<Additional.EntityBehaviorResists>>("BasicParry");
-        mSystemFactory.Register<Systems.BasicBlock<Additional.EntityBehaviorResists>>("BasicBlock");
-        mSystemFactory.Register<Systems.SmoothAnimation>("SmoothAnimation");
+        mSystemFactory.Register<Systems.Melee>("Melee");
+        mSystemFactory.Register<Systems.NoSprint>("NoSprint");
+        mSystemFactory.Register<Systems.Parry<Additional.EntityBehaviorResists>>("Parry");
+        mSystemFactory.Register<Systems.Particles>("Particles");
+        mSystemFactory.Register<Systems.Projectiles>("Projectiles");
+        mSystemFactory.Register<Systems.Requirements>("Requirements");
+        mSystemFactory.Register<Systems.Sounds>("Sounds");
+        mSystemFactory.Register<Systems.Stats>("Stats");
+
+        mSystemFactory.Register<Systems.ItemAnimation>("ItemAnimation");
+        mSystemFactory.Register<Systems.PlayerAnimation>("PlayerAnimation");
+        mSystemFactory.Register<Systems.ProceduralItemAnimation>("ProceduralItemAnimation");
+        mSystemFactory.Register<Systems.ProceduralPlayerAnimation>("ProceduralPlayerAnimation");
     }
     private void RegisterOperations()
     {
+        if (mOperationFactory == null) return;
+
         mOperationFactory.Register<Operations.Instant>("Instant");
         mOperationFactory.Register<Operations.Delayed>("Delayed");
         mOperationFactory.Register<Operations.Continuous>("Continuous");
@@ -143,23 +154,23 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         new Harmony("fsmlib").Unpatch(typeof(EntityProjectile).GetMethod("impactOnEntity", AccessTools.all), HarmonyPatchType.Prefix, "fsmlib");
     }
 
-    internal IFactory<IOperation> GetOperationFactory() => mOperationFactory;
-    internal IFactory<ISystem> GetSystemFactory() => mSystemFactory;
-    internal IFactory<IInput> GetInputFactory() => mInputFactory;
-    internal IInputManager GetInputManager() => mInputManager;
+    internal IFactory<IOperation>? GetOperationFactory() => mOperationFactory;
+    internal IFactory<ISystem>? GetSystemFactory() => mSystemFactory;
+    internal IFactory<IInput>? GetInputFactory() => mInputFactory;
+    internal IInputManager? GetInputManager() => mInputManager;
     internal IOperationInputInvoker? GetOperationInputInvoker() => mOperationInputInvoker;
 
     public Additional.ParticleEffectsManager? ParticleEffects => mParticleEffectsManager;
-    public ICustomInputInvoker CustomInputInvoker => mCustomInputInvoker;
-    public void RegisterOperation<TProductClass>(string name) where TProductClass : FactoryProduct, IOperation => mOperationFactory.Register<TProductClass>(name);
-    public void RegisterSystem<TProductClass>(string name) where TProductClass : FactoryProduct, ISystem => mSystemFactory.Register<TProductClass>(name);
-    public void RegisterInput<TProductClass>(string name) where TProductClass : FactoryProduct, IStandardInput => mInputFactory.Register<TProductClass>(name);
+    public ICustomInputInvoker? CustomInputInvoker => mCustomInputInvoker;
+    public void RegisterOperation<TProductClass>(string name) where TProductClass : FactoryProduct, IOperation => mOperationFactory?.Register<TProductClass>(name);
+    public void RegisterSystem<TProductClass>(string name) where TProductClass : FactoryProduct, ISystem => mSystemFactory?.Register<TProductClass>(name);
+    public void RegisterInput<TProductClass>(string name) where TProductClass : FactoryProduct, IStandardInput => mInputFactory?.Register<TProductClass>(name);
     public void RegisterInput<TProductClass, TInputInterface>(string name, IInputInvoker invoker)
         where TInputInterface : IInput
         where TProductClass : FactoryProduct, IInput
     {
-        mInputManager.RegisterInvoker(invoker, typeof(TInputInterface));
-        mInputFactory.Register<TProductClass>(name);
+        mInputManager?.RegisterInvoker(invoker, typeof(TInputInterface));
+        mInputFactory?.Register<TProductClass>(name);
     }
 
     private struct BehaviorAsJsonObj
@@ -168,8 +179,10 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
     }
     public override void AssetsFinalize(ICoreAPI api)
     {
-        BehaviorAsJsonObj newBehavior = new();
-        newBehavior.code = "tempresists";
+        BehaviorAsJsonObj newBehavior = new()
+        {
+            code = "tempresists"
+        };
         JsonObject newBehaviorJson = new(JToken.FromObject(newBehavior));
 
         foreach (EntityProperties entityType in api.World.EntityTypes)
@@ -204,7 +217,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
             }
         }
     }
-    private void AddPlayerBehavior(EntityPlayer player)
+    private static void AddPlayerBehavior(EntityPlayer player)
     {
         // In case 'AssetsFinalize' method failed to add behavior to player.
         if (!player.HasBehavior<Additional.EntityBehaviorResists>()) player.SidedProperties.Behaviors.Insert(0, new Additional.EntityBehaviorResists(player));
@@ -212,7 +225,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
 
     public override void Dispose()
     {
-        mInputManager.Dispose();
+        mInputManager?.Dispose();
         Unpatch();
 
         base.Dispose();

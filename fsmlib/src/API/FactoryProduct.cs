@@ -1,14 +1,15 @@
-﻿using Vintagestory.API.Common;
+﻿using MaltiezFSM.Framework;
+using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
-#nullable enable
+
 
 namespace MaltiezFSM.API
 {
     public class FactoryProduct : IFactoryProduct
     {
         public int Id => mId;
-        
+
         private readonly int mId;
         protected readonly string mCode;
         protected readonly CollectibleObject mCollectible;
@@ -24,5 +25,13 @@ namespace MaltiezFSM.API
 
         public override bool Equals(object? obj) => (obj as FactoryProduct)?.Id == mId;
         public override int GetHashCode() => mId;
+
+        protected void LogError(string message) => Logger.Error(mApi, this, LogFormat(message));
+        protected void LogWarn(string message) => Logger.Warn(mApi, this, LogFormat(message));
+        protected void LogNotify(string message) => Logger.Notify(mApi, this, LogFormat(message));
+        protected void LogDebug(string message) => Logger.Debug(mApi, this, LogFormat(message));
+        protected void LogVerbose(string message) => Logger.Verbose(mApi, this, LogFormat(message));
+
+        protected string LogFormat(string message) => $"({mCollectible.Code}:{mCode}) {message}";
     }
 }

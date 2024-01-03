@@ -1,4 +1,4 @@
-﻿ using MaltiezFSM.API;
+﻿using MaltiezFSM.API;
 using MaltiezFSM.Framework;
 using Newtonsoft.Json.Linq;
 using System;
@@ -10,7 +10,7 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
-#nullable enable
+
 
 namespace MaltiezFSM.Systems;
 
@@ -114,7 +114,7 @@ internal sealed class MeleeAttack
 {
     private readonly HitWindow mHitWindow;
     private readonly List<AttackDamageType> mDamageTypes = new();
-    private readonly ICustomInputInvoker mCustomInputInvoker;
+    private readonly ICustomInputInvoker? mCustomInputInvoker;
     private readonly string? mCustomInput = null;
     private readonly bool mStopOnHandled = false;
     private readonly string? mAnimationCode = null;
@@ -188,7 +188,7 @@ internal sealed class MeleeAttack
     {
         if (mCustomInput == null) return false;
 
-        bool handled = mCustomInputInvoker.Invoke(mCustomInput, player, slot);
+        bool handled = mCustomInputInvoker?.Invoke(mCustomInput, player, slot) == true;
 
         return mStopOnHandled && handled;
     }

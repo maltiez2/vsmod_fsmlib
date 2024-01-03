@@ -6,7 +6,7 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using static MaltiezFSM.Framework.Utils;
 
-#nullable enable
+
 
 namespace MaltiezFSM.Systems.RequirementsApi;
 
@@ -72,7 +72,7 @@ public class Requirement : IRequirement
     {
         return slot?.Itemstack?.Collectible?.WildCardMatch(Locations) == true;
     }
-    private bool ProcessSlot(ItemSlot slot, out ItemStack? stack)
+    private static bool ProcessSlot(ItemSlot slot, out ItemStack? stack)
     {
         stack = slot.Itemstack;
         return true;
@@ -99,6 +99,7 @@ public class Requirement : IRequirement
         switch (Slot)
         {
             case SlotType.HotBar:
+
                 foreach (ItemSlot hotbarSlot in player.InventoryManager.GetHotbarInventory().Where(validator))
                 {
                     if (handler(hotbarSlot)) return true;
@@ -114,11 +115,11 @@ public class Requirement : IRequirement
                 }
                 break;
             case SlotType.MainHand:
-                ItemSlot mainHandSlot = player?.Entity?.RightHandItemSlot;
+                ItemSlot mainHandSlot = player.Entity.RightHandItemSlot;
                 if (validator(mainHandSlot) && handler(mainHandSlot)) return true;
                 break;
             case SlotType.OffHand:
-                ItemSlot offHandSlot = player?.Entity?.LeftHandItemSlot;
+                ItemSlot offHandSlot = player.Entity.LeftHandItemSlot;
                 if (validator(offHandSlot) && handler(offHandSlot)) return true;
                 break;
             case SlotType.Character:
@@ -274,7 +275,7 @@ public sealed class DurabilityRequirement : Requirement
         int amount = 0;
         List<ItemSlot> slots = new();
         bool found = Search(Slot, player, CheckSlot, (slot) => CollectSlot(slot, ref amount, slots));
-        return found ? CollectFromSlots(slots, player) : new();
+        return found ? CollectFromSlots(slots, player, Durability, Destroy, Overflow) : new();
     }
 
     private bool CountSlot(ItemSlot slot, ref int amount)

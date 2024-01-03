@@ -1,10 +1,10 @@
-﻿using System;
+﻿using MaltiezFSM.API;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
-using MaltiezFSM.API;
 
-#nullable enable
+
 
 namespace MaltiezFSM.Framework
 {
@@ -36,20 +36,20 @@ namespace MaltiezFSM.Framework
         {
             if (!mProducts.ContainsKey(name))
             {
-                Utils.Logger.Warn(mApi, this, $"Type '{name}' (code: '{code}') is not registered, will skip it.");
+                Logger.Warn(mApi, this, $"Type '{name}' (code: '{code}') is not registered, will skip it.");
                 return default;
             }
-            
+
             TProduct? product = default;
-            
+
             try
             {
                 product = (TProduct?)Activator.CreateInstance(mProducts[name], mIdGenerator.GenerateInstanceId(), code, definition, collectible, mApi);
             }
             catch (Exception exception)
             {
-                Utils.Logger.Error(mApi, this, $"Exception on instantiating {name} ({Utils.TypeName(mProducts[name])}) with code '{code}' for collectible '{collectible?.Code}'");
-                Utils.Logger.Verbose(mApi, this, $"Exception on instantiating {name} ({Utils.TypeName(mProducts[name])}) with code '{code}' for collectible '{collectible?.Code}'.\n\nDefinition:{definition}\n\nException:{exception}");
+                Logger.Error(mApi, this, $"Exception on instantiating {name} ({Utils.GetTypeName(mProducts[name])}) with code '{code}' for collectible '{collectible?.Code}'");
+                Logger.Verbose(mApi, this, $"Exception on instantiating {name} ({Utils.GetTypeName(mProducts[name])}) with code '{code}' for collectible '{collectible?.Code}'.\n\nDefinition:{definition}\n\nException:{exception}");
             }
 
             return product;

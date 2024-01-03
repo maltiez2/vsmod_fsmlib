@@ -11,11 +11,17 @@ namespace MaltiezFSM.Operations
         {
             public string Code { get; set; }
             public JsonObject Attributes { get; set; }
-            public ISystem System { get; set; }
+            public ISystem? System { get; set; }
+
+            public SystemRequest(string code, JsonObject attributes)
+            {
+                Code = code;
+                Attributes = attributes;
+            }
 
             public bool Process(ItemSlot slot, IPlayer player)
             {
-                if (System.Verify(slot, player, Attributes))
+                if (System?.Verify(slot, player, Attributes) == true)
                 {
                     return System.Process(slot, player, Attributes);
                 }
@@ -36,7 +42,7 @@ namespace MaltiezFSM.Operations
 
                 if (!mTimedSystems.ContainsKey(time)) mTimedSystems.Add(time, new List<SystemRequest>());
 
-                mTimedSystems[time].Add(new() { Code = systemCode, Attributes = system });
+                mTimedSystems[time].Add(new(systemCode, system));
             }
         }
 
@@ -55,7 +61,7 @@ namespace MaltiezFSM.Operations
 
         public override IOperation.Result Perform(ItemSlot slot, IPlayer player, IState state, IInput input)
         {
-            var result = base.Perform(slot, player, state, input);
+            IOperation.Result result = base.Perform(slot, player, state, input);
 
             if (result.Outcome == IOperation.Outcome.Finished)
             {

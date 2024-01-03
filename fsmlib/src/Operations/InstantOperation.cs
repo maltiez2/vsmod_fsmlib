@@ -7,7 +7,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using static MaltiezFSM.API.IOperation;
 
-#nullable enable
+
 
 namespace MaltiezFSM.Operations
 {
@@ -111,8 +111,8 @@ namespace MaltiezFSM.Operations
                 }
                 catch (Exception exception)
                 {
-                    Utils.Logger.Error(mApi, this, $"System '{mSystemsCodes[system]}' crashed while verification in '{mCode}' operation in '{mCollectible.Code}' collectible");
-                    Utils.Logger.Verbose(mApi, this, $"System '{mSystemsCodes[system]}' crashed while verification in '{mCode}' operation in '{mCollectible.Code}' collectible.\n\nRequest:{request}\n\nException:{exception}");
+                    Logger.Error(mApi, this, $"System '{mSystemsCodes[system]}' crashed while verification in '{mCode}' operation in '{mCollectible.Code}' collectible");
+                    Logger.Verbose(mApi, this, $"System '{mSystemsCodes[system]}' crashed while verification in '{mCode}' operation in '{mCollectible.Code}' collectible.\n\nRequest:{request}\n\nException:{exception}");
                 }
             }
 
@@ -128,8 +128,8 @@ namespace MaltiezFSM.Operations
                 }
                 catch (Exception exception)
                 {
-                    Utils.Logger.Error(mApi, this, $"System '{mSystemsCodes[system]}' crashed while processing in '{mCode}' operation in '{mCollectible.Code}' collectible");
-                    Utils.Logger.Verbose(mApi, this, $"System '{mSystemsCodes[system]}' crashed while processing in '{mCode}' operation in '{mCollectible.Code}' collectible.\n\nRequest:{request}\n\nException:{exception}");
+                    Logger.Error(mApi, this, $"System '{mSystemsCodes[system]}' crashed while processing in '{mCode}' operation in '{mCollectible.Code}' collectible");
+                    Logger.Verbose(mApi, this, $"System '{mSystemsCodes[system]}' crashed while processing in '{mCode}' operation in '{mCollectible.Code}' collectible.\n\nRequest:{request}\n\nException:{exception}");
                 }
             }
 

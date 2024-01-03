@@ -6,7 +6,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
-#nullable enable
+
 
 namespace MaltiezFSM.Systems
 {
@@ -21,7 +21,7 @@ namespace MaltiezFSM.Systems
                 LogError($"Wrong definition format.");
                 return;
             }
-            
+
             foreach ((string effectCode, JToken? token) in definitionObject)
             {
                 JsonObject effect = new(token);
@@ -100,7 +100,7 @@ namespace MaltiezFSM.Systems
             }
             else
             {
-                Utils.Logger.Warn(api, this, $"Failed to load '{Domain}:{Code}' particle effect.");
+                Logger.Warn(api, this, $"Failed to load '{Domain}:{Code}' particle effect.");
             }
         }
 

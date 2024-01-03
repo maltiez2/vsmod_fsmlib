@@ -4,6 +4,7 @@
     <TargetFramework>net7.0</TargetFramework>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <OutputPath>bin\$(Configuration)\Mods\mod</OutputPath>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
@@ -67,10 +68,6 @@
   <Content Include="modicon.png">
 	  <CopyToOutputDirectory>Always</CopyToOutputDirectory>
   </Content>
-</ItemGroup>
-
-<ItemGroup>
-  <Folder Include="src\Systems\BasicSystems\" />
 </ItemGroup>
 
 </Project>

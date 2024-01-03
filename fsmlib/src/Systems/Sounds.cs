@@ -1,12 +1,11 @@
-﻿using MaltiezFSM.Framework;
-using Newtonsoft.Json.Linq;
+﻿using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 
-#nullable enable
+
 
 namespace MaltiezFSM.Systems;
 
@@ -65,6 +64,12 @@ internal sealed class TimedSound
 {
     public TimeSpan Time { get; set; }
     public ISound Sound { get; set; }
+
+    public TimedSound(TimeSpan time, ISound sound)
+    {
+        Time = time;
+        Sound = sound;
+    }
 }
 
 internal sealed class SoundSequenceTimer
@@ -105,11 +110,7 @@ internal sealed class SoundSequence
     {
         foreach (JsonObject sound in definition.AsArray())
         {
-            TimedSound timedSound = new()
-            {
-                Time = TimeSpan.FromMilliseconds(sound["time"].AsInt(0)),
-                Sound = ConstructSound(sound)
-            };
+            TimedSound timedSound = new(TimeSpan.FromMilliseconds(sound["time"].AsInt(0)), ConstructSound(sound));
             mSounds.Add(timedSound);
         }
 
@@ -146,14 +147,14 @@ public class Sounds : BaseSystem, ISoundSystem
             LogError($"Wrong definition format");
             return;
         }
-        
+
         foreach ((string soundCode, JToken? soundDefinition) in sounds)
         {
             if (soundDefinition == null) continue;
-            
+
             if (soundDefinition is JArray)
             {
-                mSequences.Add(soundCode, new(new JsonObject(soundDefinition)));                                                                                                                                                                                          
+                mSequences.Add(soundCode, new(new JsonObject(soundDefinition)));
             }
             else
             {
@@ -180,7 +181,7 @@ public class Sounds : BaseSystem, ISoundSystem
 
         if (
             parameters.KeyExists("sound") &&
-            ( 
+            (
                 mSounds.ContainsKey(parameters["sound"].AsString()) ||
                 mSequences.ContainsKey(parameters["sound"].AsString())
             )
@@ -196,7 +197,7 @@ public class Sounds : BaseSystem, ISoundSystem
         if (!base.Process(slot, player, parameters)) return false;
 
         if (mApi.Side != EnumAppSide.Server) return true;
-        
+
         string soundCode = parameters["sound"].AsString();
         string action = parameters["action"].AsString("play");
 
@@ -225,7 +226,7 @@ public class Sounds : BaseSystem, ISoundSystem
         }
         else if (mSequences.ContainsKey(soundCode))
         {
-            var timer = mSequences[soundCode].Play(player.Entity.World, player.Entity);
+            SoundSequenceTimer timer = mSequences[soundCode].Play(player.Entity.World, player.Entity);
             mTimers.Add((player.Entity.EntityId, soundCode), timer);
         }
     }
@@ -239,7 +240,7 @@ public class Sounds : BaseSystem, ISoundSystem
         }
         else if (mSequences.ContainsKey(soundCode))
         {
-            var timer = mSequences[soundCode].Play(mApi.World, target);
+            SoundSequenceTimer timer = mSequences[soundCode].Play(mApi.World, target);
             mTimers.Add((target.EntityId, soundCode), timer);
         }
     }

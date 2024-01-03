@@ -2,14 +2,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection.Emit;
 using System.Text;
-using System.Xml.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
-#nullable enable
+
 
 namespace MaltiezFSM.Framework
 {
@@ -32,22 +30,22 @@ namespace MaltiezFSM.Framework
 
             if (mProperties == null)
             {
-                Utils.Logger.Error(api, this, $"Null behavior properties on initializing FSM for: {collObj.Code}");
+                Logger.Error(api, this, $"Null behavior properties on initializing FSM for: {collObj.Code}");
                 return;
             }
 
-            Utils.Logger.Debug(api, this, $"Initializing FSM for: {collObj.Code}");
+            Logger.Debug(api, this, $"Initializing FSM for: {collObj.Code}");
 
             FiniteStateMachineSystem factories = api.ModLoader.GetModSystem<FiniteStateMachineSystem>();
             mInputManager = api.ModLoader.GetModSystem<FiniteStateMachineSystem>().GetInputManager();
             IOperationInputInvoker? operationInputInvoker = api.ModLoader.GetModSystem<FiniteStateMachineSystem>().GetOperationInputInvoker();
 
             IBehaviourAttributesParser parser = new TAttributesFormat();
-            parser.ParseDefinition(factories.GetOperationFactory(), factories.GetSystemFactory(), factories.GetInputFactory(), mProperties, collObj);
+            _ = parser.ParseDefinition(factories.GetOperationFactory(), factories.GetSystemFactory(), factories.GetInputFactory(), mProperties, collObj);
 
             mFsm = new FiniteStateMachine(api, parser.GetOperations(), parser.GetSystems(), parser.GetInputs(), mProperties, collObj, operationInputInvoker);
 
-            var operations = parser.GetOperations();
+            Dictionary<string, IOperation> operations = parser.GetOperations();
 
             foreach ((string code, IInput input) in parser.GetInputs())
             {
@@ -59,21 +57,21 @@ namespace MaltiezFSM.Framework
                     }
                     else
                     {
-                        Utils.Logger.Warn(api, this, $"Operation '{operationInput.OperationCode}' from input '{input}' is not found");
+                        Logger.Warn(api, this, $"Operation '{operationInput.OperationCode}' from input '{input}' is not found");
                         continue;
                     }
                 }
 
                 try
                 {
-                    mInputManager.RegisterInput(input, mFsm.Process, collObj);
+                    mInputManager?.RegisterInput(input, mFsm.Process, collObj);
                 }
                 catch (Exception exception)
                 {
-                    Utils.Logger.Error(api, this, $"Exception on registering input '{Utils.TypeName(input.GetType())}' with code '{code}' for collectible '{collObj.Code}'");
-                    Utils.Logger.Verbose(api, this, $"Exception on registering input '{Utils.TypeName(input.GetType())}' with code '{code}' for collectible '{collObj.Code}'.\n\nException:{exception}");
+                    Logger.Error(api, this, $"Exception on registering input '{Utils.GetTypeName(input.GetType())}' with code '{code}' for collectible '{collObj.Code}'");
+                    Logger.Verbose(api, this, $"Exception on registering input '{Utils.GetTypeName(input.GetType())}' with code '{code}' for collectible '{collObj.Code}'.\n\nException:{exception}");
                 }
-                
+
             }
 
             foreach ((string code, ISystem system) in parser.GetSystems())
@@ -103,7 +101,7 @@ namespace MaltiezFSM.Framework
 
             foreach (ISystem system in mSystems)
             {
-                string[] descriptions = system.GetDescription(inSlot, world);
+                string[]? descriptions = system.GetDescription(inSlot, world);
                 if (descriptions != null)
                 {
                     foreach (string description in descriptions)

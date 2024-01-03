@@ -1,15 +1,10 @@
-﻿using System.Collections.Generic;
-using Vintagestory.API.Client;
-using Vintagestory.API.Common;
-using Vintagestory.API.MathTools;
-using Vintagestory.GameContent;
-
-namespace MaltiezFSM.Systems.ItemSelection;
+﻿
+//namespace MaltiezFSM.Systems.ItemSelection;
 
 /// <summary>
 /// Based on code by TeacupAngel (https://github.com/TeacupAngel/VSBullseye)
 /// </summary>
-public class ItemSelectGuiDialog : GuiDialog
+/*public class ItemSelectGuiDialog : GuiDialog
 {
     private BullseyeInventoryAmmoSelect inventoryAmmoSelect;
 
@@ -30,8 +25,6 @@ public class ItemSelectGuiDialog : GuiDialog
         {
             return false;
         }
-
-        EntityBehaviorCollectEntities
 
         List<ItemStack> ammoStacks = behaviorRangedWeapon.GetAvailableAmmoTypes(activeHotbarSlot, capi.World.Player);
 
@@ -81,4 +74,4 @@ public class ItemSelectGuiDialog : GuiDialog
     {
         capi = null;
     }
-}
+}*/
