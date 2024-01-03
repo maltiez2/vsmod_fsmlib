@@ -12,6 +12,9 @@
       <Private>False</Private>
       <EmbedInteropTypes>False</EmbedInteropTypes>
     </Reference>
+    <Reference Include="SimpleExpressionEngine">
+      <HintPath>..\..\configlib\Releases\configlib\SimpleExpressionEngine.dll</HintPath>
+    </Reference>
     <Reference Include="VintagestoryAPI">
       <HintPath>..\..\game_19/VintagestoryAPI.dll</HintPath>
       <Private>false</Private>

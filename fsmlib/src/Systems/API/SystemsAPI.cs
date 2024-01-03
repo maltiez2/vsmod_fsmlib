@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MaltiezFSM.Framework;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -56,17 +57,8 @@ namespace MaltiezFSM.Systems
 
     public interface IAimingSystem
     {
-        public struct DirectionOffset
-        {
-            public float pitch { get; set; } // radian
-            public float yaw { get; set; } // radian
-
-            public static implicit operator DirectionOffset((float pitch, float yaw) parameters)
-            {
-                return new DirectionOffset() { pitch = parameters.pitch, yaw = parameters.yaw };
-            }
-        }
-        DirectionOffset GetShootingDirectionOffset(ItemSlot slot, IPlayer player);
+        Utils.DirectionOffset GetShootingDirectionOffset(ItemSlot slot, IPlayer player);
+        TimeSpan GetAimingDuration(ItemSlot slot, IPlayer player);
     }
 
     static public class ProgressModifiers

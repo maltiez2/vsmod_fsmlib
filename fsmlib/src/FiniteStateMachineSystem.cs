@@ -106,7 +106,7 @@ namespace MaltiezFSM
             mSystemFactory.Register<Systems.BasicPlayerAnimation>("PlayerAnimation");
             mSystemFactory.Register<Systems.Stats>("PlayerStats");
             mSystemFactory.Register<Systems.Particles>("Particles");
-            mSystemFactory.Register<Systems.BasicAim>("Aiming");
+            mSystemFactory.Register<Systems.Aiming>("Aiming");
             mSystemFactory.Register<Systems.NoSprint>("NoSprint");
             mSystemFactory.Register<Systems.ChangeGroup>("ChangeGroup");
             mSystemFactory.Register<Systems.Durability>("Durability");

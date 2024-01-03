@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
@@ -467,12 +468,12 @@ namespace MaltiezFSM.Framework
             private long? mCallbackId;
             private bool mDisposed = false;
 
-            public DelayedCallback(ICoreAPI api, int delayMs, Action callback)
+            public DelayedCallback(ICoreAPI api, TimeSpan delay, Action callback)
             {
                 mCallback = callback;
                 mApi = api;
 
-                mCallbackId = mApi.World.RegisterCallback(Handler, delayMs);
+                mCallbackId = mApi.World.RegisterCallback(Handler, (int)delay.TotalMilliseconds);
             }
 
             public void Handler(float time)
@@ -733,6 +734,26 @@ namespace MaltiezFSM.Framework
 
                 return ("", -1);
             }
+        }
+
+        public static string PrintList(IEnumerable<string> list)
+        {
+            StringBuilder result = new();
+            bool first = true;
+            foreach (string item in list)
+            {
+                if (first)
+                {
+                    result.Append(item);
+                    first = false;
+                }
+                else
+                {
+                    result.Append(", ");
+                    result.Append(item);
+                }
+            }
+            return result.ToString();
         }
     }
 }

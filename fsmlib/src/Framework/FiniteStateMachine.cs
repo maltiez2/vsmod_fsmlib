@@ -169,7 +169,7 @@ namespace MaltiezFSM.Framework
 
             if (result.Timeout != IOperation.Timeout.Ignore && mTimers.ContainsKey(player.Entity.EntityId)) mTimers[player.Entity.EntityId]?.Cancel();
 
-            if (result.Timeout == IOperation.Timeout.Start) mTimers[player.Entity.EntityId] = new(mApi, (int)result.TimeoutDelay.TotalMilliseconds, () => OnTimer(slot, player, input, operation));
+            if (result.Timeout == IOperation.Timeout.Start) mTimers[player.Entity.EntityId] = new(mApi, result.TimeoutDelay, () => OnTimer(slot, player, input, operation));
 
             if (result.Outcome == IOperation.Outcome.Finished) mOperationInputInvoker?.Finished(operation, slot, player);
 
