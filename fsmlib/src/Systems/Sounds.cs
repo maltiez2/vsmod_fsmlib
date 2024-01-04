@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using HarmonyLib;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
@@ -110,6 +111,8 @@ internal sealed class SoundSequence
     {
         foreach (JsonObject sound in definition.AsArray())
         {
+            if (sound.Token is not JObject || sound.Token is not JArray) continue;
+            
             TimedSound timedSound = new(TimeSpan.FromMilliseconds(sound["time"].AsInt(0)), ConstructSound(sound));
             mSounds.Add(timedSound);
         }
@@ -142,7 +145,7 @@ public class Sounds : BaseSystem, ISoundSystem
 
     public Sounds(int id, string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api) : base(id, code, definition, collectible, api)
     {
-        if (definition["sounds"].Token is not JObject sounds)
+        if (definition.Token is not JObject sounds)
         {
             LogError($"Wrong definition format");
             return;
@@ -156,7 +159,7 @@ public class Sounds : BaseSystem, ISoundSystem
             {
                 mSequences.Add(soundCode, new(new JsonObject(soundDefinition)));
             }
-            else
+            else if (soundDefinition is JObject)
             {
                 mSounds.Add(soundCode, ConstructSound(new JsonObject(soundDefinition)));
             }
@@ -198,8 +201,14 @@ public class Sounds : BaseSystem, ISoundSystem
 
         if (mApi.Side != EnumAppSide.Server) return true;
 
-        string soundCode = parameters["sound"].AsString();
+        string? soundCode = parameters["sound"].AsString();
         string action = parameters["action"].AsString("play");
+
+        if (soundCode == null)
+        {
+            LogError($"No 'sound' in system request");
+            return false;
+        }
 
         switch (action)
         {

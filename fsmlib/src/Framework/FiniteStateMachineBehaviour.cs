@@ -1,4 +1,5 @@
-﻿using MaltiezFSM.API;
+﻿using HarmonyLib;
+using MaltiezFSM.API;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -23,10 +24,13 @@ namespace MaltiezFSM.Framework
         private IInputManager? mInputManager;
         private JsonObject? mProperties;
         private readonly List<ISystem> mSystems = new();
+        private ICoreAPI? mApi;
 
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
+
+            mApi = api;
 
             if (mProperties == null)
             {
@@ -43,7 +47,17 @@ namespace MaltiezFSM.Framework
             IBehaviourAttributesParser parser = new TAttributesFormat();
             _ = parser.ParseDefinition(factories.GetOperationFactory(), factories.GetSystemFactory(), factories.GetInputFactory(), mProperties, collObj);
 
-            mFsm = new FiniteStateMachine(api, parser.GetOperations(), parser.GetSystems(), parser.GetInputs(), mProperties, collObj, operationInputInvoker);
+            try
+            {
+                mFsm = new FiniteStateMachine(api, parser.GetOperations(), parser.GetSystems(), parser.GetInputs(), mProperties, collObj, operationInputInvoker);
+            }
+            catch (Exception exception)
+            {
+                Logger.Error(api, this, $"Exception on instantiating FSM for collectible '{collObj.Code}'.");
+                Logger.Verbose(api, this, $"Exception on instantiating FSM for collectible '{collObj.Code}'.\n\nException:\n{exception}\n");
+                return;
+            }
+            
 
             Dictionary<string, IOperation> operations = parser.GetOperations();
 
@@ -57,7 +71,7 @@ namespace MaltiezFSM.Framework
                     }
                     else
                     {
-                        Logger.Warn(api, this, $"Operation '{operationInput.OperationCode}' from input '{input}' is not found");
+                        Logger.Warn(api, this, $"Operation '{operationInput.OperationCode}' from input '{input}' is not found.");
                         continue;
                     }
                 }
@@ -68,8 +82,8 @@ namespace MaltiezFSM.Framework
                 }
                 catch (Exception exception)
                 {
-                    Logger.Error(api, this, $"Exception on registering input '{Utils.GetTypeName(input.GetType())}' with code '{code}' for collectible '{collObj.Code}'");
-                    Logger.Verbose(api, this, $"Exception on registering input '{Utils.GetTypeName(input.GetType())}' with code '{code}' for collectible '{collObj.Code}'.\n\nException:{exception}");
+                    Logger.Error(api, this, $"Exception on registering input '{Utils.GetTypeName(input.GetType())}' with code '{code}' for collectible '{collObj.Code}'.");
+                    Logger.Verbose(api, this, $"Exception on registering input '{Utils.GetTypeName(input.GetType())}' with code '{code}' for collectible '{collObj.Code}'.\n\nException:\n{exception}\n");
                 }
 
             }
@@ -120,8 +134,16 @@ namespace MaltiezFSM.Framework
 
             foreach (IInput input in mFsm.GetAvailableInputs(inSlot))
             {
-                WorldInteraction? interactionHelp = input.GetInteractionInfo(inSlot);
-                if (interactionHelp != null) interactionsHelp.Add(interactionHelp);
+                try
+                {
+                    WorldInteraction? interactionHelp = input.GetInteractionInfo(inSlot);
+                    if (interactionHelp != null) interactionsHelp.Add(interactionHelp);
+                }
+                catch (Exception exception)
+                {
+                    Logger.Error(mApi, this, $"Exception on getting held interaction help for '{Utils.GetTypeName(input.GetType())}' input for collectible '{collObj.Code}'.");
+                    Logger.Verbose(mApi, this, $"Exception on getting held interaction help for '{Utils.GetTypeName(input.GetType())}' input for collectible '{collObj.Code}'.\n\nException:\n{exception}\n");
+                }
             }
 
             return interactionsHelp.ToArray();

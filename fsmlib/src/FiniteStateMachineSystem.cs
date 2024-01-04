@@ -2,6 +2,7 @@
 using MaltiezFSM.API;
 using Newtonsoft.Json.Linq;
 using System.Linq;
+using Vintagestory;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -146,7 +147,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
     {
         new Harmony("fsmlib").Patch(
                     typeof(EntityProjectile).GetMethod("impactOnEntity", AccessTools.all),
-                    prefix: new HarmonyMethod(AccessTools.Method(typeof(Systems.AdvancedEntityProjectile), nameof(Systems.AdvancedEntityProjectile.ImpactOnEntity)))
+                    prefix: new HarmonyMethod(AccessTools.Method(typeof(Systems.AdvancedEntityProjectile), nameof(Systems.AdvancedEntityProjectile.ImpactOnEntityPatch)))
                     );
     }
     private static void Unpatch()
@@ -198,7 +199,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
                         break;
                     }
                 }
-                if (!alreadyHas) api.Logger.VerboseDebug("[FSMlib] Adding behavior '{0}' to entity '{1}:{2}'", newBehavior.code, entityType.Class, entityType.Code);
+                //if (!alreadyHas) api.Logger.VerboseDebug("[FSMlib] Adding behavior '{0}' to entity '{1}:{2}'", newBehavior.code, entityType.Class, entityType.Code);
                 if (!alreadyHas) entityType.Server.BehaviorsAsJsonObj = entityType.Server.BehaviorsAsJsonObj.Prepend(newBehaviorJson).ToArray();
             }
             if (api.Side.IsClient())

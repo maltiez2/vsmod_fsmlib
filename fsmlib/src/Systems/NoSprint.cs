@@ -15,7 +15,7 @@ namespace MaltiezFSM.Systems
         {
             if (!base.Process(slot, player, parameters)) return false;
 
-            string action = parameters["action"].AsString();
+            string action = parameters["action"].AsString("start");
             switch (action)
             {
                 case "start":

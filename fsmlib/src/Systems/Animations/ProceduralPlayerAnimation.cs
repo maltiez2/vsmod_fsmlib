@@ -22,14 +22,22 @@ public class ProceduralPlayerAnimation : BaseSystem, IAnimationSystem
 
         if (mApi.Side != EnumAppSide.Client) return;
 
-        Framework.Utils.Iterate(definition["categories"], (categoryCode, category) => mCategories.Add(categoryCode, Utils.CategoryFromJson(category)));
+        Framework.Utils.Iterate(definition["categories"], (categoryCode, category) => mCategories.Add(categoryCode, CategoryFromJson(categoryCode, category)));
         Framework.Utils.Iterate(definition["animations"], (animationCode, animation) =>
         {
             foreach ((string categoryName, Category category) in mCategories)
             {
-                ParseAnimations(animation["stages"].AsArray(), categoryName, category, animationCode);
+                ParseAnimations(animation.AsArray(), categoryName, category, animationCode);
             }
         });
+    }
+
+    private static Category CategoryFromJson(string code, JsonObject definition)
+    {
+        EnumAnimationBlendMode blending = (EnumAnimationBlendMode)Enum.Parse(typeof(EnumAnimationBlendMode), definition["blending"].AsString("Add"));
+        float? weight = definition.KeyExists("weight") ? definition["weight"].AsFloat() : null;
+
+        return new Category(code, blending, weight);
     }
 
     public override bool Process(ItemSlot slot, IPlayer player, JsonObject parameters)
@@ -37,9 +45,12 @@ public class ProceduralPlayerAnimation : BaseSystem, IAnimationSystem
         if (!base.Process(slot, player, parameters)) return false;
         if (mApi.Side != EnumAppSide.Client) return true;
 
-        string code = parameters["animation"].AsString();
-        string category = parameters["category"].AsString();
-        string action = parameters["action"].AsString();
+        string? code = parameters["animation"].AsString();
+        string? category = parameters["category"].AsString();
+        string action = parameters["action"].AsString("start");
+
+        if (!Check(code, category)) return false;
+
         switch (action)
         {
             case "start":
@@ -51,6 +62,35 @@ public class ProceduralPlayerAnimation : BaseSystem, IAnimationSystem
             default:
                 LogActions(action, "start", "stop");
                 return false;
+        }
+
+        return true;
+    }
+
+    private bool Check(string? code, string? category)
+    {
+        if (code == null)
+        {
+            LogError("No 'animation' in system request");
+            return false;
+        }
+
+        if (category == null)
+        {
+            LogError("No 'category' in system request");
+            return false;
+        }
+
+        if (!mCategories.ContainsKey(category))
+        {
+            LogError($"Category '{category}' not found");
+            return false;
+        }
+
+        if (!mAnimations.ContainsKey((category, code)))
+        {
+            LogError($"Animation '{code}' not found");
+            return false;
         }
 
         return true;

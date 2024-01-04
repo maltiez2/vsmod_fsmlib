@@ -1,4 +1,5 @@
-﻿using Vintagestory.API.Common;
+﻿using System;
+using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
 
@@ -17,6 +18,18 @@ namespace MaltiezFSM.Systems
 
             string group = parameters["group"].AsString();
             string value = parameters["value"].AsString();
+
+            if (group == null)
+            {
+                LogError($"No 'group' in system request");
+                return false;
+            }
+            if (value == null)
+            {
+                LogError($"No 'value' in system request");
+                return false;
+            }
+
             TryChangeVariant(slot.Itemstack, mApi, group, value);
             slot.MarkDirty();
             return true;

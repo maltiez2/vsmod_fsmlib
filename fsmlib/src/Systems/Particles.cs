@@ -50,9 +50,15 @@ namespace MaltiezFSM.Systems
             return true;
         }
 
-        private static List<string> GetEffects(JsonObject parameters)
+        private List<string> GetEffects(JsonObject parameters)
         {
             List<string> codes = new();
+
+            if (!parameters.KeyExists("effects"))
+            {
+                LogError($"No 'effects' in system request");
+                return codes;
+            }
 
             if (parameters["effects"].IsArray())
             {

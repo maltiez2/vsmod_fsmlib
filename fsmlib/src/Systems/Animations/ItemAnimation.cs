@@ -108,17 +108,19 @@ public class ItemAnimation : BaseSystem // Based on code from TeacupAngel (https
         AnimatableAttachable animationBehavior = mCollectible.GetBehavior<AnimatableAttachable>();
         if (animationBehavior == null) return true;
 
-        string action = parameters["action"].AsString();
+        string action = parameters["action"].AsString("start");
         switch (action)
         {
             case "start":
                 animationBehavior.ClearAttachments();
-                string codeToStart = parameters["code"].AsString("");
+                string? codeToStart = parameters["animation"].AsString();
+                if (!CheckAnimationCode(codeToStart)) return false;
                 AddActiveAnimation(slot, codeToStart);
                 if (mClientSide) StartAnimation(slot, player, codeToStart, mAnimations[codeToStart], animationBehavior);
                 break;
             case "stop":
-                string codeToStop = parameters["code"].AsString("");
+                string? codeToStop = parameters["animation"].AsString("");
+                if (!CheckAnimationCode(codeToStop)) return false;
                 RemoveActiveAnimation(slot, codeToStop);
                 if (mClientSide) animationBehavior.StopAnimation(mAnimations[codeToStop].Code, true);
                 break;
@@ -133,6 +135,22 @@ public class ItemAnimation : BaseSystem // Based on code from TeacupAngel (https
                 LogActions(action, "start", "stop", "clear", "last");
                 return false;
         }
+        return true;
+    }
+    private bool CheckAnimationCode(string? code)
+    {
+        if (code == null)
+        {
+            LogError("No 'animation' in system request");
+            return false;
+        }
+
+        if (!mAnimations.ContainsKey(code))
+        {
+            LogError($"Animation '{code}' was not found");
+            return false;
+        }
+
         return true;
     }
     private void StartAnimation(ItemSlot slot, IPlayer player, string code, AnimationMetaData animation, AnimatableAttachable behavior)

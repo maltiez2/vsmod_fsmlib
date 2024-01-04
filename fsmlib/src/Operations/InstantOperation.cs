@@ -44,23 +44,6 @@ namespace MaltiezFSM.Operations
             }
         }
 
-        private static List<JsonObject> ParseField(JsonObject definition, string field)
-        {
-            List<JsonObject> transitions = new();
-            if (definition[field].IsArray())
-            {
-                foreach (JsonObject transition in definition[field].AsArray())
-                {
-                    transitions.Add(transition);
-                }
-            }
-            else
-            {
-                transitions.Add(definition[field]);
-            }
-            return transitions;
-        }
-
         public virtual List<Transition> GetTransitions()
         {
             return mTransitions;
@@ -94,7 +77,7 @@ namespace MaltiezFSM.Operations
                 }
 
                 mSystems.Add(new(systems[system], definition));
-                mSystemsCodes.Add(systems[system], system);
+                mSystemsCodes.TryAdd(systems[system], system);
             }
             mSystemsInitialData.Clear();
         }
@@ -112,7 +95,7 @@ namespace MaltiezFSM.Operations
                 catch (Exception exception)
                 {
                     Logger.Error(mApi, this, $"System '{mSystemsCodes[system]}' crashed while verification in '{mCode}' operation in '{mCollectible.Code}' collectible");
-                    Logger.Verbose(mApi, this, $"System '{mSystemsCodes[system]}' crashed while verification in '{mCode}' operation in '{mCollectible.Code}' collectible.\n\nRequest:{request}\n\nException:{exception}");
+                    Logger.Verbose(mApi, this, $"System '{mSystemsCodes[system]}' crashed while verification in '{mCode}' operation in '{mCollectible.Code}' collectible.\n\nRequest:{request}\n\nException:\n{exception}\n");
                 }
             }
 
@@ -129,7 +112,7 @@ namespace MaltiezFSM.Operations
                 catch (Exception exception)
                 {
                     Logger.Error(mApi, this, $"System '{mSystemsCodes[system]}' crashed while processing in '{mCode}' operation in '{mCollectible.Code}' collectible");
-                    Logger.Verbose(mApi, this, $"System '{mSystemsCodes[system]}' crashed while processing in '{mCode}' operation in '{mCollectible.Code}' collectible.\n\nRequest:{request}\n\nException:{exception}");
+                    Logger.Verbose(mApi, this, $"System '{mSystemsCodes[system]}' crashed while processing in '{mCode}' operation in '{mCollectible.Code}' collectible.\n\nRequest:{request}\n\nException:\n{exception}\n");
                 }
             }
 

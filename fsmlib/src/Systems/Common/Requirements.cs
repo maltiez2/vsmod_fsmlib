@@ -70,6 +70,7 @@ public class Requirement : IRequirement
 
     protected bool CheckSlot(ItemSlot slot)
     {
+        if (Locations.Length == 0) return slot.StackSize > 0;
         return slot?.Itemstack?.Collectible?.WildCardMatch(Locations) == true;
     }
     private static bool ProcessSlot(ItemSlot slot, out ItemStack? stack)

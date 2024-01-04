@@ -38,7 +38,7 @@ public class ProceduralItemAnimation : BaseSystem, IAnimationSystem
         {
             foreach ((string categoryName, _) in mCategories)
             {
-                ParseAnimations(animation["stages"].AsArray(), categoryName, animationCode);
+                ParseAnimations(animation.AsArray(), categoryName, animationCode);
             }
         });
     }
@@ -50,7 +50,10 @@ public class ProceduralItemAnimation : BaseSystem, IAnimationSystem
 
         string code = parameters["animation"].AsString();
         string category = parameters["category"].AsString();
-        string action = parameters["action"].AsString();
+        string action = parameters["action"].AsString("start");
+
+        if (!Check(code, category)) return false;
+
         switch (action)
         {
             case "start":
@@ -67,8 +70,39 @@ public class ProceduralItemAnimation : BaseSystem, IAnimationSystem
         return true;
     }
 
+    private bool Check(string? code, string? category)
+    {
+        if (code == null)
+        {
+            LogError("No 'animation' in system request");
+            return false;
+        }
+
+        if (category == null)
+        {
+            LogError("No 'category' in system request");
+            return false;
+        }
+
+        if (!mCategories.ContainsKey(category))
+        {
+            LogError($"Category '{category}' not found");
+            return false;
+        }
+
+        if (!mAnimations.ContainsKey((category, code)))
+        {
+            LogError($"Animation '{code}' not found");
+            return false;
+        }
+
+        return true;
+    }
+
     public void PlayAnimation(ItemSlot slot, IPlayer player, string code, string category, string action = "start", float durationMultiplier = 1)
     {
+        if (!Check(code, category)) return;
+
         switch (action)
         {
             case "start":

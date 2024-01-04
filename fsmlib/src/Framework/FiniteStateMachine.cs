@@ -1,4 +1,5 @@
 ﻿using MaltiezFSM.API;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -51,20 +52,34 @@ namespace MaltiezFSM.Framework
             mOperationInputInvoker = invoker;
             mApi = api;
 
-            foreach ((_, ISystem system) in systems)
+            foreach ((string systemCode, ISystem system) in systems)
             {
-                system.SetSystems(systems);
+                try
+                {
+                    system.SetSystems(systems);
+                }
+                catch (Exception exception)
+                {
+                    Logger.Error(api, this, $"Exception on setting systems for '{systemCode}' system for collectible '{mCollectible.Code}'.");
+                    Logger.Verbose(api, this, $"Exception on setting systems for '{systemCode}' system for collectible '{mCollectible.Code}'.\n\nException:\n{exception}\n");
+                }
+                
             }
 
-            foreach ((_, IOperation operation) in operations)
+            foreach ((string operationCode, IOperation operation) in operations)
             {
-                mOperations.Add(operation);
-
-                List<IOperation.Transition> transitions = operation.GetTransitions();
-
-                Dictionary<string, IState> operationStateMapping = ProcessTransitions(operation, transitions, inputs);
-
-                operation.SetInputsStatesSystems(inputs, operationStateMapping, systems);
+                try
+                {
+                    List<IOperation.Transition> transitions = operation.GetTransitions();
+                    Dictionary<string, IState> operationStateMapping = ProcessTransitions(operation, transitions, inputs);
+                    operation.SetInputsStatesSystems(inputs, operationStateMapping, systems);
+                    mOperations.Add(operation);
+                }
+                catch (Exception exception)
+                {
+                    Logger.Error(api, this, $"Exception on processing transitions for '{operationCode}' operation for collectible '{mCollectible.Code}'.");
+                    Logger.Verbose(api, this, $"Exception on processing transitions for '{operationCode}' operation for collectible '{mCollectible.Code}'.\n\nException:\n{exception}\n");
+                }
             }
         }
 
@@ -73,6 +88,13 @@ namespace MaltiezFSM.Framework
             List<IInput> inputs = new();
 
             State state = ReadStateFrom(slot);
+            
+            if (!mOperationsByInputAndState.ContainsKey(state))
+            {
+                Logger.Error(mApi, this, $"Error on getting available inputs for '{state}' state for collectible '{mCollectible.Code}': state was not found. States registered: {mOperationsByInputAndState.Count}");
+                return inputs;
+            }
+            
             foreach (KeyValuePair<IInput, IOperation> item in mOperationsByInputAndState[state])
             {
                 inputs.Add(item.Key);

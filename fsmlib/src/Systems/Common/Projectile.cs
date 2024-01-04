@@ -47,7 +47,7 @@ public class AdvancedEntityProjectile : EntityProjectile
     public string? HitSound { get; set; }
     public float? DamageMultiplier { get; set; }
 
-    public static bool ImpactOnEntity(EntityProjectile __instance, Entity entity)
+    public static bool ImpactOnEntityPatch(EntityProjectile __instance, Entity entity)
     {
         if (__instance is not AdvancedEntityProjectile advancedProjectile) return true;
         advancedProjectile.ImpactOnEntity(entity);

@@ -129,7 +129,7 @@ public sealed class KeyInputInvoker : IInputInvoker
     {
         if (!EventShouldBeHandled()) return;
 
-        foreach (IInput input in mInputs[InputType.KeyDown])
+        foreach (IInput input in mInputs[InputType.MouseDown])
         {
             if (input is not IMouseInput mouseInput) continue;
 
@@ -146,7 +146,7 @@ public sealed class KeyInputInvoker : IInputInvoker
     {
         if (!EventShouldBeHandled()) return;
 
-        foreach (IInput input in mInputs[InputType.KeyDown])
+        foreach (IInput input in mInputs[InputType.MouseUp])
         {
             if (input is not IMouseInput mouseInput) continue;
 
@@ -163,7 +163,7 @@ public sealed class KeyInputInvoker : IInputInvoker
     {
         if (!EventShouldBeHandled()) return;
 
-        foreach (IInput input in mInputs[InputType.KeyDown])
+        foreach (IInput input in mInputs[InputType.MouseMove])
         {
             if (input is not IMouseInput mouseInput) continue;
 

@@ -48,8 +48,8 @@ namespace MaltiezFSM.Framework
             }
             catch (Exception exception)
             {
-                Logger.Error(mApi, this, $"Exception on instantiating {name} ({Utils.GetTypeName(mProducts[name])}) with code '{code}' for collectible '{collectible?.Code}'");
-                Logger.Verbose(mApi, this, $"Exception on instantiating {name} ({Utils.GetTypeName(mProducts[name])}) with code '{code}' for collectible '{collectible?.Code}'.\n\nDefinition:{definition}\n\nException:{exception}");
+                Logger.Error(mApi, this, $"Exception on instantiating '{name} ({Utils.GetTypeName(mProducts[name])})' with code '{code}' for collectible '{collectible?.Code}'");
+                Logger.Verbose(mApi, this, $"Exception on instantiating '{name} ({Utils.GetTypeName(mProducts[name])})' with code '{code}' for collectible '{collectible?.Code}'.\n\nDefinition:\n{definition}\n\nException:\n{exception}\n");
             }
 
             return product;

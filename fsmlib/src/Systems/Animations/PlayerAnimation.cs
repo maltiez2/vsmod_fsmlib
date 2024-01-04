@@ -14,8 +14,15 @@ public class PlayerAnimation : BaseSystem
     {
         if (!base.Process(slot, player, parameters)) return false;
 
-        string code = parameters["animation"].AsString();
-        string action = parameters["action"].AsString();
+        string? code = parameters["animation"].AsString();
+
+        if (code == null)
+        {
+            LogError($"No 'animation' in system request");
+            return false;
+        }
+
+        string action = parameters["action"].AsString("start");
         switch (action)
         {
             case "start":

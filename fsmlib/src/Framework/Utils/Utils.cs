@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json.Linq;
+using ProtoBuf;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -475,6 +476,8 @@ public static class Utils
         Backpack,
         Crafting
     }
+    
+    [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
     public struct SlotData
     {
         public SlotType SlotType { get; set; }
@@ -745,7 +748,7 @@ public static class Utils
 
         foreach ((string code, JToken? fieldToken) in fieldsObject)
         {
-            if (fieldToken == null) continue;
+            if (fieldToken == null || code == null) continue;
 
             JsonObject field = new(fieldToken);
 

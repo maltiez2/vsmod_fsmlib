@@ -28,7 +28,15 @@ public class Requirements : BaseSystem, IItemStackHolder
             if (packToken is not JObject packObject) continue;
             JsonObject pack = new(packObject);
 
-            mRequirements.Add(packCode, GetRequirements(pack));
+            if (pack.KeyExists("requirements") && pack["requirements"].IsArray())
+            {
+                mRequirements.Add(packCode, GetRequirements(pack["requirements"]));
+            }
+            else
+            {
+                mRequirements.Add(packCode, new() { Requirement.Construct(pack) });
+            }
+
             mDescriptions.Add(packCode, pack["description"].AsString());
         }
     }
@@ -48,7 +56,7 @@ public class Requirements : BaseSystem, IItemStackHolder
     {
         if (!base.Verify(slot, player, parameters)) return false;
 
-        string code = parameters["code"].AsString();
+        string code = parameters["requirement"].AsString();
 
         if (!mRequirements.ContainsKey(code))
         {
@@ -72,8 +80,14 @@ public class Requirements : BaseSystem, IItemStackHolder
     {
         if (!base.Process(slot, player, parameters)) return false;
 
-        string code = parameters["requirement"].AsString();
-        string action = parameters["type"].AsString();
+        string? code = parameters["requirement"].AsString();
+        string action = parameters["action"].AsString("check");
+
+        if (code == null)
+        {
+            LogError($"No 'requirement' in system request");
+            return false;
+        }
 
         if (!mRequirements.ContainsKey(code))
         {

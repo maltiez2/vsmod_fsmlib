@@ -27,7 +27,7 @@ public class Parry<TResistBehavior> : BaseSystem
     {
         mSoundSystemName = definition["soundSystem"].AsString();
 
-        if (definition["parries"].Token is not JObject parries) return;
+        if (definition.Token is not JObject parries) return;
 
         foreach ((string parryCode, JToken? parry) in parries)
         {
@@ -57,12 +57,12 @@ public class Parry<TResistBehavior> : BaseSystem
     {
         if (!base.Process(slot, player, parameters)) return false;
 
-        string action = parameters["action"].AsString();
+        string action = parameters["action"].AsString("start");
         switch (action)
         {
             case "start":
                 if (mApi.Side != EnumAppSide.Server) return true;
-                string code = parameters["code"].AsString();
+                string code = parameters["parry"].AsString();
                 ScheduleParry(player, code);
                 break;
             case "stop":

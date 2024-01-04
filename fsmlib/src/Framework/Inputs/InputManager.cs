@@ -66,6 +66,11 @@ public sealed class InputManager : IInputManager
     }
     private bool InputHandler(Utils.SlotData slot, IPlayer player, IInput input)
     {
+        object inputObject = (object)input;
+        Type inputTypeType = inputObject.GetType();
+        string inputType = Utils.GetTypeName(inputTypeType);
+        Console.WriteLine($"Input: {inputType}, slot: {slot.SlotType}");
+        
         if (mClientPacketSender != null)
         {
             mClientPacketSender.SendPacket(input.Index, slot);

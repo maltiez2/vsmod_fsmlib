@@ -18,13 +18,11 @@ public sealed class Melee : BaseSystem
 {
     private readonly Dictionary<string, MeleeAttack> mAttacks = new();
     private readonly Dictionary<long, Utils.TickBasedTimer?> mTimers = new();
-    private readonly string mAnimationSystemCode;
     private readonly string mSoundSystemCode;
     private bool mSystemsSetUp = false;
 
     public Melee(int id, string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api) : base(id, code, definition, collectible, api)
     {
-        mAnimationSystemCode = definition["animationSystem"].AsString();
         mSoundSystemCode = definition["soundSystem"].AsString();
 
         if (definition.KeyExists("attack") && definition["attack"].KeyExists("code"))
@@ -48,13 +46,7 @@ public sealed class Melee : BaseSystem
 
     public override void SetSystems(Dictionary<string, ISystem> systems)
     {
-        if (systems.ContainsKey(mAnimationSystemCode) || systems[mAnimationSystemCode] is not IAnimationSystem animationSystem)
-        {
-            LogError($"Animation system '{mAnimationSystemCode}' was not found while setting systems for '{mCode}'");
-            return;
-        }
-
-        if (systems.ContainsKey(mSoundSystemCode) || systems[mSoundSystemCode] is not ISoundSystem soundSystem)
+        if (!systems.ContainsKey(mSoundSystemCode) || systems[mSoundSystemCode] is not ISoundSystem soundSystem)
         {
             LogError($"Sound system '{mSoundSystemCode}' was not found while setting systems for '{mCode}'");
             return;
@@ -63,7 +55,7 @@ public sealed class Melee : BaseSystem
         mSystemsSetUp = true;
         foreach ((_, MeleeAttack attack) in mAttacks)
         {
-            attack.SetSystems(soundSystem, animationSystem);
+            attack.SetSystems(soundSystem);
         }
     }
 
@@ -76,8 +68,20 @@ public sealed class Melee : BaseSystem
         if (!mTimers.ContainsKey(playerId)) mTimers.Add(playerId, null);
         mTimers[playerId]?.Stop();
 
-        string action = parameters["action"].AsString();
-        string attack = parameters["attack"].AsString();
+        string? action = parameters["action"].AsString();
+        string? attack = parameters["attack"].AsString();
+
+        if (action == null)
+        {
+            LogError($"No 'action' in system request");
+            return false;
+        }
+
+        if (attack == null)
+        {
+            LogError($"No 'attack' in system request");
+            return false;
+        }
 
         if (!mAttacks.ContainsKey(attack))
         {
@@ -93,14 +97,12 @@ public sealed class Melee : BaseSystem
                     player.Entity.Attributes.SetInt("didattack", 0);
                     mTimers[playerId] = new(mApi, mAttacks[attack].GetDuration(player), (float progress) => mAttacks[attack].TryAttack(slot, player, serverApi, progress));
                 }
-                mAttacks[attack].StartAnimation(slot, player);
                 break;
             case "stop":
                 if (mApi is ICoreServerAPI)
                 {
                     mTimers[playerId]?.Stop();
                 }
-                mAttacks[attack].StopAnimation(slot, player);
                 break;
             default:
                 LogActions(action, "start", "stop");
@@ -117,11 +119,8 @@ internal sealed class MeleeAttack
     private readonly ICustomInputInvoker? mCustomInputInvoker;
     private readonly string? mCustomInput = null;
     private readonly bool mStopOnHandled = false;
-    private readonly string? mAnimationCode = null;
-    private readonly string? mAnimationCategory = null;
     private readonly TimeSpan mDuration;
     private readonly StatsModifier? mDurationModifier;
-    private IAnimationSystem? mAnimationPlayer;
 
     public MeleeAttack(JsonObject definition, ICoreAPI api)
     {
@@ -130,8 +129,6 @@ internal sealed class MeleeAttack
         mCustomInputInvoker = api.ModLoader.GetModSystem<FiniteStateMachineSystem>().CustomInputInvoker;
         if (definition.KeyExists("hitInput")) mCustomInput = definition["hitInput"].AsString();
         if (definition.KeyExists("stopOnInput")) mStopOnHandled = definition["stopOnInput"].AsBool();
-        if (definition.KeyExists("animationCode")) mAnimationCode = definition["animationCode"].AsString();
-        if (definition.KeyExists("animationCategory")) mAnimationCategory = definition["animationCategory"].AsString();
         if (definition.KeyExists("duration_stats")) mDurationModifier = new(api, definition["duration_stats"].AsString());
 
         foreach (JsonObject damageType in definition["damageTypes"].AsArray())
@@ -140,10 +137,8 @@ internal sealed class MeleeAttack
         }
     }
 
-    public void SetSystems(ISoundSystem soundSystem, IAnimationSystem animationSystem)
+    public void SetSystems(ISoundSystem soundSystem)
     {
-        mAnimationPlayer = animationSystem;
-
         foreach (AttackDamageType damageType in mDamageTypes)
         {
             damageType.SetSoundSystem(soundSystem);
@@ -161,21 +156,6 @@ internal sealed class MeleeAttack
         }
 
         return false;
-    }
-    public void StartAnimation(ItemSlot slot, IPlayer player)
-    {
-        if (mAnimationPlayer != null && mAnimationCode != null && mAnimationCategory != null)
-        {
-            double durationModifier = GetDuration(player) / mDuration;
-            mAnimationPlayer.PlayAnimation(slot, player, mAnimationCode, mAnimationCategory, "start", (float)durationModifier);
-        }
-    }
-    public void StopAnimation(ItemSlot slot, IPlayer player)
-    {
-        if (mAnimationPlayer != null && mAnimationCode != null && mAnimationCategory != null)
-        {
-            mAnimationPlayer.PlayAnimation(slot, player, mAnimationCode, mAnimationCategory, "stop");
-        }
     }
     public TimeSpan GetDuration(IPlayer player)
     {

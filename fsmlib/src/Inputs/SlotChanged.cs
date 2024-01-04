@@ -25,6 +25,6 @@ public class AfterSlotChanged : BaseInput, ISlotChangedAfter
 
     public AfterSlotChanged(int id, string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api) : base(id, code, definition, collectible, api)
     {
-        EventType = (ISlotInput.SlotEventType)Enum.Parse(typeof(ISlotInput.SlotEventType), definition["type"].AsString("FromSlot"));
+        EventType = (ISlotInput.SlotEventType)Enum.Parse(typeof(ISlotInput.SlotEventType), definition["type"].AsString("ToSlot"));
     }
 }

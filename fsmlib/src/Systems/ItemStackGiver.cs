@@ -25,11 +25,23 @@ namespace MaltiezFSM.Systems
 
         private ItemStack? GenItemStack(JsonObject itemStackDefinition)
         {
-            string itemCode = itemStackDefinition["code"].AsString();
-            string itemDomain = itemStackDefinition["domain"].AsString();
+            string? itemCode = itemStackDefinition["itemCode"].AsString();
+            string? itemDomain = itemStackDefinition["domain"].AsString();
             EnumItemClass itemType = (EnumItemClass)Enum.Parse(typeof(EnumItemClass), itemStackDefinition["type"].AsString("Item"));
             int quantity = itemStackDefinition["quantity"].AsInt(1);
             JsonObject attributes = itemStackDefinition["attributes"];
+
+            if (itemCode == null)
+            {
+                LogError($"No 'itemCode' in system request");
+                return null;
+            }
+
+            if (itemDomain == null)
+            {
+                LogError($"No 'domain' in system request");
+                return null;
+            }
 
             JsonItemStack jsonItemStack = new()
             {

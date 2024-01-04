@@ -27,11 +27,11 @@ public class Block<TResistBehavior> : BaseSystem
     {
         mSoundSystemName = definition["soundSystem"].AsString();
 
-        if (definition["blocks"].Token is not JObject blocks) return;
+        if (definition.Token is not JObject blocks) return;
 
         foreach ((string blockCode, JToken? block) in blocks)
         {
-            if (block == null) continue;
+            if (block is not JObject) continue;
             JsonObject blockObject = new(block);
             mParries.Add(blockCode, new(blockObject));
             mSounds.Add(blockCode, blockObject["sound"].AsString());
@@ -56,12 +56,12 @@ public class Block<TResistBehavior> : BaseSystem
     {
         if (!base.Process(slot, player, parameters)) return false;
 
-        string action = parameters["action"].AsString();
+        string action = parameters["action"].AsString("start");
         switch (action)
         {
             case "start":
                 if (mApi.Side != EnumAppSide.Server) return true;
-                string code = parameters["code"].AsString();
+                string code = parameters["block"].AsString();
                 ScheduleBlock(player, code);
                 break;
             case "stop":
@@ -128,23 +128,25 @@ internal class BlockData
     public const int timeoutMs = 60000;
 
     public int delay;
-    public float yawLeft;
-    public float yawRight;
-    public float pitchBottom;
-    public float pitchTop;
-    public Utils.DamageModifiers.TieredModifier damageModifier;
+    public float yawLeft = -180 * GameMath.DEG2RAD;
+    public float yawRight = 180 * GameMath.DEG2RAD;
+    public float pitchBottom = -180 * GameMath.DEG2RAD;
+    public float pitchTop = 180 * GameMath.DEG2RAD;
+    public Utils.DamageModifiers.TieredModifier? damageModifier = null;
 
     public BlockData(JsonObject definition)
     {
         delay = definition["delay"].AsInt(0);
-        damageModifier = Utils.DamageModifiers.GetTiered(definition["modifier"]);
+        if (definition.KeyExists("modifier")) damageModifier = Utils.DamageModifiers.GetTiered(definition["modifier"]);
 
-        JsonObject direction = definition["direction"];
-        yawLeft = direction["left"].AsFloat() * GameMath.DEG2RAD;
-        yawRight = direction["right"].AsFloat() * GameMath.DEG2RAD;
-        pitchBottom = direction["bottom"].AsFloat() * GameMath.DEG2RAD;
-        pitchTop = direction["top"].AsFloat() * GameMath.DEG2RAD;
-
+        if (definition.KeyExists("direction"))
+        {
+            JsonObject direction = definition["direction"];
+            yawLeft = direction["left"].AsFloat() * GameMath.DEG2RAD;
+            yawRight = direction["right"].AsFloat() * GameMath.DEG2RAD;
+            pitchBottom = direction["bottom"].AsFloat() * GameMath.DEG2RAD;
+            pitchTop = direction["top"].AsFloat() * GameMath.DEG2RAD;
+        }
     }
 
     public IResist AddToBehavior(ITempResistEntityBehavior behavior)

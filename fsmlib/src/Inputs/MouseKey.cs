@@ -21,7 +21,7 @@ public sealed class MouseKey : BaseInput, IMouseInput
     {
         Name = definition["name"].AsString("");
         Key = (EnumMouseButton)Enum.Parse(typeof(EnumMouseButton), definition["key"].AsString());
-        EventType = definition["type"].AsString() switch
+        EventType = definition["type"].AsString("pressed") switch
         {
             ("released") => MouseEventType.MouseUp,
             ("pressed") => MouseEventType.MouseDown,

@@ -1,4 +1,5 @@
 ﻿using MaltiezFSM.Framework;
+using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
@@ -33,5 +34,24 @@ namespace MaltiezFSM.API
         protected void LogVerbose(string message) => Logger.Verbose(mApi, this, LogFormat(message));
 
         protected string LogFormat(string message) => $"({mCollectible.Code}:{mCode}) {message}";
+
+        protected static List<JsonObject> ParseField(JsonObject definition, string field)
+        {
+            List<JsonObject> fields = new();
+            if (!definition.KeyExists(field)) return fields;
+
+            if (definition[field].IsArray())
+            {
+                foreach (JsonObject fieldObject in definition[field].AsArray())
+                {
+                    fields.Add(fieldObject);
+                }
+            }
+            else
+            {
+                fields.Add(definition[field]);
+            }
+            return fields;
+        }
     }
 }

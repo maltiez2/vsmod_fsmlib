@@ -13,9 +13,11 @@ public class BehaviourAttributesParser : IBehaviourAttributesParser
 
     public bool ParseDefinition(IFactory<IOperation>? operationTypes, IFactory<ISystem>? systemTypes, IFactory<IInput>? inputTypes, JsonObject behaviourAttributes, CollectibleObject collectible)
     {
-        if (systemTypes != null) Utils.Iterate(behaviourAttributes["systems"], (code, definition) => AddObject(code, definition, collectible, systemTypes, mSystems));
-        if (operationTypes != null) Utils.Iterate(behaviourAttributes["operations"], (code, definition) => AddObject(code, definition, collectible, operationTypes, mOperations));
-        if (inputTypes != null) Utils.Iterate(behaviourAttributes["inputs"], (code, definition) => AddObject(code, definition, collectible, inputTypes, mInputs));
+        if (systemTypes == null || operationTypes == null || inputTypes == null) return false;
+        
+        Utils.Iterate(behaviourAttributes["systems"],    (code, definition) => AddObject(code, definition, collectible, systemTypes,    mSystems));
+        Utils.Iterate(behaviourAttributes["operations"], (code, definition) => AddObject(code, definition, collectible, operationTypes, mOperations));
+        Utils.Iterate(behaviourAttributes["inputs"],     (code, definition) => AddObject(code, definition, collectible, inputTypes,     mInputs));
 
         return true;
     }
