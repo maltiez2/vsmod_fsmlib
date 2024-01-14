@@ -19,4 +19,6 @@ public class StatusInput : BaseInput, IStatusInput
     public string Activity { get; private set; }
     public bool Invert { get; private set; }
     public IStatusInput.StatusType Status { get; private set; }
+
+    public override string ToString() => $"Status input: {Status} (activity: {Activity}, invert: {Invert})";
 }

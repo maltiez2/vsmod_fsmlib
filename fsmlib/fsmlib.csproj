@@ -9,9 +9,12 @@
 
   <ItemGroup>
     <Reference Include="AnimationManager">
-      <HintPath>..\..\AnimationManager\AnimationManager\bin\Release\Mods\mod\AnimationManager.dll</HintPath>
+      <HintPath>..\..\AnimationManager_19\AnimationManager\bin\Release\Mods\mod\AnimationManager.dll</HintPath>
       <Private>False</Private>
-      <EmbedInteropTypes>False</EmbedInteropTypes>
+    </Reference>
+    <Reference Include="ImGui.NET">
+      <HintPath>..\..\VSImGui\Releases\vsimgui\ImGui.NET.dll</HintPath>
+	    <Private>False</Private>
     </Reference>
     <Reference Include="SimpleExpressionEngine">
       <HintPath>..\..\configlib\Releases\configlib\SimpleExpressionEngine.dll</HintPath>
@@ -19,6 +22,10 @@
     <Reference Include="VintagestoryAPI">
       <HintPath>..\..\game_19/VintagestoryAPI.dll</HintPath>
       <Private>false</Private>
+    </Reference>
+    <Reference Include="VSImGui">
+      <HintPath>..\..\VSImGui\Releases\vsimgui\VSImGui.dll</HintPath>
+		<Private>False</Private>
     </Reference>
     <Reference Include="VSSurvivalMod">
       <HintPath>..\..\game_19/Mods/VSSurvivalMod.dll</HintPath>

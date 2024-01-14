@@ -70,7 +70,7 @@ public class Requirements : BaseSystem, IItemStackHolder
             if (!requirement.Verify(player))
             {
                 fulfilled = false;
-                (player as IServerPlayer)?.SendMessage(GlobalConstants.InfoLogChatGroup, Lang.Get("fsmlib:requirements-missing", requirement.ToString()), EnumChatType.Notification);
+                (player as IServerPlayer)?.SendMessage(GlobalConstants.InfoLogChatGroup, Lang.GetL((player as IServerPlayer)?.LanguageCode ?? "en" , "fsmlib:requirements-missing", requirement.ToString()), EnumChatType.Notification);
             }
         }
 

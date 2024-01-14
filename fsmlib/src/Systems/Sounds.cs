@@ -1,12 +1,9 @@
-﻿using HarmonyLib;
-using Newtonsoft.Json.Linq;
+﻿using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
-
-
 
 namespace MaltiezFSM.Systems;
 
@@ -80,6 +77,7 @@ internal sealed class SoundSequenceTimer
     private readonly Entity mTarget;
     private long mCurrentTimer;
     private int mCurrentSound;
+    private int mCurrentMilliseconds = 0;
 
     public SoundSequenceTimer(IWorldAccessor world, Entity target, List<TimedSound> sounds)
     {
@@ -88,18 +86,26 @@ internal sealed class SoundSequenceTimer
         mTarget = target;
 
         mCurrentSound = 0;
-        mCurrentTimer = mWorld.RegisterGameTickListener(Play, (int)mSounds[mCurrentSound].Time.TotalMilliseconds);
+        mCurrentMilliseconds = 0;
+        mCurrentTimer = mWorld.RegisterCallback(Play, (int)mSounds[mCurrentSound].Time.TotalMilliseconds);
     }
     private void Play(float dt)
     {
         mSounds[mCurrentSound].Sound.Play(mWorld, mTarget);
         mCurrentSound++;
-        if (mCurrentSound >= mSounds.Count) return;
-        mCurrentTimer = mWorld.RegisterGameTickListener(Play, (int)(mSounds[mCurrentSound].Time.TotalMilliseconds - dt * 1000));
+        if (mCurrentSound >= mSounds.Count)
+        {
+            Stop();
+            return;
+        }
+        mCurrentTimer = mWorld.RegisterCallback(Play, (int)(mSounds[mCurrentSound].Time.TotalMilliseconds - dt * 1000 - mCurrentMilliseconds));
+        mCurrentMilliseconds += (int)mSounds[mCurrentSound].Time.TotalMilliseconds;
     }
     public void Stop()
     {
         mWorld.UnregisterCallback(mCurrentTimer);
+        mCurrentSound = 0;
+        mCurrentMilliseconds = 0;
     }
 }
 
@@ -107,14 +113,31 @@ internal sealed class SoundSequence
 {
     private readonly List<TimedSound> mSounds = new();
 
-    public SoundSequence(JsonObject definition)
+    public SoundSequence(JsonObject definition, Action<string> logger)
     {
+        int counter = -1;
         foreach (JsonObject sound in definition.AsArray())
         {
-            if (sound.Token is not JObject || sound.Token is not JArray) continue;
+            counter++;
+
+            if (!sound.KeyExists("time"))
+            {
+                logger.Invoke($"sound with index '{counter}' in sound sequence definition does not contain 'time' field");
+                continue;
+            }
             
-            TimedSound timedSound = new(TimeSpan.FromMilliseconds(sound["time"].AsInt(0)), ConstructSound(sound));
-            mSounds.Add(timedSound);
+            if (!sound["time"].IsArray())
+            {
+                TimedSound timedSound = new(TimeSpan.FromMilliseconds(sound["time"].AsInt(0)), ConstructSound(sound));
+                mSounds.Add(timedSound);
+                continue;
+            }
+
+            foreach (JsonObject time in sound["time"].AsArray())
+            {
+                TimedSound timedSound = new(TimeSpan.FromMilliseconds(time.AsInt(0)), ConstructSound(sound));
+                mSounds.Add(timedSound);
+            }
         }
 
         mSounds.Sort((first, second) => TimeSpan.Compare(first.Time, second.Time));
@@ -157,7 +180,7 @@ public class Sounds : BaseSystem, ISoundSystem
 
             if (soundDefinition is JArray)
             {
-                mSequences.Add(soundCode, new(new JsonObject(soundDefinition)));
+                mSequences.Add(soundCode, new(new JsonObject(soundDefinition), message => LogError($"Sound '{soundCode}': {message}")));
             }
             else if (soundDefinition is JObject)
             {
@@ -227,17 +250,7 @@ public class Sounds : BaseSystem, ISoundSystem
     }
     public void PlaySound(string soundCode, IPlayer player)
     {
-        if (mApi.Side != EnumAppSide.Server) return;
-
-        if (mSounds.ContainsKey(soundCode))
-        {
-            mSounds[soundCode].Play(player.Entity.World, player.Entity);
-        }
-        else if (mSequences.ContainsKey(soundCode))
-        {
-            SoundSequenceTimer timer = mSequences[soundCode].Play(player.Entity.World, player.Entity);
-            mTimers.Add((player.Entity.EntityId, soundCode), timer);
-        }
+        PlaySound(soundCode, player.Entity);
     }
     public void PlaySound(string soundCode, Entity target)
     {
@@ -250,17 +263,16 @@ public class Sounds : BaseSystem, ISoundSystem
         else if (mSequences.ContainsKey(soundCode))
         {
             SoundSequenceTimer timer = mSequences[soundCode].Play(mApi.World, target);
-            mTimers.Add((target.EntityId, soundCode), timer);
+            if (mTimers.ContainsKey((target.EntityId, soundCode)))
+            {
+                mTimers[(target.EntityId, soundCode)].Stop();
+            }
+            mTimers[(target.EntityId, soundCode)] = timer;
         }
     }
     public void StopSound(string soundCode, IPlayer player)
     {
-        if (mApi.Side != EnumAppSide.Server || mSequences.ContainsKey(soundCode)) return;
-
-        if (mTimers.ContainsKey((player.Entity.EntityId, soundCode)))
-        {
-            mTimers[(player.Entity.EntityId, soundCode)].Stop();
-        }
+        StopSound(soundCode, player.Entity);
     }
     public void StopSound(string soundCode, Entity target)
     {
@@ -269,6 +281,7 @@ public class Sounds : BaseSystem, ISoundSystem
         if (mTimers.ContainsKey((target.EntityId, soundCode)))
         {
             mTimers[(target.EntityId, soundCode)].Stop();
+            mTimers.Remove((target.EntityId, soundCode));
         }
     }
 }

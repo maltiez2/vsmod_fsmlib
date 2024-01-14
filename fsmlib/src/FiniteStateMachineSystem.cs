@@ -1,14 +1,18 @@
 ﻿using HarmonyLib;
 using MaltiezFSM.API;
+using MaltiezFSM.Framework;
 using Newtonsoft.Json.Linq;
+using System;
+using System.Collections.Generic;
 using System.Linq;
-using Vintagestory;
+using System.Reflection;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.Server;
 using Vintagestory.GameContent;
+using Vintagestory.Server;
 
 namespace MaltiezFSM;
 
@@ -21,15 +25,26 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
     private IOperationInputInvoker? mOperationInputInvoker;
     private ICustomInputInvoker? mCustomInputInvoker;
     private Additional.ParticleEffectsManager? mParticleEffectsManager;
+    private readonly List<IInputInvoker> mInputInvokers = new();
+    private ICoreAPI? mApi;
+
 
     public override void Start(ICoreAPI api)
     {
         base.Start(api);
 
+        mApi = api;
+
+        if (api is ICoreClientAPI clientApiForImGuiDebugWindow)
+        {
+            ImGuiDebugWindow.Init(clientApiForImGuiDebugWindow);
+        }
+
         Framework.Logger.Init(api.Logger);
         Framework.Logger.Debug(api, this, "Stared initializing");
 
         Patch();
+        if (api.Side == EnumAppSide.Server) PatchServer();
 
         api.RegisterItemClass("NoMelee", typeof(NoMelee));
         api.RegisterItemClass("NoMeleeStrict", typeof(NoMeleeStrict));
@@ -53,7 +68,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         }
         if (api is ICoreServerAPI serverApi)
         {
-            RegisterInputInvokers();
+            RegisterInputInvokers(serverApi);
             serverApi.Event.PlayerJoin += (byPlayer) => AddPlayerBehavior(byPlayer.Entity);
         }
         RegisterInputs();
@@ -70,7 +85,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         if (mInputManager == null) return;
 
         Framework.KeyInputInvoker keyInput = new(api);
-        Framework.StatusInputInvoker statusInput = new(api);
+        Framework.StatusInputInvokerClient statusInput = new(api);
         Framework.DropItemsInputInvoker dropItems = new(api);
         Framework.ActiveSlotChangedInputInvoker activeSlotChanged = new(api);
         Framework.CustomInputInvoker customInput = new();
@@ -83,18 +98,34 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         mInputManager.RegisterInvoker(activeSlotChanged, typeof(ISlotChangedBefore));
         mInputManager.RegisterInvoker(customInput, typeof(ICustomInput));
 
+        mInputInvokers.Add(keyInput);
+        mInputInvokers.Add(statusInput);
+        mInputInvokers.Add(dropItems);
+        mInputInvokers.Add(activeSlotChanged);
+        mInputInvokers.Add(customInput);
+
         mCustomInputInvoker = customInput;
     }
-    private void RegisterInputInvokers()
+    private void RegisterInputInvokers(ICoreServerAPI api)
     {
         if (mInputManager == null) return;
 
         Framework.OperationInputInvoker invoker = new();
         mOperationInputInvoker = invoker;
         Framework.CustomInputInvoker customInput = new();
+        Framework.StatusInputInvokerServer statusInput = new(api);
+        Framework.ActiveSlotChangedInputInvoker activeSlotChanged = new(api);
 
         mInputManager.RegisterInvoker(invoker, typeof(IOperationInput));
         mInputManager.RegisterInvoker(customInput, typeof(ICustomInput));
+        mInputManager.RegisterInvoker(statusInput, typeof(IStatusInput));
+        mInputManager.RegisterInvoker(activeSlotChanged, typeof(ISlotChangedAfter));
+        mInputManager.RegisterInvoker(activeSlotChanged, typeof(ISlotChangedBefore));
+
+        mInputInvokers.Add(invoker);
+        mInputInvokers.Add(customInput);
+        mInputInvokers.Add(statusInput);
+        mInputInvokers.Add(activeSlotChanged);
 
         mCustomInputInvoker = customInput;
     }
@@ -128,6 +159,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         mSystemFactory.Register<Systems.Requirements>("Requirements");
         mSystemFactory.Register<Systems.Sounds>("Sounds");
         mSystemFactory.Register<Systems.Stats>("Stats");
+        mSystemFactory.Register<Systems.CameraSettings>("CameraSettings");
 
         mSystemFactory.Register<Systems.ItemAnimation>("ItemAnimation");
         mSystemFactory.Register<Systems.PlayerAnimation>("PlayerAnimation");
@@ -143,6 +175,22 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         mOperationFactory.Register<Operations.Continuous>("Continuous");
     }
 
+    public static bool TriggerAfterActiveSlotChanged(ServerEventManager __instance, IServerPlayer player, int fromSlot, int toSlot)
+    {
+        ActiveSlotChangeEventArgs arg = new(fromSlot, toSlot);
+
+        MulticastDelegate? eventDelegate = (MulticastDelegate?)__instance.GetType()?.GetField("AfterActiveSlotChanged", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(__instance);
+        if (eventDelegate != null)
+        {
+            foreach (Delegate handler in eventDelegate.GetInvocationList())
+            {
+                EventHelper.InvokeSafe(handler, __instance.Logger, "AfterActiveSlotChanged", player, arg);
+            }
+        }
+
+        return false;
+    }
+
     private static void Patch()
     {
         new Harmony("fsmlib").Patch(
@@ -150,9 +198,20 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
                     prefix: new HarmonyMethod(AccessTools.Method(typeof(Systems.AdvancedEntityProjectile), nameof(Systems.AdvancedEntityProjectile.ImpactOnEntityPatch)))
                     );
     }
+    private static void PatchServer()
+    {
+        new Harmony("fsmlib").Patch(
+                    AccessTools.Method(typeof(ServerEventManager), nameof(ServerEventManager.TriggerAfterActiveSlotChanged)),
+                    prefix: new HarmonyMethod(AccessTools.Method(typeof(FiniteStateMachineSystem), nameof(TriggerAfterActiveSlotChanged)))
+                    );
+    }
     private static void Unpatch()
     {
         new Harmony("fsmlib").Unpatch(typeof(EntityProjectile).GetMethod("impactOnEntity", AccessTools.all), HarmonyPatchType.Prefix, "fsmlib");
+    }
+    private static void UnpatchServer()
+    {
+        new Harmony("fsmlib").Unpatch(AccessTools.Method(typeof(ServerEventManager), nameof(ServerEventManager.TriggerAfterActiveSlotChanged)), HarmonyPatchType.Prefix, "fsmlib");
     }
 
     internal IFactory<IOperation>? GetOperationFactory() => mOperationFactory;
@@ -227,7 +286,13 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
     public override void Dispose()
     {
         mInputManager?.Dispose();
+        foreach (IInputInvoker invoker in mInputInvokers)
+        {
+            invoker.Dispose();
+        }
+        ImGuiDebugWindow.DisposeInstance();
         Unpatch();
+        if (mApi?.Side == EnumAppSide.Server) UnpatchServer();
 
         base.Dispose();
     }

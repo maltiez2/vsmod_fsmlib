@@ -69,4 +69,6 @@ public sealed class MouseKey : BaseInput, IMouseInput
 
         return true;
     }
+
+    public override string ToString() => $"{EventType}: {Key}, {Modifiers}";
 }

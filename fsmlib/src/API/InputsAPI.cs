@@ -1,6 +1,7 @@
 ﻿using MaltiezFSM.Framework;
 using System;
 using System.Collections.Generic;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 
@@ -16,7 +17,7 @@ public interface IInputManager : IDisposable
 }
 public interface IInputInvoker : IDisposable
 {
-    public delegate bool InputCallback(Utils.SlotData slot, IPlayer player, IInput input);
+    public delegate bool InputCallback(Utils.SlotData slot, IPlayer player, IInput input, bool synchronize = true);
     void RegisterInput(IInput input, InputCallback callback, CollectibleObject collectible);
 }
 public interface IInput : IFactoryProduct
@@ -52,5 +53,21 @@ public struct KeyPressModifiers
         if (Ctrl == true) codes.Add("ctrl");
         if (Shift == true) codes.Add("shift");
         return codes;
+    }
+
+    public override readonly string ToString()
+    {
+        StringBuilder result = new();
+
+        result.Append("Modifiers: ");
+        if (Alt == true) result.Append(" Alt");
+        if (Ctrl == true) result.Append(" Ctrl");
+        if (Shift == true) result.Append(" Shift");
+        if (Alt == false) result.Append(" ~Alt");
+        if (Ctrl == false) result.Append(" ~Ctrl");
+        if (Shift == false) result.Append(" ~Shift");
+        if (Alt == null && Ctrl == null && Shift == null) result.Append(" None");
+
+        return result.ToString();
     }
 }

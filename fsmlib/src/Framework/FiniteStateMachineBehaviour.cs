@@ -45,7 +45,9 @@ namespace MaltiezFSM.Framework
             IOperationInputInvoker? operationInputInvoker = api.ModLoader.GetModSystem<FiniteStateMachineSystem>().GetOperationInputInvoker();
 
             IBehaviourAttributesParser parser = new TAttributesFormat();
-            _ = parser.ParseDefinition(factories.GetOperationFactory(), factories.GetSystemFactory(), factories.GetInputFactory(), mProperties, collObj);
+            bool successfullyParsed = parser.ParseDefinition(api, factories.GetOperationFactory(), factories.GetSystemFactory(), factories.GetInputFactory(), mProperties, collObj);
+
+            if (!successfullyParsed) return;
 
             try
             {

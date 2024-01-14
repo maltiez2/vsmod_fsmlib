@@ -61,29 +61,29 @@ public sealed class InputManager : IInputManager
     {
         if (mInputs.Count > inputIndex)
         {
-            _ = InputHandler(slot, player, mInputs[inputIndex]);
+            _ = InputHandler(slot, player, mInputs[inputIndex], false);
         }
     }
-    private bool InputHandler(Utils.SlotData slot, IPlayer player, IInput input)
+    private bool InputHandler(Utils.SlotData slot, IPlayer player, IInput input, bool synchronize = true)
     {
-        object inputObject = (object)input;
-        Type inputTypeType = inputObject.GetType();
-        string inputType = Utils.GetTypeName(inputTypeType);
-        Console.WriteLine($"Input: {inputType}, slot: {slot.SlotType}");
-        
-        if (mClientPacketSender != null)
-        {
-            mClientPacketSender.SendPacket(input.Index, slot);
-        }
-        else if (mServerPacketSender != null && player is IServerPlayer serverPlayer)
+        if (synchronize && mServerPacketSender != null && player is IServerPlayer serverPlayer)
         {
             mServerPacketSender.SendPacket(input.Index, slot, serverPlayer);
+        }
+        else if (synchronize && mClientPacketSender != null)
+        {
+            mClientPacketSender.SendPacket(input.Index, slot);
         }
 
         InputCallback callback = mCallbacks[input.Index];
         ItemSlot? playerSlot = slot.Slot(player);
         if (playerSlot == null) return false;
-        return callback.Invoke(playerSlot, player, input);
+        bool handled = callback.Invoke(playerSlot, player, input);
+
+#if DEBUG
+        InputManagerDebugWindow.Enqueue(slot, player, input, handled, mClientPacketSender != null, !synchronize);
+#endif
+        return handled;
     }
 
     public void Dispose()

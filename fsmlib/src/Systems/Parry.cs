@@ -62,7 +62,17 @@ public class Parry<TResistBehavior> : BaseSystem
         {
             case "start":
                 if (mApi.Side != EnumAppSide.Server) return true;
-                string code = parameters["parry"].AsString();
+                string? code = parameters["parry"].AsString();
+                if (code == null)
+                {
+                    LogError($"No 'parry' in system request");
+                    return false;
+                }
+                if (!mParries.ContainsKey(code))
+                {
+                    LogError($"Parry with code '{code}' not found");
+                    return false;
+                }
                 ScheduleParry(player, code);
                 break;
             case "stop":

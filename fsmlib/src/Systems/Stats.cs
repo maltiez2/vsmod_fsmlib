@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
-
-
 namespace MaltiezFSM.Systems;
 
 internal class Stats : BaseSystem
@@ -23,7 +21,7 @@ internal class Stats : BaseSystem
     {
         if (!base.Process(slot, player, parameters)) return false;
 
-        string? code = parameters["code"].AsString();
+        string? code = parameters["stat"].AsString();
 
         if (code == null)
         {

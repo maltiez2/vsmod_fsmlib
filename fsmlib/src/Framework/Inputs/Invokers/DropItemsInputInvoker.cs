@@ -82,7 +82,7 @@ public sealed class DropItemsInputInvoker : IInputInvoker
         IEnumerable<Utils.SlotData> slots = Utils.SlotData.GetForAllSlots(slotType, mCollectibles[input], mClientApi.World.Player);
 
         bool handled = false;
-        foreach (Utils.SlotData slotData in slots.Where(slotData => mCallbacks[input](slotData, mClientApi.World.Player, input))) // Unreadable but now warning... I guess win win?
+        foreach (Utils.SlotData slotData in slots.Where(slotData => mCallbacks[input](slotData, mClientApi.World.Player, input))) // Unreadable but no warning... I guess win win?
         {
             handled = true;
         }

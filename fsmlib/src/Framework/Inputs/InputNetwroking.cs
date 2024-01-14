@@ -28,7 +28,6 @@ internal sealed class InputPacketSenderClient : IDisposable
 {
     private readonly InputHandler mHandler;
     private readonly IClientNetworkChannel mClientNetworkChannel;
-    private readonly IPlayer mPlayer;
     private readonly List<InputPacket> mAggregationQueue = new();
     private readonly long mListener;
     private readonly ICoreClientAPI mClientApi;
@@ -37,15 +36,11 @@ internal sealed class InputPacketSenderClient : IDisposable
     public InputPacketSenderClient(ICoreClientAPI api, InputHandler handler, string channelName)
     {
         mHandler = handler;
-        mPlayer = api.World.Player;
         mClientApi = api;
 
-        api.Network.RegisterChannel(channelName)
+        mClientNetworkChannel = api.Network.RegisterChannel(channelName)
             .RegisterMessageType<AggregatedInputPacket>()
             .SetMessageHandler<AggregatedInputPacket>(OnClientPacket);
-
-        mClientNetworkChannel = api.Network.RegisterChannel(channelName)
-            .RegisterMessageType<AggregatedInputPacket>();
 
         mListener = api.World.RegisterGameTickListener(SendAggregatedPacket, 0);
     }
@@ -69,11 +64,15 @@ internal sealed class InputPacketSenderClient : IDisposable
     {
         foreach (InputPacket packet in aggregatedPacket.Packets)
         {
-            mHandler(packet.InputIndex, packet.Slot, mPlayer);
+            mHandler(packet.InputIndex, packet.Slot, mClientApi.World.Player);
         }
     }
     private void SendAggregatedPacket(float dt)
     {
+#if DEBUG
+        InputManagerDebugWindow.EnqueuePacket(mAggregationQueue.Count, true);
+#endif
+        if (mAggregationQueue.Count == 0) return;
         mClientNetworkChannel.SendPacket(new AggregatedInputPacket()
         {
             Packets = mAggregationQueue.ToArray()
@@ -96,12 +95,9 @@ internal sealed class InputPacketSenderServer : IDisposable
         mHandler = handler;
         mServerApi = api;
 
-        api.Network.RegisterChannel(channelName)
+        mServerNetworkChannel = api.Network.RegisterChannel(channelName)
             .RegisterMessageType<AggregatedInputPacket>()
             .SetMessageHandler<AggregatedInputPacket>(OnServerPacket);
-
-        mServerNetworkChannel = api.Network.RegisterChannel(channelName)
-            .RegisterMessageType<AggregatedInputPacket>();
 
         mListener = api.World.RegisterGameTickListener(SendAggregatedPacket, 0);
     }
@@ -132,13 +128,19 @@ internal sealed class InputPacketSenderServer : IDisposable
     }
     private void SendAggregatedPacket(float dt)
     {
+        int packets = 0;
         foreach ((IServerPlayer? player, List<InputPacket>? packet) in mAggregationQueue)
         {
+            if (packet == null || packet.Count == 0) continue;
             mServerNetworkChannel.SendPacket(new AggregatedInputPacket()
             {
                 Packets = packet.ToArray()
             }, player);
+            packets += mAggregationQueue[player].Count;
             mAggregationQueue[player].Clear();
         }
+#if DEBUG
+        InputManagerDebugWindow.EnqueuePacket(packets, false);
+#endif
     }
 }

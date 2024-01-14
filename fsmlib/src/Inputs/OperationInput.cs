@@ -21,6 +21,8 @@ public class OperationStarted : OperationInput, IOperationStarted
     public OperationStarted(int id, string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api) : base(id, code, definition, collectible, api)
     {
     }
+
+    public override string ToString() => $"Operation started: {OperationCode}";
 }
 
 public class OperationFinished : OperationInput, IOperationFinished
@@ -28,4 +30,6 @@ public class OperationFinished : OperationInput, IOperationFinished
     public OperationFinished(int id, string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api) : base(id, code, definition, collectible, api)
     {
     }
+
+    public override string ToString() => $"Operation finished: {OperationCode}";
 }

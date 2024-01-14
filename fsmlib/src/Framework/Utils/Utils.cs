@@ -694,6 +694,15 @@ public static class Utils
 
             return ("", -1);
         }
+
+        public override string ToString()
+        {
+            StringBuilder result = new();
+            result.Append(SlotType);
+            if (InventoryId != "") result.Append($" : {InventoryId}");
+            if (SlotId != -1) result.Append($" : {SlotId}");
+            return result.ToString();
+        }
     }
 
     public static string PrintList(IEnumerable<string> list)

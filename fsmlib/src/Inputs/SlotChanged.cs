@@ -17,6 +17,8 @@ public class BeforeSlotChanged : BaseInput, ISlotChangedBefore
     {
         EventType = (ISlotInput.SlotEventType)Enum.Parse(typeof(ISlotInput.SlotEventType), definition["type"].AsString("FromSlot"));
     }
+
+    public override string ToString() => $"Before slot changed: {EventType}";
 }
 
 public class AfterSlotChanged : BaseInput, ISlotChangedAfter
@@ -27,4 +29,6 @@ public class AfterSlotChanged : BaseInput, ISlotChangedAfter
     {
         EventType = (ISlotInput.SlotEventType)Enum.Parse(typeof(ISlotInput.SlotEventType), definition["type"].AsString("ToSlot"));
     }
+
+    public override string ToString() => $"After slot changed: {EventType}";
 }

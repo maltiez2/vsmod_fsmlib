@@ -112,5 +112,7 @@ namespace MaltiezFSM.Operations
                 request.Process(slot, player);
             }
         }
+
+        public override string ToString() => $"Continuous: {mCode} ({mCollectible.Code})";
     }
 }

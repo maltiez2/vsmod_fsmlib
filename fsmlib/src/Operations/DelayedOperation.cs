@@ -319,7 +319,7 @@ public class Delayed : FactoryProduct, IOperation
     {
         foreach (string input in inputs)
         {
-            mTransitionsInitialData.Add((stateFrom, input), (stateTo, systems, outcome));
+            mTransitionsInitialData.TryAdd((stateFrom, input), (stateTo, systems, outcome));
             mTriggerConditions.Add(Transition.InputTrigger(input, stateFrom, stateTo));
         }
     }
@@ -327,8 +327,8 @@ public class Delayed : FactoryProduct, IOperation
     {
         foreach (string inputInitial in inputs)
         {
-            mTransitionsInitialData.Add((intermediateState, inputInitial), (timeoutState, systems, Outcome.Finished));
-            mTimersInitialData.Add((initialState, inputInitial), timeout);
+            mTransitionsInitialData.TryAdd((intermediateState, inputInitial), (timeoutState, systems, Outcome.Finished));
+            mTimersInitialData.TryAdd((initialState, inputInitial), timeout);
         }
         mTriggerConditions.Add(Transition.TimeoutTrigger(intermediateState, timeoutState));
     }
@@ -361,4 +361,6 @@ public class Delayed : FactoryProduct, IOperation
         Dispose(disposing: true);
         GC.SuppressFinalize(this);
     }
+
+    public override string ToString() => $"Delayed: {mCode} ({mCollectible.Code})";
 }

@@ -58,4 +58,6 @@ public sealed class KeyboardKey : BaseInput, IKeyInput
             HotKeyCodes = Modifiers.Codes.Append(HotKey).ToArray()
         };
     }
+
+    public override string ToString() => $"{EventType}: {Key}, {Modifiers}";
 }

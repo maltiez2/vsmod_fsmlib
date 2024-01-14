@@ -27,7 +27,8 @@ public sealed class Melee : BaseSystem
 
         if (definition.KeyExists("attack") && definition["attack"].KeyExists("code"))
         {
-            mAttacks.Add(definition["attack"]["code"].AsString(), new(definition["attack"], api));
+            string attackCode = definition["attack"]["code"].AsString();
+            mAttacks.Add(attackCode, new(attackCode, definition["attack"], api));
             return;
         }
 
@@ -40,7 +41,7 @@ public sealed class Melee : BaseSystem
         foreach ((string attackCode, JToken? attack) in attacks)
         {
             if (attack == null) continue;
-            mAttacks.Add(attackCode, new(new JsonObject(attack), api));
+            mAttacks.Add(attackCode, new(attackCode, new JsonObject(attack), api));
         }
     }
 
@@ -121,9 +122,11 @@ internal sealed class MeleeAttack
     private readonly bool mStopOnHandled = false;
     private readonly TimeSpan mDuration;
     private readonly StatsModifier? mDurationModifier;
+    private readonly string mCode;
 
-    public MeleeAttack(JsonObject definition, ICoreAPI api)
+    public MeleeAttack(string code, JsonObject definition, ICoreAPI api)
     {
+        mCode = code;
         mDuration = TimeSpan.FromMilliseconds(definition["duration"].AsInt());
         mHitWindow = new(definition);
         mCustomInputInvoker = api.ModLoader.GetModSystem<FiniteStateMachineSystem>().CustomInputInvoker;
