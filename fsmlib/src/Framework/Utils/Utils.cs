@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json.Linq;
 using ProtoBuf;
+using SimpleExpressionEngine;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,6 +13,45 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
 namespace MaltiezFSM.Framework;
+
+public abstract class BaseContext : IContext
+{
+    protected readonly ICoreAPI mApi;
+
+    public BaseContext(ICoreAPI api)
+    {
+        mApi = api;
+    }
+
+    public abstract double ResolveVariable(string name);
+
+    public double CallFunction(string name, double[] arguments)
+    {
+        return name switch
+        {
+            "sin" => Math.Sin(arguments[0]),
+            "cos" => Math.Cos(arguments[0]),
+            "abs" => Math.Abs(arguments[0]),
+            "sqrt" => Math.Sqrt(arguments[0]),
+            "ceiling" => Math.Ceiling(arguments[0]),
+            "floor" => Math.Floor(arguments[0]),
+            "clamp" => Math.Clamp(arguments[0], arguments[1], arguments[2]),
+            "exp" => Math.Exp(arguments[0]),
+            "max" => Math.Max(arguments[0], arguments[1]),
+            "min" => Math.Min(arguments[0], arguments[1]),
+            "log" => Math.Log(arguments[0]),
+            "round" => Math.Round(arguments[0]),
+            "sign" => Math.Sign(arguments[0]),
+            _ => UnimplementedFunction(name)
+        };
+    }
+
+    private double UnimplementedFunction(string name)
+    {
+        Logger.Error(mApi, this, $"Math function '{name}' is not implemented. Implemented functions: sin, cos, abs, sqrt, ceiling, floor, clamp, exp, max, min, log, round, sign.");
+        return 0;
+    }
+}
 
 public static class Utils
 {

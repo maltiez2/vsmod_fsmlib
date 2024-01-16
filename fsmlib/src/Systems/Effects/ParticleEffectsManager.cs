@@ -3,11 +3,14 @@ using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
+namespace MaltiezFSM.Systems;
 
+public interface IParticleEffectsManager
+{
+    AdvancedParticleProperties? Get(string code, string domain);
+}
 
-namespace MaltiezFSM.Additional;
-
-public class ParticleEffectsManager
+public class ParticleEffectsManager : IParticleEffectsManager
 {
     private readonly Dictionary<string, AdvancedParticleProperties> mParticleProperties = new();
 

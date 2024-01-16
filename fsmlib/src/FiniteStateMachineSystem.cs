@@ -24,7 +24,8 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
     private IInputManager? mInputManager;
     private IOperationInputInvoker? mOperationInputInvoker;
     private ICustomInputInvoker? mCustomInputInvoker;
-    private Additional.ParticleEffectsManager? mParticleEffectsManager;
+    private Systems.ParticleEffectsManager? mParticleEffectsManager;
+    private Systems.SoundEffectsManager? mSoundEffectsManager;
     private readonly List<IInputInvoker> mInputInvokers = new();
     private ICoreAPI? mApi;
 
@@ -78,6 +79,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
     public override void AssetsLoaded(ICoreAPI api)
     {
         mParticleEffectsManager = new(api);
+        mSoundEffectsManager = new(api);
     }
 
     private void RegisterInputInvokers(ICoreClientAPI api)
@@ -220,7 +222,9 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
     internal IInputManager? GetInputManager() => mInputManager;
     internal IOperationInputInvoker? GetOperationInputInvoker() => mOperationInputInvoker;
 
-    public Additional.ParticleEffectsManager? ParticleEffects => mParticleEffectsManager;
+    public Systems.IParticleEffectsManager? ParticleEffects => mParticleEffectsManager;
+    public Systems.ISoundEffectsManager? SoundEffects => mSoundEffectsManager;
+
     public ICustomInputInvoker? CustomInputInvoker => mCustomInputInvoker;
     public void RegisterOperation<TProductClass>(string name) where TProductClass : FactoryProduct, IOperation => mOperationFactory?.Register<TProductClass>(name);
     public void RegisterSystem<TProductClass>(string name) where TProductClass : FactoryProduct, ISystem => mSystemFactory?.Register<TProductClass>(name);

@@ -2,8 +2,6 @@
 using System;
 using Vintagestory.API.Common;
 
-
-
 namespace MaltiezFSM.Framework;
 
 public class StatsModifier
@@ -31,20 +29,18 @@ public class StatsModifier
     }
 }
 
-public class StatsContext : IContext
+public class StatsContext : BaseContext
 {
-    private readonly ICoreAPI mApi;
     private readonly IPlayer mPlayer;
     private readonly float mValue;
 
-    public StatsContext(ICoreAPI api, IPlayer player, float value)
+    public StatsContext(ICoreAPI api, IPlayer player, float value) : base(api)
     {
         mPlayer = player;
-        mApi = api;
         mValue = value;
     }
 
-    public double ResolveVariable(string name)
+    public override double ResolveVariable(string name)
     {
         return name switch
         {
@@ -53,32 +49,5 @@ public class StatsContext : IContext
             "E" => Math.E,
             _ => mPlayer.Entity.Stats.GetBlended(name)
         };
-    }
-
-    public double CallFunction(string name, double[] arguments)
-    {
-        return name switch
-        {
-            "sin" => Math.Sin(arguments[0]),
-            "cos" => Math.Cos(arguments[0]),
-            "abs" => Math.Abs(arguments[0]),
-            "sqrt" => Math.Sqrt(arguments[0]),
-            "ceiling" => Math.Ceiling(arguments[0]),
-            "floor" => Math.Floor(arguments[0]),
-            "clamp" => Math.Clamp(arguments[0], arguments[1], arguments[2]),
-            "exp" => Math.Exp(arguments[0]),
-            "max" => Math.Max(arguments[0], arguments[1]),
-            "min" => Math.Min(arguments[0], arguments[1]),
-            "log" => Math.Log(arguments[0]),
-            "round" => Math.Round(arguments[0]),
-            "sign" => Math.Sign(arguments[0]),
-            _ => UnimplementedFunction(name)
-        };
-    }
-
-    private double UnimplementedFunction(string name)
-    {
-        Logger.Error(mApi, this, $"Math function '{name}' is not implemented. Implemented functions: sin, cos, abs, sqrt, ceiling, floor, clamp, exp, max, min, log, round, sign.");
-        return 0;
     }
 }
