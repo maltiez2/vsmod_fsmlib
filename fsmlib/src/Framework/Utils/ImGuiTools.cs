@@ -5,7 +5,6 @@ using Vintagestory.API.Common;
 using VSImGui;
 using ImGuiNET;
 using System.Linq;
-using System.Threading;
 using System.Diagnostics;
 
 namespace MaltiezFSM.Framework;
@@ -17,8 +16,11 @@ internal sealed class ImGuiDebugWindow : IDisposable
     public static event Action? DrawWindows;
     public static void DisposeInstance() => Instance?.Dispose();
 
+    private ICoreClientAPI mApi;
+
     private ImGuiDebugWindow(ICoreClientAPI api)
     {
+        mApi = api;
 #if DEBUG        
         api.ModLoader.GetModSystem<VSImGuiModSystem>().SetUpImGuiWindows += Draw;
         InputManagerDebugWindow.Init();
@@ -43,7 +45,11 @@ internal sealed class ImGuiDebugWindow : IDisposable
     {
         ImGui.Begin("FSM lib - debug window");
 
-        if (ImGui.CollapsingHeader("InputManager##FSMlib"))
+        if (ImGui.CollapsingHeader("Sound effects##FSMlib"))
+        {
+            mApi.ModLoader.GetModSystem<FiniteStateMachineSystem>().SoundEffects?.Draw($"SoundEffectsFSMlib");
+        }
+        if (ImGui.CollapsingHeader("Input manager##FSMlib"))
         {
             InputManagerDebugWindow.Draw();
         }

@@ -8,6 +8,11 @@ using Vintagestory.API.MathTools;
 
 namespace MaltiezFSM.Systems
 {
+    public interface IDebugWindow
+    {
+        void Draw(string id);
+    }
+    
     public interface IVariantsAnimation
     {
         int StartAnimation(int firstVariant, int lastVariant, ItemSlot slot, IPlayer player);
