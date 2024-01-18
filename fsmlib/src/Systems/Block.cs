@@ -151,7 +151,7 @@ internal class BlockData
 
     public IResist AddToBehavior(ITempResistEntityBehavior behavior)
     {
-        BlockOrParryResist resist = new((pitchTop, pitchBottom, yawLeft, yawRight), false, new() { damageModifier });
+        BlockOrParryResist resist = new((pitchTop, pitchBottom, yawLeft, yawRight), false, damageModifier == null ? new() : new() { damageModifier });
         behavior.AddResist(resist, timeoutMs);
         return resist;
     }
