@@ -87,6 +87,7 @@ public class Instant : FactoryProduct, IOperation
             {
                 if (!system.Verify(slot, player, request))
                 {
+                    VSImGui.DebugWindow.Text("fsmlib", "other", 0, $"Failed: {system}");
                     return Outcome.Failed;
                 }
             }

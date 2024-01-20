@@ -139,9 +139,9 @@ public static class Utils
 
     static public Vec3f FromCameraReferenceFrame(EntityAgent player, Vec3f position)
     {
-        Vec3f viewVector = player.SidedPos.GetViewVector();
+        Vec3f viewVector = player.SidedPos.GetViewVector().Normalize();
         Vec3f vertical = new(0, 1, 0);
-        Vec3f localZ = viewVector.Normalize();
+        Vec3f localZ = viewVector;
         Vec3f localX = viewVector.Cross(vertical).Normalize();
         Vec3f localY = localX.Cross(localZ);
         return localX * position.X + localY * position.Y + localZ * position.Z;
@@ -164,6 +164,19 @@ public static class Utils
         Vec3d localZ = viewVector.Normalize();
         Vec3d localX = viewVector.Cross(vertical).Normalize();
         Vec3d localY = localX.Cross(localZ);
+
+        InverseMatrix(localX, localY, localZ);
+
+        return localX * position.X + localY * position.Y + localZ * position.Z;
+    }
+    static public Vec3f ToCameraReferenceFrame(EntityAgent player, Vec3f position)
+    {
+        Vec3f viewVectorF = player.SidedPos.GetViewVector();
+        Vec3f viewVector = new(viewVectorF.X, viewVectorF.Y, viewVectorF.Z);
+        Vec3f vertical = new(0, 1, 0);
+        Vec3f localZ = viewVector.Normalize();
+        Vec3f localX = viewVector.Cross(vertical).Normalize();
+        Vec3f localY = localX.Cross(localZ);
 
         InverseMatrix(localX, localY, localZ);
 
@@ -300,6 +313,8 @@ public static class Utils
             Yaw = MathF.Asin(yawSin);
             Pitch = MathF.Asin(pitchSin);
         }
+
+        public override string ToString() => $"Pitch: {Pitch}, Yaw: {Yaw}";
     }
     public class DirectionConstrain
     {

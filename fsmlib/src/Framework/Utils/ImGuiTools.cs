@@ -49,6 +49,10 @@ internal sealed class ImGuiDebugWindow : IDisposable
         {
             mApi.ModLoader.GetModSystem<FiniteStateMachineSystem>().SoundEffects?.Draw($"SoundEffectsFSMlib");
         }
+        if (ImGui.CollapsingHeader("Particle effects##FSMlib"))
+        {
+            mApi.ModLoader.GetModSystem<FiniteStateMachineSystem>().ParticleEffects?.Draw($"ParticleEffectsFSMlib");
+        }
         if (ImGui.CollapsingHeader("Input manager##FSMlib"))
         {
             InputManagerDebugWindow.Draw();

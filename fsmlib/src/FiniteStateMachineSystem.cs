@@ -1,6 +1,5 @@
 ﻿using HarmonyLib;
 using MaltiezFSM.API;
-using MaltiezFSM.Framework;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -38,7 +37,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
 
         if (api is ICoreClientAPI clientApiForImGuiDebugWindow)
         {
-            ImGuiDebugWindow.Init(clientApiForImGuiDebugWindow);
+            Framework.ImGuiDebugWindow.Init(clientApiForImGuiDebugWindow);
         }
 
         Framework.Logger.Init(api.Logger);
@@ -65,7 +64,6 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         if (api is ICoreClientAPI clientApi)
         {
             RegisterInputInvokers(clientApi);
-            // @TODO clientApi.Gui.RegisterDialog(new ItemSelectGuiDialog(clientApi_2))
         }
         if (api is ICoreServerAPI serverApi)
         {
@@ -86,12 +84,15 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
     {
         if (mInputManager == null) return;
 
+        Framework.OperationInputInvoker invoker = new();
+        mOperationInputInvoker = invoker;
         Framework.KeyInputInvoker keyInput = new(api);
         Framework.StatusInputInvokerClient statusInput = new(api);
         Framework.DropItemsInputInvoker dropItems = new(api);
         Framework.ActiveSlotChangedInputInvoker activeSlotChanged = new(api);
         Framework.CustomInputInvoker customInput = new();
 
+        mInputManager.RegisterInvoker(invoker, typeof(IOperationInput));
         mInputManager.RegisterInvoker(keyInput, typeof(IKeyInput));
         mInputManager.RegisterInvoker(keyInput, typeof(IMouseInput));
         mInputManager.RegisterInvoker(statusInput, typeof(IStatusInput));
@@ -100,6 +101,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         mInputManager.RegisterInvoker(activeSlotChanged, typeof(ISlotChangedBefore));
         mInputManager.RegisterInvoker(customInput, typeof(ICustomInput));
 
+        mInputInvokers.Add(invoker);
         mInputInvokers.Add(keyInput);
         mInputInvokers.Add(statusInput);
         mInputInvokers.Add(dropItems);
@@ -294,7 +296,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         {
             invoker.Dispose();
         }
-        ImGuiDebugWindow.DisposeInstance();
+        Framework.ImGuiDebugWindow.DisposeInstance();
         Unpatch();
         if (mApi?.Side == EnumAppSide.Server) UnpatchServer();
 

@@ -112,6 +112,7 @@ public class SoundEffectsManager : ISoundEffectsManager
             Load();
             mReload = true;
         }
+        ImGui.SameLine();
         if (ImGui.Button($"Reload##{id}"))
         {
             Save();
