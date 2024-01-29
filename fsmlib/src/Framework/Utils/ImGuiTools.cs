@@ -114,7 +114,7 @@ internal sealed class InputManagerDebugWindowImpl : IDisposable
         typeof(Inputs.MouseKey),
         typeof(Inputs.KeyboardKey),
         typeof(Inputs.Custom),
-        typeof(Inputs.ItemDropped),
+        typeof(Inputs.HotkeyInput),
         typeof(Inputs.OperationInput),
         typeof(Inputs.AfterSlotChanged),
         typeof(Inputs.BeforeSlotChanged),

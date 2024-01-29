@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Server;
-using Vintagestory.Server;
 
 namespace MaltiezFSM.Framework;
 

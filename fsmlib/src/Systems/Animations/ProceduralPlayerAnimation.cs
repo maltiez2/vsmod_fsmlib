@@ -43,17 +43,14 @@ public class ProceduralPlayerAnimation : BaseSystem, IAnimationSystem
         if (!base.Process(slot, player, parameters)) return false;
         if (mApi.Side != EnumAppSide.Client) return true;
 
-
         string action = parameters["action"].AsString("start");
-
-
 
         switch (action)
         {
             case "start":
                 string? code = parameters["animation"].AsString();
                 string? category = parameters["category"].AsString();
-                if (!Check(code, category)) return false;
+                if (!Check(code, category)) return true;
                 PlayAnimation(code, category, player.Entity.EntityId);
                 break;
             case "stop":

@@ -107,6 +107,18 @@ public class Delayed : FactoryProduct, IOperation
             inputsFinal.Add(state, ParseInputs(definition, state));
         }
 
+        if (definition.KeyExists("systems") && definition["systems"].KeyExists("final"))
+        {
+            List<(string, JsonObject)> finalSystems = ParseSystems(definition, "final");
+            foreach (string state in finalStates)
+            {
+                foreach ((string, JsonObject) item in finalSystems)
+                {
+                    systemsFinal[state].Add(item);
+                }
+            }
+        }
+
         int? timeout = definition.KeyExists("timeout") ? definition["timeout"].AsInt() : null;
         if (definition.KeyExists("timeout_stats")) mDelayModifier = new(mApi, definition["timeout_stats"].AsString());
 

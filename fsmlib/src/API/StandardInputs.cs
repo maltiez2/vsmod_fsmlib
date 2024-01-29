@@ -85,10 +85,23 @@ public interface ISlotChangedBefore : ISlotInput
 {
     EnumHandling Handling { get; }
 }
-public interface IItemDropped : IStandardInput
+public interface IHotkeyInput : IStandardInput
 {
+    string[] Hotkeys { get; }
 }
 public interface ICustomInput : IStandardInput
 {
     string Code { get; }
+}
+public interface ISlotContentInput : IStandardInput
+{
+    enum SlotEventType
+    {
+        SomeTaken,
+        AllTaken,
+        SomePut,
+        PutIntoEmpty
+    }
+
+    SlotEventType EventType { get; }
 }

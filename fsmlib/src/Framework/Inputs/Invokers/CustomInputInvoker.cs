@@ -2,8 +2,6 @@
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 
-
-
 namespace MaltiezFSM.Framework;
 
 public sealed class CustomInputInvoker : IInputInvoker, ICustomInputInvoker
@@ -13,12 +11,11 @@ public sealed class CustomInputInvoker : IInputInvoker, ICustomInputInvoker
 
     public void RegisterInput(IInput input, IInputInvoker.InputCallback callback, CollectibleObject collectible)
     {
-        if (input is ICustomInput custom)
-        {
-            mInputs.Add(custom, callback);
-            mInputsByCode.TryAdd(custom.Code, new());
-            mInputsByCode[custom.Code].Add(custom);
-        }
+        if (input is not ICustomInput custom) return;
+
+        mInputs.Add(custom, callback);
+        mInputsByCode.TryAdd(custom.Code, new());
+        mInputsByCode[custom.Code].Add(custom);
     }
 
     public void Dispose()

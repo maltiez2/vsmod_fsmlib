@@ -30,18 +30,18 @@ public class ProceduralItemAnimation : BaseSystem, IAnimationSystem
         AnimatableProcedural behavior = mCollectible.GetBehavior<AnimatableProcedural>();
 
         Framework.Utils.Iterate(definition["categories"], (categoryCode, category) => mCategories.Add(categoryCode, CategoryFromJson(categoryCode, category)));
-        Framework.Utils.Iterate(definition["animations"], (animationCode, animation) =>
+        Framework.Utils.Iterate(definition["animations"], (sequenceCode, animation) =>
         {
             foreach ((string categoryName, Category category) in mCategories)
             {
                 try
                 {
-                    mAnimations.Add((categoryName, animationCode), new(behavior, mAnimationManager, LogError, animation.AsArray(), category, animationCode));
+                    mAnimations.Add((categoryName, sequenceCode), new(behavior, mAnimationManager, LogError, animation.AsArray(), category, sequenceCode, GetAnimationCode));
                 }
                 catch (Exception exception)
                 {
-                    LogError($"Error on registering animation '{categoryName}:{animationCode}'.");
-                    LogVerbose($"Error on registering animation '{categoryName}:{animationCode}'.\n\nException:\n{exception}");
+                    LogError($"Error on registering animation '{categoryName}:{sequenceCode}'.");
+                    LogVerbose($"Error on registering animation '{categoryName}:{sequenceCode}'.\n\nException:\n{exception}");
                 }
             }
         });
@@ -59,7 +59,7 @@ public class ProceduralItemAnimation : BaseSystem, IAnimationSystem
             case "start":
                 string? code = parameters["animation"].AsString();
                 string? category = parameters["category"].AsString();
-                if (!Check(code, category)) return false;
+                if (!Check(code, category) || code == null) return false;
                 PlayAnimation(code, category, player.Entity.EntityId);
                 break;
             case "stop":
@@ -137,6 +137,7 @@ public class ProceduralItemAnimation : BaseSystem, IAnimationSystem
     {
         if (mStartedAnimations.ContainsKey((entityId, category))) mStartedAnimations[(entityId, category)].Stop(mAnimationManager);
     }
+    private string? GetAnimationCode(string? code) => code == null ? code : $"{mCollectible.Code}|{mCode}|{code}";
 }
 
 internal class ProceduralItemAnimationData
@@ -146,7 +147,7 @@ internal class ProceduralItemAnimationData
     private AnimationTarget mThirdPersonTarget;
     private AnimationTarget mFirstPersonTarget;
 
-    public ProceduralItemAnimationData(AnimatableProcedural behavior, IAnimationManagerSystem animationManager, Action<string> logger, JsonObject[] animationsDefinitions, Category category, string animation)
+    public ProceduralItemAnimationData(AnimatableProcedural behavior, IAnimationManagerSystem animationManager, Action<string> logger, JsonObject[] animationsDefinitions, Category category, string sequenceCode, System.Func<string?, string?> constructCode)
     {
         List<AnimationRequest> tpRequests = new();
         List<AnimationRequest> fpRequests = new();
@@ -161,12 +162,12 @@ internal class ProceduralItemAnimationData
             string animationCode = requestDefinition["animation"].AsString();
             if (animationCode == null)
             {
-                logger($"No animation code provided for: {animation}");
+                logger($"No animation code provided for: {sequenceCode}");
                 return;
             }
 
-            string fpCode = $"{animationCode}-fp";
-            string tpCode = $"{animationCode}-tp";
+            string fpCode = $"{constructCode.Invoke(animationCode)}-fp";
+            string tpCode = $"{constructCode.Invoke(animationCode)}-tp";
 
             if (fpShape != null)
             {

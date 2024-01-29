@@ -226,7 +226,7 @@ public sealed class AmountRequirement : Requirement
 
         foreach (ItemSlot slot in slots)
         {
-            string code = slot.Itemstack.Collectible.Class;
+            string code = slot.Itemstack.Collectible.Code.ToString();
 
             ItemStack takenStack = slot.TakeOut(amount - amountTaken);
             amountTaken += takenStack.StackSize;
@@ -312,7 +312,7 @@ public sealed class DurabilityRequirement : Requirement
 
         foreach (ItemSlot slot in slots)
         {
-            string code = slot.Itemstack.Collectible.Class;
+            string code = slot.Itemstack.Collectible.Code.ToString();
             ItemStack takenStack = slot.Itemstack.Clone();
             takenStack.Attributes.SetInt("durability", 0);
             int durabilityTaken = TakeDurability(slot, amountTaken, player, amount, destroy);

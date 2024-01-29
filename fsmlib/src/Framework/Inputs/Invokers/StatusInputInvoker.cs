@@ -24,11 +24,10 @@ public sealed class StatusInputInvokerClient : IInputInvoker
 
     public void RegisterInput(IInput input, IInputInvoker.InputCallback callback, CollectibleObject collectible)
     {
-        if (input is IStatusInput statusInput)
-        {
-            mCallbacks.Add(statusInput, callback);
-            mCollectibles.Add(statusInput, collectible);
-        }
+        if (input is not IStatusInput statusInput) return;
+
+        mCallbacks.Add(statusInput, callback);
+        mCollectibles.Add(statusInput, collectible);
     }
 
     private void CheckStatuses()

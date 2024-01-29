@@ -57,7 +57,7 @@ public class AdvancedEntityProjectile : EntityProjectile
     {
         if (!CanDamage(entity) || World.Side != EnumAppSide.Server) return;
         
-        _ = new Utils.Field<float, AdvancedEntityProjectile>(typeof(EntityProjectile), "msCollide", this)
+        _ = new Utils.Field<long, AdvancedEntityProjectile>(typeof(EntityProjectile), "msCollide", this)
         {
             Value = World.ElapsedMilliseconds
         };

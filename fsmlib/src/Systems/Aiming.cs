@@ -135,7 +135,7 @@ public class Aiming : BaseSystem, IAimingSystem
     private void SetAimingTime(IPlayer player)
     {
         long entityId = player.Entity.EntityId;
-        if (mAimingTimes.ContainsKey(entityId)) mAimingTimes.Add(entityId, 0);
+        if (!mAimingTimes.ContainsKey(entityId)) mAimingTimes.Add(entityId, 0);
         if (mAimingTime != null)
         {
             mAimingTimes[entityId] = mAimingTime.Calc(player, (float)mAimTime.TotalSeconds);
@@ -149,7 +149,7 @@ public class Aiming : BaseSystem, IAimingSystem
     {
         long entityId = player.Entity.EntityId;
 
-        if (mMinDispersions.ContainsKey(entityId)) mMinDispersions.Add(entityId, 0);
+        if (!mMinDispersions.ContainsKey(entityId)) mMinDispersions.Add(entityId, 0);
         if (mMinAccuracyStat != null)
         {
             mMinDispersions[entityId] = mMinAccuracyStat.Calc(player, mDispersionMin);
@@ -159,7 +159,7 @@ public class Aiming : BaseSystem, IAimingSystem
             mMinDispersions[entityId] = mDispersionMin;
         }
 
-        if (mMaxDispersions.ContainsKey(entityId)) mMaxDispersions.Add(entityId, 0);
+        if (!mMaxDispersions.ContainsKey(entityId)) mMaxDispersions.Add(entityId, 0);
         if (mMaxAccuracyStat != null)
         {
             mMaxDispersions[entityId] = mMaxAccuracyStat.Calc(player, mDispersionMin);

@@ -1,27 +1,23 @@
 ﻿using MaltiezFSM.API;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-
-
+using VSImGui;
 
 namespace MaltiezFSM.Framework;
 
-public sealed class DropItemsInputInvoker : IInputInvoker
+public sealed class HotkeyInputInvoker : IInputInvoker
 {
     private readonly ICoreClientAPI mClientApi;
-    private readonly Dictionary<IItemDropped, IInputInvoker.InputCallback> mCallbacks = new();
-    private readonly Dictionary<IItemDropped, CollectibleObject> mCollectibles = new();
+    private readonly Dictionary<IHotkeyInput, IInputInvoker.InputCallback> mCallbacks = new();
+    private readonly Dictionary<IHotkeyInput, CollectibleObject> mCollectibles = new();
     private bool mDispose = false;
 
-    private readonly List<string> mHotkeys = new()
-    {
-        "dropitem",
-        "dropitems"
-    };
+    private readonly HashSet<string> mHotkeys = new();
 
-    public DropItemsInputInvoker(ICoreClientAPI api)
+    public HotkeyInputInvoker(ICoreClientAPI api)
     {
         mClientApi = api;
         mClientApi.Event.KeyDown += KeyPressListener;
@@ -29,10 +25,13 @@ public sealed class DropItemsInputInvoker : IInputInvoker
 
     public void RegisterInput(IInput input, IInputInvoker.InputCallback callback, CollectibleObject collectible)
     {
-        if (input is IItemDropped slotInput)
+        if (input is not IHotkeyInput slotInput) return;
+        
+        mCallbacks.Add(slotInput, callback);
+        mCollectibles.Add(slotInput, collectible);
+        foreach (string hotkey in slotInput.Hotkeys.Where(value => !mHotkeys.Contains(value)))
         {
-            mCallbacks.Add(slotInput, callback);
-            mCollectibles.Add(slotInput, collectible);
+            mHotkeys.Add(hotkey);
         }
     }
 
@@ -40,14 +39,9 @@ public sealed class DropItemsInputInvoker : IInputInvoker
     {
         foreach (string hotkeyId in mHotkeys)
         {
-            if (!mClientApi.Input.HotKeys.ContainsKey(hotkeyId))
-            {
-                mClientApi.Logger.Error("[FSMlib] [ActiveSlotActiveListener] [KeyPressListener()] Hotkey '" + hotkeyId + "' not found");
-            }
-
             if (mClientApi.Input.HotKeys.ContainsKey(hotkeyId) && CompareCombinations(ev, mClientApi.Input.HotKeys[hotkeyId].CurrentMapping))
             {
-                HotkeyPressHandler(ev);
+                HotkeyPressHandler(ev, hotkeyId);
                 break;
             }
         }
@@ -63,11 +57,11 @@ public sealed class DropItemsInputInvoker : IInputInvoker
         return true;
     }
 
-    private void HotkeyPressHandler(KeyEvent ev)
+    private void HotkeyPressHandler(KeyEvent ev, string hotkey)
     {
         bool handled = false;
 
-        foreach ((IItemDropped input, _) in mCallbacks)
+        foreach (IHotkeyInput input in mCallbacks.Select(entry => entry.Key).Where(input => input.Hotkeys.Contains(hotkey)))
         {
             handled = HandleInput(input);
         }
@@ -75,14 +69,14 @@ public sealed class DropItemsInputInvoker : IInputInvoker
         if (handled) ev.Handled = true;
     }
 
-    private bool HandleInput(IItemDropped input)
+    private bool HandleInput(IHotkeyInput input)
     {
         Utils.SlotType slotType = input.Slot;
 
         IEnumerable<Utils.SlotData> slots = Utils.SlotData.GetForAllSlots(slotType, mCollectibles[input], mClientApi.World.Player);
 
         bool handled = false;
-        foreach (Utils.SlotData slotData in slots.Where(slotData => mCallbacks[input](slotData, mClientApi.World.Player, input))) // Unreadable but no warning... I guess win win?
+        foreach (Utils.SlotData slotData in slots.Where(slotData => mCallbacks[input](slotData, mClientApi.World.Player, input)))
         {
             handled = true;
         }

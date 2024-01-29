@@ -12,6 +12,7 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.Server;
 using Vintagestory.GameContent;
 using Vintagestory.Server;
+using VSImGui;
 
 namespace MaltiezFSM;
 
@@ -46,8 +47,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         Patch();
         if (api.Side == EnumAppSide.Server) PatchServer();
 
-        api.RegisterItemClass("NoMelee", typeof(NoMelee));
-        api.RegisterItemClass("NoMeleeStrict", typeof(NoMeleeStrict));
+        api.RegisterEntity("AdvancedEntityProjectile", typeof(Systems.AdvancedEntityProjectile));
         api.RegisterCollectibleBehaviorClass("FiniteStateMachine", typeof(Framework.FiniteStateMachineBehaviour<Framework.BehaviourAttributesParser>));
         api.RegisterCollectibleBehaviorClass("FSMAdvancedProjectile", typeof(Systems.AdvancedProjectileBehavior));
 
@@ -88,7 +88,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         mOperationInputInvoker = invoker;
         Framework.KeyInputInvoker keyInput = new(api);
         Framework.StatusInputInvokerClient statusInput = new(api);
-        Framework.DropItemsInputInvoker dropItems = new(api);
+        Framework.HotkeyInputInvoker hotkey = new(api);
         Framework.ActiveSlotChangedInputInvoker activeSlotChanged = new(api);
         Framework.CustomInputInvoker customInput = new();
 
@@ -96,7 +96,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         mInputManager.RegisterInvoker(keyInput, typeof(IKeyInput));
         mInputManager.RegisterInvoker(keyInput, typeof(IMouseInput));
         mInputManager.RegisterInvoker(statusInput, typeof(IStatusInput));
-        mInputManager.RegisterInvoker(dropItems, typeof(IItemDropped));
+        mInputManager.RegisterInvoker(hotkey, typeof(IHotkeyInput));
         mInputManager.RegisterInvoker(activeSlotChanged, typeof(ISlotChangedAfter));
         mInputManager.RegisterInvoker(activeSlotChanged, typeof(ISlotChangedBefore));
         mInputManager.RegisterInvoker(customInput, typeof(ICustomInput));
@@ -104,7 +104,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         mInputInvokers.Add(invoker);
         mInputInvokers.Add(keyInput);
         mInputInvokers.Add(statusInput);
-        mInputInvokers.Add(dropItems);
+        mInputInvokers.Add(hotkey);
         mInputInvokers.Add(activeSlotChanged);
         mInputInvokers.Add(customInput);
 
@@ -119,14 +119,17 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         Framework.CustomInputInvoker customInput = new();
         Framework.StatusInputInvokerServer statusInput = new(api);
         Framework.ActiveSlotChangedInputInvoker activeSlotChanged = new(api);
+        Framework.SlotInputInvoker slotInput = new(api);
 
         mInputManager.RegisterInvoker(invoker, typeof(IOperationInput));
+        mInputManager.RegisterInvoker(slotInput, typeof(ISlotContentInput));
         mInputManager.RegisterInvoker(customInput, typeof(ICustomInput));
         mInputManager.RegisterInvoker(statusInput, typeof(IStatusInput));
         mInputManager.RegisterInvoker(activeSlotChanged, typeof(ISlotChangedAfter));
         mInputManager.RegisterInvoker(activeSlotChanged, typeof(ISlotChangedBefore));
 
         mInputInvokers.Add(invoker);
+        mInputInvokers.Add(slotInput);
         mInputInvokers.Add(customInput);
         mInputInvokers.Add(statusInput);
         mInputInvokers.Add(activeSlotChanged);
@@ -141,7 +144,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         mInputFactory.Register<Inputs.MouseKey>("Mouse");
         mInputFactory.Register<Inputs.BeforeSlotChanged>("SlotChange");
         mInputFactory.Register<Inputs.AfterSlotChanged>("SlotSelected");
-        mInputFactory.Register<Inputs.ItemDropped>("ItemDropped");
+        mInputFactory.Register<Inputs.HotkeyInput>("Hotkey");
         mInputFactory.Register<Inputs.OperationStarted>("OperationStarted");
         mInputFactory.Register<Inputs.OperationFinished>("OperationFinished");
         mInputFactory.Register<Inputs.StatusInput>("Status");

@@ -8,8 +8,6 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
-
-
 namespace MaltiezFSM.Systems;
 
 public class Projectiles : BaseSystem
@@ -30,7 +28,7 @@ public class Projectiles : BaseSystem
 
     public Projectiles(int id, string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api) : base(id, code, definition, collectible, api)
     {
-        mReloadSystemName = definition["reloadSystem"].AsString("");
+        mReloadSystemName = definition["stackSystem"].AsString("");
         mProjectileSpeed = definition["speed"].AsFloat(1);
         mProjectileDamageMultiplier = definition["damageMultiplier"].AsFloat(1);
         mDescription = definition["description"].AsString();

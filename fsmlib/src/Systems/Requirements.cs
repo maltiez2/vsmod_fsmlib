@@ -25,6 +25,8 @@ public class Requirements : BaseSystem, IItemStackHolder
 
         foreach ((string packCode, JToken? packToken) in definitionObject)
         {
+            if (packCode == "class") continue;
+            
             if (packToken is not JObject packObject) continue;
             JsonObject pack = new(packObject);
 
@@ -37,7 +39,7 @@ public class Requirements : BaseSystem, IItemStackHolder
                 mRequirements.Add(packCode, new() { Requirement.Construct(pack) });
             }
 
-            mDescriptions.Add(packCode, pack["description"].AsString());
+            mDescriptions.Add(packCode, pack["description"].AsString(""));
         }
     }
     private static List<IRequirement> GetRequirements(JsonObject requirements)
@@ -56,7 +58,17 @@ public class Requirements : BaseSystem, IItemStackHolder
     {
         if (!base.Verify(slot, player, parameters)) return false;
 
-        string code = parameters["requirement"].AsString();
+        string action = parameters["action"].AsString("check");
+
+        if (action != "take" && action != "check") return true;
+
+        string? code = parameters["requirement"].AsString();
+
+        if (code == null)
+        {
+            LogError($"No 'requirement' in system request");
+            return false;
+        }
 
         if (!mRequirements.ContainsKey(code))
         {
@@ -80,26 +92,27 @@ public class Requirements : BaseSystem, IItemStackHolder
     {
         if (!base.Process(slot, player, parameters)) return false;
 
-        string? code = parameters["requirement"].AsString();
+        
         string action = parameters["action"].AsString("check");
-
-        if (code == null)
-        {
-            LogError($"No 'requirement' in system request");
-            return false;
-        }
-
-        if (!mRequirements.ContainsKey(code))
-        {
-            LogError($"Requirement with code '{code}' not found.");
-            return false;
-        }
 
         switch (action)
         {
             case "check":
                 break;
             case "take":
+
+                string? code = parameters["requirement"].AsString();
+                if (code == null)
+                {
+                    LogError($"No 'requirement' in system request");
+                    return false;
+                }
+                if (!mRequirements.ContainsKey(code))
+                {
+                    LogError($"Requirement with code '{code}' not found.");
+                    return false;
+                }
+
                 Take(slot, player, code);
                 break;
             case "put":

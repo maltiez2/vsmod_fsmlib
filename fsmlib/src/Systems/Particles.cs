@@ -85,11 +85,13 @@ public class ParticleEffect
     public string Domain { get; }
     public Vec3f Position { get; }
     public Vec3f Velocity { get; }
+    public float Intensity { get; }
 
     public ParticleEffect(JsonObject definition)
     {
         string domain = definition["domain"].AsString();
         string code = definition["code"].AsString();
+        Intensity = definition["intensity"].AsFloat(1);
 
         JsonObject[] position = definition["position"].AsArray();
         JsonObject[] velocity = definition["velocity"].AsArray();
@@ -133,16 +135,12 @@ public class ParticleEffect
         effect.basePos = byEntity.SidedPos.AheadCopy(0).XYZ.Add(worldPosition.X, byEntity.LocalEyePos.Y + worldPosition.Y, worldPosition.Z);
         effect.baseVelocity = worldVelocity;
 
-        /*Vec3f view = byEntity.SidedPos.GetViewVector().Clone().Normalize();
-        Vec3f velocity = worldVelocity.Clone().Normalize();
-
-        if (Velocity.Length() > 10)
-        {
-            DebugWindow.Text("fsmlib", "test", 0, $"View:\t{view}");
-            DebugWindow.Text("fsmlib", "test", 1, $"Velocity:\t{velocity}");
-            DebugWindow.Text("fsmlib", "test", 2, $"Diff:\t{velocity - view}");
-        }*/
+        NatFloat quantity = effect.Quantity.Clone();
+        effect.Quantity.avg *= Intensity;
+        effect.Quantity.var *= Intensity;
 
         byEntity.World.SpawnParticles(effect);
+
+        effect.Quantity = quantity;
     }
 }
