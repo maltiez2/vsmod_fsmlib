@@ -1,10 +1,12 @@
 ﻿using MaltiezFSM.API;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
 namespace MaltiezFSM.Operations
 {
+    [Obsolete("Operation will be refactored with possible apu changes, currently not tested")]
     public class Continuous : Delayed
     {
         public class SystemRequest

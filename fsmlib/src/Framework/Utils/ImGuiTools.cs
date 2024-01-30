@@ -264,8 +264,7 @@ internal sealed class OperationsDebugWindowImpl : IDisposable
     {
         typeof(IOperation),
         typeof(Operations.Instant),
-        typeof(Operations.Delayed),
-        typeof(Operations.Continuous)
+        typeof(Operations.Delayed)
     };
     private int mCurrentFilter = 0;
     private readonly IOperation.Outcome[] mOutcomes = new IOperation.Outcome[]

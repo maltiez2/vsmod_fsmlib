@@ -50,12 +50,23 @@ public class FiniteStateMachineBehaviour<TAttributesFormat> : CollectibleBehavio
 
         Logger.Debug(api, this, $"Initializing FSM for: {collObj.Code}");
 
-        FiniteStateMachineSystem factories = api.ModLoader.GetModSystem<FiniteStateMachineSystem>();
+        FiniteStateMachineSystem modSystem = api.ModLoader.GetModSystem<FiniteStateMachineSystem>();
+
+        try
+        {
+            modSystem.GetAttributeReferencesManager()?.Substitute(mProperties, collObj);
+        }
+        catch (Exception exception)
+        {
+            Logger.Error(api, this, $"Exception on substituting 'FromAttr' values '{collObj.Code}'.");
+            Logger.Verbose(api, this, $"Exception on substituting 'FromAttr' values '{collObj.Code}'.\n\nException:\n{exception}\n");
+        }
+
         mInputManager = api.ModLoader.GetModSystem<FiniteStateMachineSystem>().GetInputManager();
         IOperationInputInvoker? operationInputInvoker = api.ModLoader.GetModSystem<FiniteStateMachineSystem>().GetOperationInputInvoker();
 
         IBehaviourAttributesParser parser = new TAttributesFormat();
-        bool successfullyParsed = parser.ParseDefinition(api, factories.GetOperationFactory(), factories.GetSystemFactory(), factories.GetInputFactory(), mProperties, collObj);
+        bool successfullyParsed = parser.ParseDefinition(api, modSystem.GetOperationFactory(), modSystem.GetSystemFactory(), modSystem.GetInputFactory(), mProperties, collObj);
 
         if (!successfullyParsed) return;
 

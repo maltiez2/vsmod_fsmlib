@@ -12,7 +12,6 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.Server;
 using Vintagestory.GameContent;
 using Vintagestory.Server;
-using VSImGui;
 
 namespace MaltiezFSM;
 
@@ -24,6 +23,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
     private IInputManager? mInputManager;
     private IOperationInputInvoker? mOperationInputInvoker;
     private ICustomInputInvoker? mCustomInputInvoker;
+    private IAttributeReferencesManager? mAttributeReferencesManager;
     private Systems.ParticleEffectsManager? mParticleEffectsManager;
     private Systems.SoundEffectsManager? mSoundEffectsManager;
     private readonly List<IInputInvoker> mInputInvokers = new();
@@ -53,6 +53,8 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
 
         api.RegisterEntityBehaviorClass("constresist", typeof(Additional.EntityBehaviorConstResists<Additional.ConstResist>));
         api.RegisterEntityBehaviorClass("tempresists", typeof(Additional.EntityBehaviorResists));
+
+        mAttributeReferencesManager = new Framework.AttributeReferencesManager(api);
 
         mOperationFactory = new Framework.Factory<IOperation>(api, new Framework.UniqueIdGeneratorForFactory(1));
         mSystemFactory = new Framework.Factory<ISystem>(api, new Framework.UniqueIdGeneratorForFactory(2));
@@ -171,6 +173,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         mSystemFactory.Register<Systems.Sounds>("Sounds");
         mSystemFactory.Register<Systems.Stats>("Stats");
         mSystemFactory.Register<Systems.CameraSettings>("CameraSettings");
+        mSystemFactory.Register<Systems.ChangeAttribute>("ChangeAttribute");
 
         mSystemFactory.Register<Systems.ItemAnimation>("ItemAnimation");
         mSystemFactory.Register<Systems.PlayerAnimation>("PlayerAnimation");
@@ -183,7 +186,6 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
 
         mOperationFactory.Register<Operations.Instant>("Instant");
         mOperationFactory.Register<Operations.Delayed>("Delayed");
-        mOperationFactory.Register<Operations.Continuous>("Continuous");
     }
 
     public static bool TriggerAfterActiveSlotChanged(ServerEventManager __instance, IServerPlayer player, int fromSlot, int toSlot)
@@ -230,6 +232,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
     internal IFactory<IInput>? GetInputFactory() => mInputFactory;
     internal IInputManager? GetInputManager() => mInputManager;
     internal IOperationInputInvoker? GetOperationInputInvoker() => mOperationInputInvoker;
+    internal IAttributeReferencesManager? GetAttributeReferencesManager() => mAttributeReferencesManager;
 
     public Systems.IParticleEffectsManager? ParticleEffects => mParticleEffectsManager;
     public Systems.ISoundEffectsManager? SoundEffects => mSoundEffectsManager;

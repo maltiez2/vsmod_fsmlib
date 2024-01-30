@@ -9,16 +9,13 @@ using static MaltiezFSM.API.IOperation;
 
 namespace MaltiezFSM.Operations;
 
-public class Instant : FactoryProduct, IOperation
+public class Instant : BaseOperation
 {
     private readonly Dictionary<string, string> mStatesInitialData = new();
-    private readonly List<Tuple<string, JsonObject>> mSystemsInitialData = new();
+    private readonly List<(string system, JsonObject request)> mSystemsInitialData = new();
     private readonly Dictionary<IState, IState> mStates = new();
-    private readonly List<Tuple<ISystem, JsonObject>> mSystems = new();
+    private readonly List<(ISystem system, JsonObject request)> mSystems = new();
     protected readonly List<Transition> mTransitions = new();
-    protected readonly Dictionary<ISystem, string> mSystemsCodes = new();
-
-    private bool mDisposed = false;
 
     public Instant(int id, string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api) : base(id, code, definition, collectible, api)
     {
@@ -42,11 +39,11 @@ public class Instant : FactoryProduct, IOperation
         }
     }
 
-    public virtual List<Transition> GetTransitions()
+    public override List<Transition> GetTransitions()
     {
         return mTransitions;
     }
-    public virtual void SetInputsStatesSystems(Dictionary<string, IInput> inputs, Dictionary<string, IState> states, Dictionary<string, ISystem> systems)
+    public override void SetInputsStatesSystems(Dictionary<string, IInput> inputs, Dictionary<string, IState> states, Dictionary<string, ISystem> systems)
     {
         foreach ((string first, string second) in mStatesInitialData)
         {
@@ -79,61 +76,15 @@ public class Instant : FactoryProduct, IOperation
         }
         mSystemsInitialData.Clear();
     }
-    public virtual Outcome Verify(ItemSlot slot, IPlayer player, IState state, IInput input)
+    public override Outcome Verify(ItemSlot slot, IPlayer player, IState state, IInput input)
     {
-        foreach ((ISystem system, JsonObject request) in mSystems)
-        {
-            try
-            {
-                if (!system.Verify(slot, player, request))
-                {
-                    VSImGui.DebugWindow.Text("fsmlib", "other", 0, $"Failed: {system}");
-                    return Outcome.Failed;
-                }
-            }
-            catch (Exception exception)
-            {
-                Logger.Error(mApi, this, $"System '{mSystemsCodes[system]}' crashed while verification in '{mCode}' operation in '{mCollectible.Code}' collectible");
-                Logger.Verbose(mApi, this, $"System '{mSystemsCodes[system]}' crashed while verification in '{mCode}' operation in '{mCollectible.Code}' collectible.\n\nRequest:{request}\n\nException:\n{exception}\n");
-            }
-        }
-
-        return Outcome.StartedAndFinished;
+        return Verify(slot, player, mSystems) ? Outcome.StartedAndFinished : Outcome.Failed;
     }
-    public virtual Result Perform(ItemSlot slot, IPlayer player, IState state, IInput input)
+    public override Result Perform(ItemSlot slot, IPlayer player, IState state, IInput input)
     {
-        foreach ((ISystem system, JsonObject request) in mSystems)
-        {
-            try
-            {
-                system.Process(slot, player, request);
-            }
-            catch (Exception exception)
-            {
-                Logger.Error(mApi, this, $"System '{mSystemsCodes[system]}' crashed while processing in '{mCode}' operation in '{mCollectible.Code}' collectible");
-                Logger.Verbose(mApi, this, $"System '{mSystemsCodes[system]}' crashed while processing in '{mCode}' operation in '{mCollectible.Code}' collectible.\n\nRequest:{request}\n\nException:\n{exception}\n");
-            }
-        }
+        Process(slot, player, mSystems);
 
         return new(mStates[state], Outcome.StartedAndFinished, Timeout.Ignore);
-    }
-
-    protected virtual void Dispose(bool disposing)
-    {
-        if (!mDisposed)
-        {
-            if (disposing)
-            {
-                // Nothing to dispose
-            }
-
-            mDisposed = true;
-        }
-    }
-    public void Dispose()
-    {
-        Dispose(disposing: true);
-        GC.SuppressFinalize(this);
     }
 
     public override string ToString() => $"Instant: {mCode} ({mCollectible.Code})";

@@ -104,3 +104,8 @@ public interface IOperationInputInvoker
     bool Started(IOperation operation, ItemSlot inSlot, IPlayer player);
     bool Finished(IOperation operation, ItemSlot inSlot, IPlayer player);
 }
+
+public interface IAttributeReferencesManager : IDisposable
+{
+    void Substitute<TFrom>(JsonObject where, TFrom from);
+}

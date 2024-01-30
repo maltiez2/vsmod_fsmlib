@@ -9,10 +9,8 @@ using static MaltiezFSM.API.IOperation;
 
 namespace MaltiezFSM.Operations;
 
-public class Delayed : FactoryProduct, IOperation
+public class Delayed : BaseOperation
 {
-    private bool mDisposed = false;
-
     protected struct TransitionTriggerInitial
     {
         public string State { get; set; }
@@ -83,7 +81,6 @@ public class Delayed : FactoryProduct, IOperation
 
     protected readonly Dictionary<TransitionTrigger, TransitionResult> mTransitions = new();
     protected readonly Dictionary<TransitionTrigger, TimeSpan?> mTimers = new();
-    protected readonly Dictionary<ISystem, string> mSystemsCodes = new();
     protected readonly HashSet<IState> mTransitionalStates = new();
     protected readonly StatsModifier? mDelayModifier;
 
@@ -135,8 +132,8 @@ public class Delayed : FactoryProduct, IOperation
             }
         }
     }
-    public virtual List<Transition> GetTransitions() => mTriggerConditions;
-    public virtual void SetInputsStatesSystems(Dictionary<string, IInput> inputs, Dictionary<string, IState> states, Dictionary<string, ISystem> systems)
+    public override List<Transition> GetTransitions() => mTriggerConditions;
+    public override void SetInputsStatesSystems(Dictionary<string, IInput> inputs, Dictionary<string, IState> states, Dictionary<string, ISystem> systems)
     {
         foreach ((TransitionTriggerInitial trigger, TransitionResultInitial result) in mTransitionsInitialData)
         {
@@ -188,46 +185,19 @@ public class Delayed : FactoryProduct, IOperation
         mTransitionsInitialData.Clear();
         mTimersInitialData.Clear();
     }
-    public virtual Outcome Verify(ItemSlot slot, IPlayer player, IState state, IInput input)
+    public override Outcome Verify(ItemSlot slot, IPlayer player, IState state, IInput input)
     {
         if (!mTransitions.ContainsKey((state, input))) return Outcome.Failed;
 
         TransitionResult transitionResult = mTransitions[(state, input)];
 
-        foreach ((ISystem system, JsonObject request) in transitionResult.SystemsRequests)
-        {
-            try
-            {
-                if (!system.Verify(slot, player, request))
-                {
-                    return Outcome.Failed;
-                }
-            }
-            catch (Exception exception)
-            {
-                LogError($"System '{mSystemsCodes[system]}' crashed while verification in '{mCode}' operation in '{mCollectible.Code}' collectible");
-                LogVerbose($"System '{mSystemsCodes[system]}' crashed while verification in '{mCode}' operation in '{mCollectible.Code}' collectible.\n\nRequest:{request}\n\nException:\n{exception}\n");
-            }
-        }
-
-        return transitionResult.Outcome;
+        return Verify(slot, player, transitionResult.SystemsRequests) ? transitionResult.Outcome : Outcome.Failed;
     }
-    public virtual Result Perform(ItemSlot slot, IPlayer player, IState state, IInput input)
+    public override Result Perform(ItemSlot slot, IPlayer player, IState state, IInput input)
     {
         TransitionResult transitionResult = mTransitions[(state, input)];
 
-        foreach ((ISystem system, JsonObject request) in transitionResult.SystemsRequests)
-        {
-            try
-            {
-                system.Process(slot, player, request);
-            }
-            catch (Exception exception)
-            {
-                LogError($"System '{mSystemsCodes[system]}' crashed while processing in '{mCode}' operation in '{mCollectible.Code}' collectible.");
-                LogVerbose($"System '{mSystemsCodes[system]}' crashed while processing in '{mCode}' operation in '{mCollectible.Code}' collectible.\n\nRequest:{request}\n\nException:\n{exception}\n");
-            }
-        }
+        Process(slot, player, transitionResult.SystemsRequests);
 
         Timeout timeout = transitionResult.Outcome switch
         {
@@ -354,24 +324,6 @@ public class Delayed : FactoryProduct, IOperation
         }
 
         return timeoutDelay;
-    }
-
-    protected virtual void Dispose(bool disposing)
-    {
-        if (!mDisposed)
-        {
-            if (disposing)
-            {
-                // Nothing to dispose
-            }
-
-            mDisposed = true;
-        }
-    }
-    public void Dispose()
-    {
-        Dispose(disposing: true);
-        GC.SuppressFinalize(this);
     }
 
     public override string ToString() => $"Delayed: {mCode} ({mCollectible.Code})";

@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
-using Vintagestory.Client.NoObf;
 
 namespace MaltiezFSM.Framework;
 
@@ -62,7 +61,7 @@ internal sealed class FiniteStateMachine : IFiniteStateMachine
                 Logger.Error(api, this, $"Exception on setting systems for '{systemCode}' system for collectible '{mCollectible.Code}'.");
                 Logger.Verbose(api, this, $"Exception on setting systems for '{systemCode}' system for collectible '{mCollectible.Code}'.\n\nException:\n{exception}\n");
             }
-            
+
         }
 
         foreach ((string operationCode, IOperation operation) in operations)
@@ -87,13 +86,13 @@ internal sealed class FiniteStateMachine : IFiniteStateMachine
         List<IInput> inputs = new();
 
         State state = ReadStateFrom(slot);
-        
+
         if (!mOperationsByInputAndState.ContainsKey(state))
         {
             Logger.Error(mApi, this, $"Error on getting available inputs for '{state}' state for collectible '{mCollectible.Code}': state was not found. States registered: {mOperationsByInputAndState.Count}");
             return inputs;
         }
-        
+
         foreach (KeyValuePair<IInput, IOperation> item in mOperationsByInputAndState[state])
         {
             inputs.Add(item.Key);

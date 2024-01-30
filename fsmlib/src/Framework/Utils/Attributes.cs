@@ -1,37 +1,147 @@
-﻿using SimpleExpressionEngine;
+﻿using MaltiezFSM.API;
+using Newtonsoft.Json.Linq;
+using SimpleExpressionEngine;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
+using VSImGui;
 
 namespace MaltiezFSM.Framework;
 
-public sealed class AttributeReferencesManager : IDisposable
+public sealed class AttributeReferencesManager : IAttributeReferencesManager
 {
-    private const string cCollectiblePostfix = "FromAttr";
-    private const string cItemStackPostfix = "FromStackAttr";
+    private const string cPostfix = "FromAttr";
     private bool mDisposed = false;
-    private readonly Dictionary<string, JsonObject> mCache = new();
+    private readonly Dictionary<int, AttributeModifier> mCache = new();
+    private readonly AttributeGetter mAttributes = new();
+    private readonly ICoreAPI mApi;
 
-    public void Substitude(JsonObject where, CollectibleObject from)
+    public AttributeReferencesManager(ICoreAPI api)
     {
-        
+        mApi = api;
     }
 
-    public void Substitude(JsonObject where, ItemSlot from)
+    public void Substitute<TFrom>(JsonObject where, TFrom from)
     {
-        
+        SubstituteRecursive(where.Token, from);
     }
+
+    private void SubstituteRecursive<TFrom>(JToken where, TFrom from)
+    {
+        if (where is JArray whereArray)
+        {
+            foreach (JToken item in whereArray)
+            {
+                SubstituteRecursive(item, from);
+            }
+        }
+        else if (where is JObject whereObject)
+        {
+            List<string> keys = new();
+            foreach ((string key, JToken? item) in whereObject)
+            {
+                if (item is not JObject token) continue;
+                if (!Match(key))
+                {
+                    SubstituteRecursive(item, from);
+                    continue;
+                }
+
+                SubstituteToken(token, from);
+                keys.Add(key);
+
+            }
+
+            foreach (string key in keys)
+            {
+                ReplaceToken(whereObject, key);
+            }
+        }
+    }
+
+    private void SubstituteToken<TFrom>(JObject where, TFrom from)
+    {
+        if (from is CollectibleObject collectible) SubstituteFromCollectible(where, collectible);
+        if (from is ItemSlot slot) SubstituteFromStack(where, slot);
+    }
+
+    private static void ReplaceToken(JObject where, string key)
+    {
+        string newKey = key.Substring(0, key.Length - cPostfix.Length);
+
+        where.Add(newKey, where[key]);
+        where.Remove(key);
+    }
+
+    private void SubstituteFromCollectible(JObject where, CollectibleObject from)
+    {
+        float result = GetModifier(where).Calc(from);
+
+        Replace(where, result);
+    }
+
+    private void SubstituteFromStack(JObject where, ItemSlot from)
+    {
+        IPlayer? player = (from.Inventory as InventoryBasePlayer)?.Player;
+        ItemStack? stack = from.Itemstack;
+
+        if (player == null || stack == null) return;
+
+        float result = GetModifier(where).Calc(player, stack);
+
+        Replace(where, result);
+    }
+
+    private static void Replace(JObject where, float with)
+    {
+        switch (where.Value<string>("type"))
+        {
+            case "int":
+                where.Replace(new JValue((int)with));
+                break;
+            case "bool":
+                where.Replace(new JValue((int)with != 0));
+                break;
+            default:
+                where.Replace(new JValue(with));
+                break;
+        }
+    }
+
+    private AttributeModifier GetModifier(JObject where)
+    {
+        int hash = where.ToString().GetHashCode();
+
+        if (mCache.ContainsKey(hash)) return mCache[hash];
+
+        string formula = where.Value<string>("formula") ?? "0";
+
+        foreach ((string key, JToken? item) in where)
+        {
+            if (key == "type") continue;
+
+            if (item is not JValue itemValue || itemValue.Type != JTokenType.String) continue;
+
+            string? path = (string?)itemValue.Value;
+
+            if (path == null) continue;
+
+            mAttributes.Add($"{key}_{hash}", path);
+        }
+
+        mCache.Add(hash, new(mApi, formula, mAttributes, hash));
+
+        return mCache[hash];
+    }
+
+    private static bool Match(string key) => key.EndsWith(cPostfix);
 
     public void Dispose()
     {
         if (mDisposed) return;
         mDisposed = true;
-
-        
-
-
     }
 }
 
@@ -40,16 +150,18 @@ internal sealed class AttributeModifier
     private readonly Node mFormula;
     private readonly ICoreAPI mApi;
     private readonly AttributeGetter mGetter;
+    private readonly int mId;
 
-    public AttributeModifier(ICoreAPI api, string formula, AttributeGetter getter)
+    public AttributeModifier(ICoreAPI api, string formula, AttributeGetter getter, int id)
     {
         mFormula = Parser.Parse(formula);
         mApi = api;
         mGetter = getter;
+        mId = id;
     }
 
-    public float Calc(IPlayer player, ItemStack stack) => (float)mFormula.Eval(new ItemStackAttributeContext(mApi, new(mApi, player, 0), mGetter, stack));
-    public float Calc(IPlayer player, CollectibleObject collectible) => (float)mFormula.Eval(new CollectibleAttributeContext(mApi, new(mApi, player, 0), mGetter, collectible));
+    public float Calc(IPlayer player, ItemStack stack) => (float)mFormula.Eval(new ItemStackAttributeContext(mId, mApi, new(mApi, player, 0), mGetter, stack));
+    public float Calc(CollectibleObject collectible) => (float)mFormula.Eval(new CollectibleAttributeContext(mId, mApi, mGetter, collectible));
 }
 
 internal sealed class AttributeGetter
@@ -131,7 +243,7 @@ internal sealed class ItemStackAttributePath
     public IAttribute? Get(IAttribute? tree)
     {
         IAttribute? result = tree;
-        foreach (var element in mPath)
+        foreach (PathElement element in mPath)
         {
             result = element.Invoke(result);
             if (result == null) return null;
@@ -169,7 +281,7 @@ internal sealed class CollectibleAttributePath
     public JsonObject? Get(JsonObject? tree)
     {
         JsonObject? result = tree;
-        foreach (var element in mPath)
+        foreach (PathElement element in mPath)
         {
             result = element.Invoke(result);
             if (result == null) return null;
@@ -184,35 +296,34 @@ internal sealed class ItemStackAttributeContext : BaseContext
     private readonly ItemStack? mStack;
     private readonly AttributeGetter mGetter;
     private readonly StatsContext mStats;
+    private readonly int mId;
 
-    public ItemStackAttributeContext(ICoreAPI api, StatsContext stats, AttributeGetter getter, ItemStack? stack) : base(api)
+    public ItemStackAttributeContext(int id, ICoreAPI api, StatsContext stats, AttributeGetter getter, ItemStack? stack) : base(api)
     {
         mStack = stack;
         mGetter = getter;
         mStats = stats;
+        mId = id;
     }
 
-    public override double ResolveVariable(string name)
-    {
-        return mGetter.GetDouble(name, mStack?.Attributes) ?? mStats.ResolveVariable(name);
-    }
+    public override double ResolveVariable(string name) => mGetter.GetDouble($"{name}_{mId}", mStack?.Attributes) ?? mGetter.GetDouble($"{name}_{mId}", mStack?.Collectible?.Attributes) ?? mStats.ResolveVariable(name);
 }
 
 internal sealed class CollectibleAttributeContext : BaseContext
 {
     private readonly CollectibleObject? mCollectible;
     private readonly AttributeGetter mGetter;
-    private readonly StatsContext mStats;
+    private readonly int mId;
 
-    public CollectibleAttributeContext(ICoreAPI api, StatsContext stats, AttributeGetter getter, CollectibleObject? collectible) : base(api)
+    public CollectibleAttributeContext(int id, ICoreAPI api, AttributeGetter getter, CollectibleObject? collectible) : base(api)
     {
         mCollectible = collectible;
         mGetter = getter;
-        mStats = stats;
+        mId = id;
     }
 
     public override double ResolveVariable(string name)
     {
-        return mGetter.GetDouble(name, mCollectible?.Attributes) ?? mStats.ResolveVariable(name);
+        return mGetter.GetDouble($"{name}_{mId}", mCollectible?.Attributes) ?? 0;
     }
 }

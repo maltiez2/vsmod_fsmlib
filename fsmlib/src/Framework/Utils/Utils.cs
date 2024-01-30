@@ -17,6 +17,7 @@ namespace MaltiezFSM.Framework;
 public abstract class BaseContext : IContext
 {
     protected readonly ICoreAPI mApi;
+    private const double cEpsilon = 1E-15;
 
     public BaseContext(ICoreAPI api)
     {
@@ -42,13 +43,15 @@ public abstract class BaseContext : IContext
             "log" => Math.Log(arguments[0]),
             "round" => Math.Round(arguments[0]),
             "sign" => Math.Sign(arguments[0]),
+            "greater" => arguments[0] > arguments[0] ? arguments[2] : arguments[3],
+            "equal" => Math.Abs(arguments[0] - arguments[1]) < cEpsilon * Math.Min(arguments[0], arguments[1]) ? arguments[2] : arguments[3],
             _ => UnimplementedFunction(name)
         };
     }
 
     private double UnimplementedFunction(string name)
     {
-        Logger.Error(mApi, this, $"Math function '{name}' is not implemented. Implemented functions: sin, cos, abs, sqrt, ceiling, floor, clamp, exp, max, min, log, round, sign.");
+        Logger.Error(mApi, this, $"Math function '{name}' is not implemented. Implemented functions: sin, cos, abs, sqrt, ceiling, floor, clamp, exp, max, min, log, round, sign, greater, equal.");
         return 0;
     }
 }
