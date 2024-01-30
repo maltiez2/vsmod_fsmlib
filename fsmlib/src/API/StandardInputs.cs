@@ -99,8 +99,7 @@ public interface ISlotContentInput : IStandardInput
     {
         SomeTaken,
         AllTaken,
-        SomePut,
-        PutIntoEmpty
+        AfterModified
     }
 
     SlotEventType EventType { get; }

@@ -1,24 +1,22 @@
 ﻿using HarmonyLib;
 using MaltiezFSM.API;
 using System.Collections.Generic;
+using System.Linq;
 using Vintagestory.API.Common;
-using Vintagestory.API.Server;
 
 namespace MaltiezFSM.Framework;
 
 public sealed class SlotInputInvoker : IInputInvoker
 {
-    private static SlotInputInvoker? sInstance;
-
     private bool mDisposed = false;
-    private ICoreServerAPI mApi;
-    private readonly Dictionary<ISlotContentInput.SlotEventType, Dictionary<ISlotContentInput, IInputInvoker.InputCallback>> mInputs = new();
+    private readonly ICoreAPI mApi;
+    private readonly Dictionary<ISlotContentInput.SlotEventType, Dictionary<Utils.SlotType, Dictionary<ISlotContentInput, IInputInvoker.InputCallback>>> mInputs = new();
 
-    public SlotInputInvoker(ICoreServerAPI api)
+    public SlotInputInvoker(ICoreAPI api)
     {
         mApi = api;
-        Patch();
-        sInstance = this;
+        SlotInputInvokerIntegration.Patch(api.Side);
+        SlotInputInvokerIntegration.Instances[api.Side] = this;
     }
 
     public void RegisterInput(IInput input, IInputInvoker.InputCallback callback, CollectibleObject collectible)
@@ -26,54 +24,34 @@ public sealed class SlotInputInvoker : IInputInvoker
         if (input is not ISlotContentInput contentInput) return;
 
         if (!mInputs.ContainsKey(contentInput.EventType)) mInputs.Add(contentInput.EventType, new());
+        if (!mInputs[contentInput.EventType].ContainsKey(contentInput.Slot)) mInputs[contentInput.EventType].Add(contentInput.Slot, new());
 
-        mInputs[contentInput.EventType].Add(contentInput, callback);
+        mInputs[contentInput.EventType][contentInput.Slot].Add(contentInput, callback);
     }
 
-    private void Patch()
+    public void ContentChangeHandler(ItemSlot slot, ISlotContentInput.SlotEventType eventType)
     {
-        new Harmony("fsmlib").Patch(
-                    AccessTools.Method(typeof(ItemSlot), nameof(ItemSlot.TakeOut)),
-                    prefix: new HarmonyMethod(AccessTools.Method(typeof(SlotInputInvoker), nameof(TakeFromSlot)))
-                    );
-        new Harmony("fsmlib").Patch(
-                    AccessTools.Method(typeof(ItemSlot), nameof(ItemSlot.TakeOutWhole)),
-                    prefix: new HarmonyMethod(AccessTools.Method(typeof(SlotInputInvoker), nameof(TakeAllFromSlot)))
-                    );
-    }
-    private void Unpatch()
-    {
-        new Harmony("fsmlib").Unpatch(AccessTools.Method(typeof(ItemSlot), nameof(ItemSlot.TakeOut)), HarmonyPatchType.Prefix, "fsmlib");
-        new Harmony("fsmlib").Unpatch(AccessTools.Method(typeof(ItemSlot), nameof(ItemSlot.TakeOutWhole)), HarmonyPatchType.Prefix, "fsmlib");
-    }
-    private static void TakeFromSlot(ItemSlot __instance, int quantity)
-    {
-        if (__instance.Itemstack == null) return;
+        if (!mInputs.ContainsKey(eventType)) return;
 
-        if (quantity >= __instance.Itemstack.StackSize)
-        {
-            sInstance?.ContentChangeHandler(__instance, ISlotContentInput.SlotEventType.AllTaken);
-            return;
-        }
-
-        sInstance?.ContentChangeHandler(__instance, ISlotContentInput.SlotEventType.SomeTaken);
-    }
-    private static void TakeAllFromSlot(ItemSlot __instance)
-    {
-        if (__instance.Itemstack == null) return;
-
-        sInstance?.ContentChangeHandler(__instance, ISlotContentInput.SlotEventType.AllTaken);
-    }
-
-    private void ContentChangeHandler(ItemSlot slot, ISlotContentInput.SlotEventType eventType)
-    {
         IPlayer? player = (slot.Inventory as InventoryBasePlayer)?.Player;
 
         if (player == null) return;
 
-        foreach ((ISlotContentInput input, IInputInvoker.InputCallback callback) in mInputs[eventType])
+        foreach (Dictionary<ISlotContentInput, IInputInvoker.InputCallback> inputs in mInputs[eventType].Where(entry => Utils.SlotData.CheckSlotType(entry.Key, slot, player)).Select(entry => entry.Value))
         {
-            if (callback.Invoke(new(input.Slot, slot, player), player, input))
+            InvokeInputs(inputs, slot, player);
+        }
+    }
+
+    private static void InvokeInputs(Dictionary<ISlotContentInput, IInputInvoker.InputCallback> inputs, ItemSlot slot, IPlayer player)
+    {
+        CollectibleObject? collectible = slot.Itemstack?.Collectible;
+
+        if (collectible == null) return;
+
+        foreach ((ISlotContentInput input, IInputInvoker.InputCallback callback) in inputs.Where(entry => entry.Key.Collectible == collectible))
+        {
+            if (callback.Invoke(new(input.Slot, slot, player), player, input, false))
             {
                 return;
             }
@@ -85,6 +63,97 @@ public sealed class SlotInputInvoker : IInputInvoker
         if (mDisposed) return;
         mDisposed = true;
 
-        Unpatch();
+        SlotInputInvokerIntegration.Unpatch(mApi.Side);
+    }
+}
+
+internal static class SlotInputInvokerIntegration
+{
+    public static readonly Dictionary<EnumAppSide, SlotInputInvoker> Instances = new();
+
+    public static void Patch(EnumAppSide side)
+    {
+        if (side == EnumAppSide.Client)
+        {
+            new Harmony("fsmlib").Patch(
+                    AccessTools.Method(typeof(ItemSlot), nameof(ItemSlot.TakeOut)),
+                    prefix: new HarmonyMethod(AccessTools.Method(typeof(SlotInputInvokerIntegration), nameof(TakeFromSlotClient)))
+                    );
+            new Harmony("fsmlib").Patch(
+                        AccessTools.Method(typeof(ItemSlot), nameof(ItemSlot.TakeOutWhole)),
+                        prefix: new HarmonyMethod(AccessTools.Method(typeof(SlotInputInvokerIntegration), nameof(TakeAllFromSlotClient)))
+                        );
+            new Harmony("fsmlib").Patch(
+                        typeof(ItemSlot).GetMethod("FlipWith", AccessTools.all),
+                        prefix: new HarmonyMethod(AccessTools.Method(typeof(SlotInputInvokerIntegration), nameof(FlipWithPreClient)))
+                        );
+            new Harmony("fsmlib").Patch(
+                        AccessTools.Method(typeof(ItemSlot), nameof(ItemSlot.OnItemSlotModified)),
+                        prefix: new HarmonyMethod(AccessTools.Method(typeof(SlotInputInvokerIntegration), nameof(OnItemSlotModifiedClient)))
+                        );
+        }
+
+        if (side == EnumAppSide.Server)
+        {
+            new Harmony("fsmlib").Patch(
+                    AccessTools.Method(typeof(ItemSlot), nameof(ItemSlot.TakeOut)),
+                    prefix: new HarmonyMethod(AccessTools.Method(typeof(SlotInputInvokerIntegration), nameof(TakeFromSlotServer)))
+                    );
+            new Harmony("fsmlib").Patch(
+                        AccessTools.Method(typeof(ItemSlot), nameof(ItemSlot.TakeOutWhole)),
+                        prefix: new HarmonyMethod(AccessTools.Method(typeof(SlotInputInvokerIntegration), nameof(TakeAllFromSlotServer)))
+                        );
+            new Harmony("fsmlib").Patch(
+                        typeof(ItemSlot).GetMethod("FlipWith", AccessTools.all),
+                        prefix: new HarmonyMethod(AccessTools.Method(typeof(SlotInputInvokerIntegration), nameof(FlipWithPreServer)))
+                        );
+            new Harmony("fsmlib").Patch(
+                        AccessTools.Method(typeof(ItemSlot), nameof(ItemSlot.OnItemSlotModified)),
+                        prefix: new HarmonyMethod(AccessTools.Method(typeof(SlotInputInvokerIntegration), nameof(OnItemSlotModifiedServer)))
+                        );
+        }
+    }
+    public static void Unpatch(EnumAppSide side)
+    {
+        new Harmony("fsmlib").Unpatch(AccessTools.Method(typeof(ItemSlot), nameof(ItemSlot.TakeOut)), HarmonyPatchType.Prefix, "fsmlib");
+        new Harmony("fsmlib").Unpatch(AccessTools.Method(typeof(ItemSlot), nameof(ItemSlot.TakeOutWhole)), HarmonyPatchType.Prefix, "fsmlib");
+        new Harmony("fsmlib").Unpatch(typeof(ItemSlot).GetMethod("FlipWith", AccessTools.all), HarmonyPatchType.Prefix, "fsmlib");
+        new Harmony("fsmlib").Unpatch(AccessTools.Method(typeof(ItemSlot), nameof(ItemSlot.OnItemSlotModified)), HarmonyPatchType.Prefix, "fsmlib");
+    }
+
+    private static void TakeFromSlotClient(ItemSlot __instance, int quantity) => TakeFromSlot(__instance, quantity, EnumAppSide.Client);
+    private static void TakeFromSlotServer(ItemSlot __instance, int quantity) => TakeFromSlot(__instance, quantity, EnumAppSide.Server);
+    private static void TakeAllFromSlotClient(ItemSlot __instance) => TakeAllFromSlot(__instance, EnumAppSide.Client);
+    private static void TakeAllFromSlotServer(ItemSlot __instance) => TakeAllFromSlot(__instance, EnumAppSide.Server);
+    private static void FlipWithPreClient(ItemSlot __instance, ItemSlot withSlot) => FlipWithPre(__instance, withSlot, EnumAppSide.Client);
+    private static void FlipWithPreServer(ItemSlot __instance, ItemSlot withSlot) => FlipWithPre(__instance, withSlot, EnumAppSide.Server);
+    private static void OnItemSlotModifiedClient(ItemSlot __instance) => OnItemSlotModified(__instance, EnumAppSide.Client);
+    private static void OnItemSlotModifiedServer(ItemSlot __instance) => OnItemSlotModified(__instance, EnumAppSide.Server);
+
+    private static void TakeFromSlot(ItemSlot __instance, int quantity, EnumAppSide side)
+    {
+        if (__instance.Itemstack == null) return;
+
+        if (quantity >= __instance.Itemstack.StackSize) return;
+
+        Instances[side]?.ContentChangeHandler(__instance, ISlotContentInput.SlotEventType.SomeTaken);
+    }
+    private static void TakeAllFromSlot(ItemSlot __instance, EnumAppSide side)
+    {
+        if (__instance.Itemstack == null) return;
+
+        Instances[side]?.ContentChangeHandler(__instance, ISlotContentInput.SlotEventType.AllTaken);
+    }
+    private static void FlipWithPre(ItemSlot __instance, ItemSlot withSlot, EnumAppSide side)
+    {
+        if (withSlot.StackSize <= __instance.MaxSlotStackSize)
+        {
+            Instances[side]?.ContentChangeHandler(__instance, ISlotContentInput.SlotEventType.AllTaken);
+            Instances[side]?.ContentChangeHandler(withSlot, ISlotContentInput.SlotEventType.AllTaken);
+        }
+    }
+    private static void OnItemSlotModified(ItemSlot __instance, EnumAppSide side)
+    {
+        Instances[side]?.ContentChangeHandler(__instance, ISlotContentInput.SlotEventType.AfterModified);
     }
 }

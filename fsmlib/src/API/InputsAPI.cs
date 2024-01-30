@@ -25,6 +25,7 @@ public interface IInput : IFactoryProduct
     public int Index { get; internal set; }
     public bool Handle { get; }
     public Utils.SlotType Slot { get; }
+    CollectibleObject Collectible { get; }
     WorldInteraction? GetInteractionInfo(ItemSlot slot);
 }
 public interface ICustomInputInvoker

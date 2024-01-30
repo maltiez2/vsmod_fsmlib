@@ -15,12 +15,15 @@ public class BaseInput : FactoryProduct, IInput
     public bool Handle => mHandled;
     public Utils.SlotType Slot => mSlotType;
     public virtual WorldInteraction? GetInteractionInfo(ItemSlot slot) => null;
+    public CollectibleObject Collectible { get; }
 
     private readonly bool mHandled;
     private readonly Utils.SlotType mSlotType;
 
     public BaseInput(int id, string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api) : base(id, code, definition, collectible, api)
     {
+        Collectible = collectible;
+
         if (definition == null)
         {
             LogError("Empty definition");

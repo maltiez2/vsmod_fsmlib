@@ -22,7 +22,7 @@ public sealed class Durability : BaseSystem
         int maxDurability = slot?.Itemstack?.Collectible?.GetMaxDurability(slot.Itemstack) ?? 0;
         int amount = parameters["amount"].AsInt(maxDurability);
 
-        return amount > 0 ? durability >= amount : (maxDurability - durability) >= Math.Abs(amount);
+        return amount <= 0 ? durability >= amount : (maxDurability - durability) >= Math.Abs(amount);
     }
 
     public override bool Process(ItemSlot slot, IPlayer player, JsonObject parameters)

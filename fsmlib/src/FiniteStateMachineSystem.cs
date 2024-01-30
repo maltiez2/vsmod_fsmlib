@@ -91,10 +91,12 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         Framework.HotkeyInputInvoker hotkey = new(api);
         Framework.ActiveSlotChangedInputInvoker activeSlotChanged = new(api);
         Framework.CustomInputInvoker customInput = new();
+        Framework.SlotInputInvoker slotInput = new(api);
 
         mInputManager.RegisterInvoker(invoker, typeof(IOperationInput));
         mInputManager.RegisterInvoker(keyInput, typeof(IKeyInput));
         mInputManager.RegisterInvoker(keyInput, typeof(IMouseInput));
+        mInputManager.RegisterInvoker(slotInput, typeof(ISlotContentInput));
         mInputManager.RegisterInvoker(statusInput, typeof(IStatusInput));
         mInputManager.RegisterInvoker(hotkey, typeof(IHotkeyInput));
         mInputManager.RegisterInvoker(activeSlotChanged, typeof(ISlotChangedAfter));
@@ -103,6 +105,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
 
         mInputInvokers.Add(invoker);
         mInputInvokers.Add(keyInput);
+        mInputInvokers.Add(slotInput);
         mInputInvokers.Add(statusInput);
         mInputInvokers.Add(hotkey);
         mInputInvokers.Add(activeSlotChanged);
@@ -148,6 +151,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         mInputFactory.Register<Inputs.OperationStarted>("OperationStarted");
         mInputFactory.Register<Inputs.OperationFinished>("OperationFinished");
         mInputFactory.Register<Inputs.StatusInput>("Status");
+        mInputFactory.Register<Inputs.SlotContent>("SlotContent");
     }
     private void RegisterSystems()
     {

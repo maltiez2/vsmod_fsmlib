@@ -559,6 +559,21 @@ public static class Utils
             }
         }
 
+        public static bool CheckSlotType(SlotType slotType, ItemSlot slot, IPlayer player)
+        {
+            return slotType switch
+            {
+                SlotType.HotBar => player.InventoryManager.GetHotbarInventory().GetSlotId(slot) != -1,
+                SlotType.MainHand => player.Entity.RightHandItemSlot == slot,
+                SlotType.OffHand => player.Entity.LeftHandItemSlot == slot,
+                SlotType.Inventory => player.InventoryManager.Inventories.Select(etnry => etnry.Value.GetSlotId(slot) != -1).Aggregate((x, y) => x && y),
+                SlotType.Character => player.InventoryManager.GetOwnInventory(GlobalConstants.characterInvClassName).GetSlotId(slot) != -1,
+                SlotType.Backpack => player.InventoryManager.GetOwnInventory(GlobalConstants.backpackInvClassName).GetSlotId(slot) != -1,
+                SlotType.Crafting => player.InventoryManager.GetOwnInventory(GlobalConstants.craftingInvClassName).GetSlotId(slot) != -1,
+                _ => false,
+            };
+        }
+
         public readonly ItemSlot? Slot(IPlayer player)
         {
             return SlotType switch
