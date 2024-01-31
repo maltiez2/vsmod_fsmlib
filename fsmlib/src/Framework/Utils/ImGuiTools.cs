@@ -145,7 +145,7 @@ internal sealed class InputManagerDebugWindowImpl : IDisposable
 
         ImGui.SeparatorText("Server side inputs");
         ImGui.BeginChild("InputManager - server", new System.Numerics.Vector2(0, mServerInputDataQueue.Count > 0 ? 200 : 20), true);
-        foreach (InputData element in mServerInputDataQueue.Queue.Reverse().ToArray().Where(ShowInput))
+        foreach (InputData element in mServerInputDataQueue.Queue.Reverse().AsEnumerable().Where(ShowInput))
         {
             DrawElement(element);
         }

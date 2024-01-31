@@ -26,8 +26,9 @@ public sealed class KeyboardKey : BaseInput, IKeyInput
         Key = (GlKeys)Enum.Parse(typeof(GlKeys), definition["key"].AsString());
         EventType = definition["type"].AsString() switch
         {
-            ("released") => KeyEventType.KeyUp,
-            ("pressed") => KeyEventType.KeyDown,
+            "released" => KeyEventType.KeyUp,
+            "pressed" => KeyEventType.KeyDown,
+            "hold" => KeyEventType.KeyHold,
             _ => KeyEventType.KeyDown,
         };
         Modifiers = new KeyPressModifiers

@@ -57,6 +57,4 @@ public class ChangeAttribute : BaseSystem
         slot.MarkDirty();
         return true;
     }
-
-    int index = 0;
 }

@@ -7,8 +7,6 @@ using Vintagestory.API.Common;
 using static MaltiezFSM.API.IKeyInput;
 using static MaltiezFSM.API.IMouseInput;
 
-
-
 namespace MaltiezFSM.Framework;
 
 public sealed class KeyInputInvoker : IInputInvoker
@@ -18,9 +16,11 @@ public sealed class KeyInputInvoker : IInputInvoker
         Unknown,
         KeyDown,
         KeyUp,
+        KeyHold,
         MouseDown,
         MouseUp,
         MouseMove,
+        MouseHold,
         Count
     }
 
@@ -31,6 +31,7 @@ public sealed class KeyInputInvoker : IInputInvoker
     private readonly Dictionary<InputType, List<IInput>> mInputs = new();
     private readonly Dictionary<IInput, IInputInvoker.InputCallback> mCallbacks = new();
     private readonly Dictionary<IInput, CollectibleObject> mCollectibles = new();
+    private readonly HoldButtonManager mHoldButtonInvoker;
     private bool mDisposed;
 
     public KeyInputInvoker(ICoreClientAPI api)
@@ -43,6 +44,10 @@ public sealed class KeyInputInvoker : IInputInvoker
         mClientApi.Event.MouseMove += HandleMouseMove;
 
         mHotkeyMapper = new(api);
+        mHoldButtonInvoker = new(api);
+
+        mHoldButtonInvoker.KeyHold += HandleKeyHold;
+        mHoldButtonInvoker.MouseHold += HandleMouseHold;
 
         for (InputType input = InputType.Unknown + 1; input < InputType.Count; input++)
         {
@@ -77,6 +82,7 @@ public sealed class KeyInputInvoker : IInputInvoker
         {
             KeyEventType.KeyDown => InputType.KeyDown,
             KeyEventType.KeyUp => InputType.KeyUp,
+            KeyEventType.KeyHold => InputType.KeyHold,
             _ => InputType.Unknown,
         };
     }
@@ -87,12 +93,15 @@ public sealed class KeyInputInvoker : IInputInvoker
             MouseEventType.MouseDown => InputType.MouseDown,
             MouseEventType.MouseUp => InputType.MouseUp,
             MouseEventType.MouseMove => InputType.MouseMove,
+            MouseEventType.MouseHold => InputType.MouseHold,
             _ => InputType.Unknown,
         };
     }
 
     private void HandleKeyDown(KeyEvent eventData)
     {
+        mHoldButtonInvoker.HandleKeyDown(eventData);
+
         if (!EventShouldBeHandled()) return;
 
         foreach (IInput input in mInputs[InputType.KeyDown])
@@ -110,6 +119,8 @@ public sealed class KeyInputInvoker : IInputInvoker
     }
     private void HandleKeyUp(KeyEvent eventData)
     {
+        mHoldButtonInvoker.HandleKeyUp(eventData);
+
         if (!EventShouldBeHandled()) return;
 
         foreach (IInput input in mInputs[InputType.KeyUp])
@@ -127,6 +138,8 @@ public sealed class KeyInputInvoker : IInputInvoker
     }
     private void HandleMouseDown(MouseEvent eventData)
     {
+        mHoldButtonInvoker.HandleMouseDown(eventData);
+
         if (!EventShouldBeHandled()) return;
 
         foreach (IInput input in mInputs[InputType.MouseDown])
@@ -144,6 +157,8 @@ public sealed class KeyInputInvoker : IInputInvoker
     }
     private void HandleMouseUp(MouseEvent eventData)
     {
+        mHoldButtonInvoker.HandleMouseUp(eventData);
+
         if (!EventShouldBeHandled()) return;
 
         foreach (IInput input in mInputs[InputType.MouseUp])
@@ -168,6 +183,40 @@ public sealed class KeyInputInvoker : IInputInvoker
             if (input is not IMouseInput mouseInput) continue;
 
             if (!mouseInput.CheckIfShouldBeHandled(eventData, MouseEventType.MouseMove)) continue;
+
+            if (HandleInput(input))
+            {
+                eventData.Handled = true;
+                return;
+            }
+        }
+    }
+    private void HandleKeyHold(KeyEvent eventData)
+    {
+        if (!EventShouldBeHandled()) return;
+
+        foreach (IInput input in mInputs[InputType.KeyHold])
+        {
+            if (input is not IKeyInput keyInput) continue;
+
+            if (!keyInput.CheckIfShouldBeHandled(eventData, KeyEventType.KeyHold)) continue;
+
+            if (HandleInput(input))
+            {
+                eventData.Handled = true;
+                return;
+            }
+        }
+    }
+    private void HandleMouseHold(MouseEvent eventData)
+    {
+        if (!EventShouldBeHandled()) return;
+
+        foreach (IInput input in mInputs[InputType.MouseHold])
+        {
+            if (input is not IMouseInput mouseInput) continue;
+
+            if (!mouseInput.CheckIfShouldBeHandled(eventData, MouseEventType.MouseHold)) continue;
 
             if (HandleInput(input))
             {
@@ -232,5 +281,80 @@ public sealed class KeyInputInvoker : IInputInvoker
             mDisposed = true;
         }
         GC.SuppressFinalize(this);
+    }
+}
+
+internal sealed class HoldButtonManager : IDisposable
+{
+    public event Action<MouseEvent>? MouseHold;
+    public event Action<KeyEvent>? KeyHold;
+
+    private const int cTimerDelay = 30;
+
+    private readonly Dictionary<EnumMouseButton, MouseEvent?> mMouseButtons = new();
+    private readonly Dictionary<GlKeys, KeyEvent?> mKeyboardButtons = new();
+    private readonly Dictionary<EnumMouseButton, bool> mMouseButtonsDelay = new();
+    private readonly Dictionary<GlKeys, bool> mKeyboardButtonsDelay = new();
+    private bool mDisposed = false;
+    private readonly ICoreClientAPI mApi;
+    private readonly long mTimer;
+
+    public HoldButtonManager(ICoreClientAPI api)
+    {
+        mApi = api;
+        mTimer = api.World.RegisterGameTickListener(InvokeEvents, cTimerDelay);
+    }
+
+    public void HandleKeyDown(KeyEvent eventData)
+    {
+        GlKeys key = (GlKeys)eventData.KeyCode;
+        if (!mKeyboardButtons.ContainsKey(key) || mKeyboardButtons[key] == null) mKeyboardButtonsDelay[key] = false;
+        mKeyboardButtons[key] = eventData;
+    }
+    public void HandleKeyUp(KeyEvent eventData)
+    {
+        GlKeys key = (GlKeys)eventData.KeyCode;
+        mKeyboardButtons[key] = null;
+    }
+    public void HandleMouseDown(MouseEvent eventData)
+    {
+        EnumMouseButton key = eventData.Button;
+        if (!mMouseButtons.ContainsKey(key) || mMouseButtons[key] == null) mMouseButtonsDelay[key] = false;
+        mMouseButtons[key] = eventData;
+    }
+    public void HandleMouseUp(MouseEvent eventData)
+    {
+        EnumMouseButton key = eventData.Button;
+        mMouseButtons[key] = null;
+    }
+
+    private void InvokeEvents(float dt)
+    {
+        foreach ((EnumMouseButton key, MouseEvent? mouseEvent) in mMouseButtons)
+        {
+            if (mouseEvent != null)
+            {
+                if (mMouseButtonsDelay[key]) MouseHold?.Invoke(mouseEvent);
+                mMouseButtonsDelay[key] = true;
+            }
+        }
+
+        foreach ((GlKeys key, KeyEvent? keyEvent) in mKeyboardButtons)
+        {
+            if (keyEvent != null)
+            {
+                if (mKeyboardButtonsDelay[key]) KeyHold?.Invoke(keyEvent);
+                mKeyboardButtonsDelay[key] = true;
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        if (mDisposed) return;
+        GC.SuppressFinalize(this);
+        mDisposed = true;
+
+        mApi.World.UnregisterGameTickListener(mTimer);
     }
 }

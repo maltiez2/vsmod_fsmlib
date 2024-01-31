@@ -41,14 +41,14 @@ public class Requirement : IRequirement
     public SlotType Slot { get; set; }
     public SearchMode SearchMode { get; set; }
     public AssetLocation[] Locations { get; set; }
-    public string Name { get; set; }
+    public string? Name { get; set; }
 
     public Requirement(JsonObject definition)
     {
         Slot = (SlotType)Enum.Parse(typeof(SlotType), definition["slot"].AsString("Inventory"));
         SearchMode = (SearchMode)Enum.Parse(typeof(SearchMode), definition["search"].AsString("Whitelist"));
         Locations = definition.KeyExists("location") ? GetAssetLocations(definition["location"]) : Array.Empty<AssetLocation>();
-        Name = definition["name"].AsString("");
+        Name = definition["name"].AsString();
     }
 
     public virtual bool Verify(IPlayer player)
@@ -162,9 +162,9 @@ public class Requirement : IRequirement
         return new Requirement(definition);
     }
 
-    public override string ToString()
+    public override string? ToString()
     {
-        return Lang.Get(Name);
+        return Name == null ? "" : Lang.Get(Name);
     }
 }
 

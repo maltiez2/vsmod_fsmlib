@@ -45,7 +45,8 @@ public interface IKeyInput : IStandardInput
     enum KeyEventType
     {
         KeyDown,
-        KeyUp
+        KeyUp,
+        KeyHold
     }
     KeyEventType EventType { get; }
     string HotKey { get; }
@@ -60,7 +61,8 @@ public interface IMouseInput : IStandardInput
     {
         MouseMove,
         MouseDown,
-        MouseUp
+        MouseUp,
+        MouseHold
     }
     MouseEventType EventType { get; }
     string Name { get; }
