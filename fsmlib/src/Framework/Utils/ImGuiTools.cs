@@ -6,6 +6,10 @@ using VSImGui;
 using ImGuiNET;
 using System.Linq;
 using System.Diagnostics;
+using Vintagestory.API.Datastructures;
+using static MaltiezFSM.API.IOperation;
+using Vintagestory.Client;
+using Vintagestory.Server;
 
 namespace MaltiezFSM.Framework;
 
@@ -25,6 +29,7 @@ internal sealed class ImGuiDebugWindow : IDisposable
         api.ModLoader.GetModSystem<VSImGuiModSystem>().SetUpImGuiWindows += Draw;
         InputManagerDebugWindow.Init();
         OperationsDebugWindow.Init();
+        SystemsDebugWindow.Init();
     }
 
     public static void DrawHint(string text)
@@ -60,6 +65,10 @@ internal sealed class ImGuiDebugWindow : IDisposable
         if (ImGui.CollapsingHeader("Operations##FSMlib"))
         {
             OperationsDebugWindow.Draw();
+        }
+        if (ImGui.CollapsingHeader("Systems##FSMlib"))
+        {
+            SystemsDebugWindow.Draw();
         }
 
         DrawWindows?.Invoke();
@@ -127,13 +136,24 @@ internal sealed class InputManagerDebugWindowImpl : IDisposable
 #if DEBUG   
         ImGui.BeginChild("InputManager##FSMlib", new System.Numerics.Vector2(0, 800), false);
 
+        if (ImGui.Button($"Clear##InputManager##FSMlib"))
+        {
+            mServerInputDataQueue.Queue.Clear();
+            mClientInputDataQueue.Queue.Clear();
+            mServerPackets.Queue.Clear();
+            mClientPackets.Queue.Clear();
+            mServerCounter = 0;
+            mClientCounter = 0;
+            mCurrentFilter = 0;
+        }
+
         ImGui.Checkbox("Stop updates", ref mStopUpdates);
         ImGui.Checkbox("Show synchronized", ref mShowPackets);
         ImGui.Checkbox("Show only handled inputs", ref mOnlyHandled);
         ImGui.Combo("Filter##InputManager", ref mCurrentFilter, mInputs.Select(Utils.GetTypeName).ToArray(), mInputs.Length);
 
-        ImGui.PlotLines("Client packets per tick##FSMlib", ref mClientPackets.Queue.ToArray()[0], mClientPackets.Count, 0, $"Max inputs per second: {mClientPackets.Queue.Max()}", 0, mClientPackets.Queue.Max(), new System.Numerics.Vector2(0, 100));
-        ImGui.PlotLines("Server packets per tick##FSMlib", ref mServerPackets.Queue.ToArray()[0], mServerPackets.Count, 0, $"Max inputs per second: {mServerPackets.Queue.Max()}", 0, mServerPackets.Queue.Max(), new System.Numerics.Vector2(0, 100));
+        if (mClientPackets.Count > 0) ImGui.PlotLines("Client packets per tick##FSMlib", ref mClientPackets.Queue.ToArray()[0], mClientPackets.Count, 0, $"Max inputs per second: {mClientPackets.Queue.Max()}", 0, mClientPackets.Queue.Max(), new System.Numerics.Vector2(0, 100));
+        if (mServerPackets.Count > 0)  ImGui.PlotLines("Server packets per tick##FSMlib", ref mServerPackets.Queue.ToArray()[0], mServerPackets.Count, 0, $"Max inputs per second: {mServerPackets.Queue.Max()}", 0, mServerPackets.Queue.Max(), new System.Numerics.Vector2(0, 100));
 
         ImGui.SeparatorText("Client side inputs");
         ImGui.BeginChild("InputManager - client", new System.Numerics.Vector2(0, mClientInputDataQueue.Count > 0 ? 200 : 20), true);
@@ -283,6 +303,16 @@ internal sealed class OperationsDebugWindowImpl : IDisposable
         ImGui.BeginChild("Operations##FSMlib", new System.Numerics.Vector2(0, 800), false);
         try
         {
+            if (ImGui.Button($"Clear##Operations##FSMlib"))
+            {
+                mServerOperationDataQueue.Queue.Clear();
+                mClientOperationDataQueue.Queue.Clear();
+                mServerCounter = 0;
+                mClientCounter = 0;
+                mCurrentFilter = 0;
+                mOutcomeFilter = 0;
+            }
+
             ImGui.Checkbox("Stop updates", ref mStopUpdates);
             ImGui.Checkbox("Hide failed", ref mOnlyHandled);
             ImGui.Combo("Operation filter##InputManager", ref mCurrentFilter, mOperations.Select(Utils.GetTypeName).ToArray(), mOperations.Length);
@@ -399,4 +429,148 @@ internal static class OperationsDebugWindow
     public static void Init() => mInstance ??= new();
 
     private static OperationsDebugWindowImpl? mInstance;
+}
+
+internal struct SystemData
+{
+    public ISystem System { get; set; }
+    public IOperation Operation { get; set; }
+    public IPlayer Player { get; set; }
+    public JsonObject Request { get; set; }
+    public bool Result { get; set; }
+    public bool ClientSide { get; set; }
+    public int Index { get; set; }
+    public string TimeStamp { get; set; }
+}
+
+internal sealed class SystemsDebugWindowImpl : IDisposable
+{
+    private readonly FixedSizedQueue<SystemData> mServerSystemsDataQueue = new(64);
+    private readonly FixedSizedQueue<SystemData> mClientSystemsDataQueue = new(64);
+    private int mServerCounter = 0;
+    private int mClientCounter = 0;
+    private bool mStopUpdates = false;
+    private bool mOnlyFailed = false;
+
+    public void Draw()
+    {
+#if DEBUG   
+        ImGui.BeginChild("Systems##FSMlib", new System.Numerics.Vector2(0, 800), false);
+        try
+        {
+            if (ImGui.Button($"Clear##Systems##FSMlib"))
+            {
+                mServerSystemsDataQueue.Queue.Clear();
+                mClientSystemsDataQueue.Queue.Clear();
+                mServerCounter = 0;
+                mClientCounter = 0;
+            }
+
+            ImGui.Checkbox("Stop updates", ref mStopUpdates);
+            ImGui.Checkbox("Hide successful", ref mOnlyFailed);
+
+            ImGui.SeparatorText("Client side systems");
+            ImGui.BeginChild("Systems - client##FSMlib", new System.Numerics.Vector2(0, mClientSystemsDataQueue.Count > 0 ? 200 : 20), true);
+            try
+            {
+                foreach (SystemData element in mClientSystemsDataQueue.Queue.Reverse().Where(ShowSystem))
+                {
+                    DrawElement(element);
+                }
+            }
+            catch
+            {
+                // just move on
+            }
+            ImGui.EndChild();
+
+            ImGui.SeparatorText("Server side systems");
+            ImGui.BeginChild("Systems - server##FSMlib", new System.Numerics.Vector2(0, mServerSystemsDataQueue.Count > 0 ? 200 : 20), true);
+            try
+            {
+                foreach (SystemData element in mServerSystemsDataQueue.Queue.Reverse().Where(ShowSystem))
+                {
+                    DrawElement(element);
+                }
+            }
+            catch
+            {
+                // just move on
+            }
+
+            ImGui.EndChild();
+        }
+        catch
+        {
+            // just move on
+        }
+
+        ImGui.EndChild();
+    }
+
+    private bool ShowSystem(SystemData element)
+    {
+        return !mOnlyFailed || !element.Result;
+    }
+
+    private static void DrawElement(SystemData element)
+    {
+        if (!element.Result) ImGui.BeginDisabled();
+        ImGui.Text(element.TimeStamp);
+        ImGui.SameLine(100);
+        ImGui.Text($"#{element.Index}");
+        ImGui.SameLine(150);
+        ImGui.Text($"{element.System}");
+        if (!element.Result) ImGui.EndDisabled();
+        ImGuiDebugWindow.DrawHint(
+            $"Operation: {element.Operation}\n" +
+            $"Player: {element.Player.PlayerName}\n" +
+            $"Request: {element.Request}\n");
+#endif
+    }
+
+    public void Enqueue(SystemData element)
+    {
+        if (!mStopUpdates && element.ClientSide)
+        {
+            element.Index = mClientCounter;
+            element.TimeStamp = $"{DateTime.Now:HH:mm:ss.fff}";
+            mClientSystemsDataQueue.Enqueue(element);
+            mClientCounter++;
+        }
+        if (!mStopUpdates && !element.ClientSide)
+        {
+            element.Index = mServerCounter;
+            element.TimeStamp = $"{DateTime.Now:HH:mm:ss.fff}";
+            mServerSystemsDataQueue.Enqueue(element);
+            mServerCounter++;
+        }
+    }
+
+    public void Dispose()
+    {
+        mClientSystemsDataQueue.Queue.Clear();
+    }
+}
+
+internal static class SystemsDebugWindow
+{
+    public static void Enqueue(ISystem system, IOperation operation, IPlayer player, JsonObject request, bool result, bool clientSide)
+    {
+        mInstance?.Enqueue(new()
+        {
+            System = system,
+            Operation = operation,
+            Player = player,
+            Request = request,
+            Result = result,
+            ClientSide = clientSide
+        }
+        );
+    }
+    public static void Clear() => mInstance?.Dispose();
+    public static void Draw() => mInstance?.Draw();
+    public static void Init() => mInstance ??= new();
+
+    private static SystemsDebugWindowImpl? mInstance;
 }

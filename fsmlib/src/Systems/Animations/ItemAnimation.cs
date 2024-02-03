@@ -114,13 +114,13 @@ public class ItemAnimation : BaseSystem // Based on code from TeacupAngel (https
             case "start":
                 animationBehavior.ClearAttachments();
                 string? codeToStart = parameters["animation"].AsString();
-                if (!CheckAnimationCode(codeToStart)) return false;
+                if (!CheckAnimationCode(codeToStart)) return true;
                 AddActiveAnimation(slot, codeToStart);
                 if (mClientSide) StartAnimation(slot, player, codeToStart, mAnimations[codeToStart], animationBehavior);
                 break;
             case "stop":
                 string? codeToStop = parameters["animation"].AsString("");
-                if (!CheckAnimationCode(codeToStop)) return false;
+                if (!CheckAnimationCode(codeToStop)) return true;
                 RemoveActiveAnimation(slot, codeToStop);
                 if (mClientSide) animationBehavior.StopAnimation(mAnimations[codeToStop].Code, true);
                 break;

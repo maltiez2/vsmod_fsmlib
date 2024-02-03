@@ -123,6 +123,7 @@ public sealed class ProjectileDamageType
     private readonly float mDamage;
     private readonly float mKnockback;
     private readonly string mSound;
+    private readonly int mTier;
     private readonly EnumDamageType mDamageType;
     private readonly StatsModifier? mDamageModifier;
     private readonly StatsModifier? mKnockbackModifier;
@@ -131,6 +132,7 @@ public sealed class ProjectileDamageType
 
     public ProjectileDamageType(JsonObject definition, ICoreAPI api)
     {
+        mTier = definition["tier"].AsInt(0);
         mSound = definition["sound"].AsString();
         mDamage = definition["damage"].AsFloat();
         mKnockback = definition["knockback"].AsFloat(0);
@@ -150,7 +152,8 @@ public sealed class ProjectileDamageType
             Source = attacker is EntityPlayer ? EnumDamageSource.Player : EnumDamageSource.Entity,
             SourceEntity = null,
             CauseEntity = attacker.Entity,
-            Type = mDamageType
+            Type = mDamageType,
+            DamageTier = mTier
         }, GetDamage(attacker) * damageMultiplier);
 
         if (damageReceived)

@@ -41,7 +41,6 @@ public class ProceduralPlayerAnimation : BaseSystem, IAnimationSystem
     public override bool Process(ItemSlot slot, IPlayer player, JsonObject parameters)
     {
         if (!base.Process(slot, player, parameters)) return false;
-        if (mApi.Side != EnumAppSide.Client) return true;
 
         string action = parameters["action"].AsString("start");
 
@@ -51,6 +50,7 @@ public class ProceduralPlayerAnimation : BaseSystem, IAnimationSystem
                 string? code = parameters["animation"].AsString();
                 string? category = parameters["category"].AsString();
                 if (!Check(code, category)) return true;
+                if (mApi.Side != EnumAppSide.Client) return true;
                 PlayAnimation(code, category, player.Entity.EntityId);
                 break;
             case "stop":
@@ -60,6 +60,7 @@ public class ProceduralPlayerAnimation : BaseSystem, IAnimationSystem
                     LogError("No 'category' in system request");
                     return false;
                 }
+                if (mApi.Side != EnumAppSide.Client) return true;
                 StopAnimation(category_2, player.Entity.EntityId);
                 break;
             default:
@@ -108,13 +109,13 @@ public class ProceduralPlayerAnimation : BaseSystem, IAnimationSystem
 
         if (!mCategories.ContainsKey(category))
         {
-            LogError($"Category '{category}' not found");
+            if (mApi.Side == EnumAppSide.Client) LogError($"Category '{category}' not found");
             return false;
         }
 
         if (!mAnimations.ContainsKey((category, code)))
         {
-            LogError($"Animation '{code}' not found");
+            if (mApi.Side == EnumAppSide.Client) LogError($"Animation '{code}' not found");
             return false;
         }
 

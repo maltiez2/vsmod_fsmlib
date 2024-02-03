@@ -36,9 +36,11 @@ public class CameraSettings : BaseSystem
         switch (action)
         {
             case "set":
+                if (mApi.Side != EnumAppSide.Client) return true;
                 mSettingsSystem.SetCameraSetting("fsmlib", setting, value, blendingSpeed);
                 break;
             case "reset":
+                if (mApi.Side != EnumAppSide.Client) return true;
                 mSettingsSystem.ResetCameraSetting("fsmlib", setting, blendingSpeed);
                 break;
             default:

@@ -47,7 +47,11 @@ public abstract class BaseOperation : FactoryProduct, IOperation
 
             try
             {
-                if (!system.Verify(slot, player, mRequestsCache[hash]))
+                bool result = system.Verify(slot, player, mRequestsCache[hash]);
+
+                SystemsDebugWindow.Enqueue(system, this, player, request, result, mApi.Side == EnumAppSide.Client);
+                
+                if (!result)
                 {
                     return false;
                 }
