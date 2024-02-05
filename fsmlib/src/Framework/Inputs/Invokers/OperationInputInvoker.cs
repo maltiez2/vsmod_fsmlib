@@ -32,13 +32,17 @@ public sealed class OperationInputInvoker : IInputInvoker, IOperationInputInvoke
 
     private bool Invoke(IOperation operation, ItemSlot inSlot, IPlayer player, Dictionary<IOperationInput, IInputInvoker.InputCallback> inputs)
     {
+        if (player == null) return false;
+        
         foreach ((IOperationInput input, IInputInvoker.InputCallback callback) in inputs.Where((entry, _) => entry.Key.Operation == operation))
         {
             if (inSlot?.Itemstack?.Collectible != mCollectibles[input]) continue;
 
-            Utils.SlotData slotData = new(input.Slot, inSlot, player);
+            SlotData? slotData = SlotData.Construct(input.Slot, inSlot, player);
 
-            if (callback.Invoke(slotData, player, input)) return true;
+            if (slotData == null) continue;
+
+            if (callback.Invoke(slotData.Value, player, input)) return true;
         }
 
         return false;

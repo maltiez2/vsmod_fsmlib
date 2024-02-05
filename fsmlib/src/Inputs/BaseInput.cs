@@ -13,12 +13,12 @@ public class BaseInput : FactoryProduct, IInput
 {
     public int Index { get; set; }
     public bool Handle => mHandled;
-    public Utils.SlotType Slot => mSlotType;
+    public SlotType Slot => mSlotType;
     public virtual WorldInteraction? GetInteractionInfo(ItemSlot slot) => null;
     public CollectibleObject Collectible { get; }
 
     private readonly bool mHandled;
-    private readonly Utils.SlotType mSlotType;
+    private readonly SlotType mSlotType;
 
     public BaseInput(int id, string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api) : base(id, code, definition, collectible, api)
     {
@@ -31,6 +31,6 @@ public class BaseInput : FactoryProduct, IInput
         }
 
         mHandled = definition["handle"].AsBool(true);
-        mSlotType = (Utils.SlotType)Enum.Parse(typeof(Utils.SlotType), definition["slot"].AsString("MainHand"));
+        mSlotType = (SlotType)Enum.Parse(typeof(SlotType), definition["slot"].AsString("MainHand"));
     }
 }

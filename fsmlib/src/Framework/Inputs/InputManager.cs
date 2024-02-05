@@ -57,14 +57,14 @@ public sealed class InputManager : IInputManager
         }
     }
 
-    private void PacketHandler(int inputIndex, Utils.SlotData slot, IPlayer player)
+    private void PacketHandler(int inputIndex, SlotData slot, IPlayer player)
     {
         if (mInputs.Count > inputIndex)
         {
             _ = InputHandler(slot, player, mInputs[inputIndex], false);
         }
     }
-    private bool InputHandler(Utils.SlotData slot, IPlayer player, IInput input, bool synchronize = true)
+    private bool InputHandler(SlotData slot, IPlayer player, IInput input, bool synchronize = true)
     {
         if (synchronize && mServerPacketSender != null && player is IServerPlayer serverPlayer)
         {

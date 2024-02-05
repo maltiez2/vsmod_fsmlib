@@ -25,11 +25,15 @@ public sealed class CustomInputInvoker : IInputInvoker, ICustomInputInvoker
 
     public bool Invoke(string input, IPlayer player, ItemSlot? inSlot = null)
     {
-        if (!mInputsByCode.ContainsKey(input)) return false;
+        if (player == null || !mInputsByCode.ContainsKey(input)) return false;
 
         foreach (ICustomInput registered in mInputsByCode[input])
         {
-            if (mInputs[registered].Invoke(new(registered.Slot, inSlot, player), player, registered))
+            SlotData? slot = SlotData.Construct(registered.Slot, inSlot, player);
+
+            if (slot == null) continue;
+
+            if (mInputs[registered].Invoke(slot.Value, player, registered))
             {
                 return true;
             }

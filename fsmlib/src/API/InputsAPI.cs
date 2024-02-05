@@ -17,14 +17,14 @@ public interface IInputManager : IDisposable
 }
 public interface IInputInvoker : IDisposable
 {
-    public delegate bool InputCallback(Utils.SlotData slot, IPlayer player, IInput input, bool synchronize = true);
+    public delegate bool InputCallback(SlotData slot, IPlayer player, IInput input, bool synchronize = true);
     void RegisterInput(IInput input, InputCallback callback, CollectibleObject collectible);
 }
 public interface IInput : IFactoryProduct
 {
     public int Index { get; internal set; }
     public bool Handle { get; }
-    public Utils.SlotType Slot { get; }
+    public SlotType Slot { get; }
     CollectibleObject Collectible { get; }
     WorldInteraction? GetInteractionInfo(ItemSlot slot);
 }

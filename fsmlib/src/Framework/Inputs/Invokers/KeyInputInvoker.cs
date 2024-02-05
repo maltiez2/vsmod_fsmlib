@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.Client.NoObf;
+using VSImGui;
 using static MaltiezFSM.API.IKeyInput;
 using static MaltiezFSM.API.IMouseInput;
 
@@ -228,12 +230,14 @@ public sealed class KeyInputInvoker : IInputInvoker
 
     private bool HandleInput(IInput input)
     {
-        Utils.SlotType slotType = input.Slot;
+        if (mClientApi.World?.Player == null) return false;
 
-        IEnumerable<Utils.SlotData> slots = Utils.SlotData.GetForAllSlots(slotType, mCollectibles[input], mClientApi.World.Player);
+        SlotType slotType = input.Slot;
+
+        IEnumerable<SlotData> slots = SlotData.GetForAllSlots(slotType, mCollectibles[input], mClientApi.World.Player);
 
         bool handled = false;
-        foreach (Utils.SlotData slotData in slots.Where(slotData => mCallbacks[input](slotData, mClientApi.World.Player, input)))
+        foreach (SlotData slotData in slots.Where(slotData => mCallbacks[input](slotData, mClientApi.World.Player, input)))
         {
             handled = true;
         }
@@ -289,7 +293,8 @@ internal sealed class HoldButtonManager : IDisposable
     public event Action<MouseEvent>? MouseHold;
     public event Action<KeyEvent>? KeyHold;
 
-    private const int cTimerDelay = 30;
+    private const int cTimerDelay = 0; // 2+ game ticks
+    private readonly long mTimer;
 
     private readonly Dictionary<EnumMouseButton, MouseEvent?> mMouseButtons = new();
     private readonly Dictionary<GlKeys, KeyEvent?> mKeyboardButtons = new();
@@ -297,7 +302,6 @@ internal sealed class HoldButtonManager : IDisposable
     private readonly Dictionary<GlKeys, bool> mKeyboardButtonsDelay = new();
     private bool mDisposed = false;
     private readonly ICoreClientAPI mApi;
-    private readonly long mTimer;
 
     public HoldButtonManager(ICoreClientAPI api)
     {

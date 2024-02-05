@@ -10,7 +10,7 @@ public sealed class SlotInputInvoker : IInputInvoker
 {
     private bool mDisposed = false;
     private readonly ICoreAPI mApi;
-    private readonly Dictionary<ISlotContentInput.SlotEventType, Dictionary<Utils.SlotType, Dictionary<ISlotContentInput, IInputInvoker.InputCallback>>> mInputs = new();
+    private readonly Dictionary<ISlotContentInput.SlotEventType, Dictionary<SlotType, Dictionary<ISlotContentInput, IInputInvoker.InputCallback>>> mInputs = new();
 
     public SlotInputInvoker(ICoreAPI api)
     {
@@ -37,7 +37,7 @@ public sealed class SlotInputInvoker : IInputInvoker
 
         if (player == null) return;
 
-        foreach (Dictionary<ISlotContentInput, IInputInvoker.InputCallback> inputs in mInputs[eventType].Where(entry => Utils.SlotData.CheckSlotType(entry.Key, slot, player)).Select(entry => entry.Value))
+        foreach (Dictionary<ISlotContentInput, IInputInvoker.InputCallback> inputs in mInputs[eventType].Where(entry => SlotData.CheckSlotType(entry.Key, slot, player)).Select(entry => entry.Value))
         {
             InvokeInputs(inputs, slot, player);
         }

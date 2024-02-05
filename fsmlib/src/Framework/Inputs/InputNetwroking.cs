@@ -19,10 +19,10 @@ internal class AggregatedInputPacket
 internal struct InputPacket
 {
     public int InputIndex { get; set; }
-    public Utils.SlotData Slot { get; set; }
+    public SlotData Slot { get; set; }
 }
 
-internal delegate void InputHandler(int inputIndex, Utils.SlotData slot, IPlayer player);
+internal delegate void InputHandler(int inputIndex, SlotData slot, IPlayer player);
 
 internal sealed class InputPacketSenderClient : IDisposable
 {
@@ -52,7 +52,7 @@ internal sealed class InputPacketSenderClient : IDisposable
         mClientApi.World.UnregisterCallback(mListener);
     }
 
-    public void SendPacket(int index, Utils.SlotData slot)
+    public void SendPacket(int index, SlotData slot)
     {
         mAggregationQueue.Add(new InputPacket()
         {
@@ -109,7 +109,7 @@ internal sealed class InputPacketSenderServer : IDisposable
         mServerApi.World.UnregisterCallback(mListener);
     }
 
-    public void SendPacket(int index, Utils.SlotData slot, IServerPlayer player)
+    public void SendPacket(int index, SlotData slot, IServerPlayer player)
     {
         if (!mAggregationQueue.ContainsKey(player)) mAggregationQueue.Add(player, new());
 

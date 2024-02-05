@@ -86,7 +86,7 @@ internal sealed class ImGuiDebugWindow : IDisposable
 
 internal struct InputData
 {
-    public Utils.SlotData Slot { get; set; }
+    public SlotData Slot { get; set; }
     public IPlayer Player { get; set; }
     public IInput Input { get; set; }
     public bool Handled { get; set; }
@@ -95,7 +95,7 @@ internal struct InputData
     public string TimeStamp { get; set; } = "";
     public bool FromPacket { get; set; }
 
-    public InputData(Utils.SlotData slot, IPlayer player, IInput input, bool handled, bool clientSide, bool fromPacket)
+    public InputData(SlotData slot, IPlayer player, IInput input, bool handled, bool clientSide, bool fromPacket)
     {
         Slot = slot;
         Player = player;
@@ -136,40 +136,47 @@ internal sealed class InputManagerDebugWindowImpl : IDisposable
 #if DEBUG   
         ImGui.BeginChild("InputManager##FSMlib", new System.Numerics.Vector2(0, 800), false);
 
-        if (ImGui.Button($"Clear##InputManager##FSMlib"))
+        try
         {
-            mServerInputDataQueue.Queue.Clear();
-            mClientInputDataQueue.Queue.Clear();
-            mServerPackets.Queue.Clear();
-            mClientPackets.Queue.Clear();
-            mServerCounter = 0;
-            mClientCounter = 0;
-            mCurrentFilter = 0;
+            if (ImGui.Button($"Clear##InputManager##FSMlib"))
+            {
+                mServerInputDataQueue.Queue.Clear();
+                mClientInputDataQueue.Queue.Clear();
+                mServerPackets.Queue.Clear();
+                mClientPackets.Queue.Clear();
+                mServerCounter = 0;
+                mClientCounter = 0;
+                mCurrentFilter = 0;
+            }
+
+            ImGui.Checkbox("Stop updates", ref mStopUpdates);
+            ImGui.Checkbox("Show synchronized", ref mShowPackets);
+            ImGui.Checkbox("Show only handled inputs", ref mOnlyHandled);
+            ImGui.Combo("Filter##InputManager", ref mCurrentFilter, mInputs.Select(Utils.GetTypeName).ToArray(), mInputs.Length);
+
+            if (mClientPackets.Count > 0) ImGui.PlotLines("Client packets per tick##FSMlib", ref mClientPackets.Queue.ToArray()[0], mClientPackets.Count, 0, $"Max inputs per second: {mClientPackets.Queue.Max()}", 0, mClientPackets.Queue.Max(), new System.Numerics.Vector2(0, 100));
+            if (mServerPackets.Count > 0) ImGui.PlotLines("Server packets per tick##FSMlib", ref mServerPackets.Queue.ToArray()[0], mServerPackets.Count, 0, $"Max inputs per second: {mServerPackets.Queue.Max()}", 0, mServerPackets.Queue.Max(), new System.Numerics.Vector2(0, 100));
+
+            ImGui.SeparatorText("Client side inputs");
+            ImGui.BeginChild("InputManager - client", new System.Numerics.Vector2(0, mClientInputDataQueue.Count > 0 ? 200 : 20), true);
+            foreach (InputData element in mClientInputDataQueue.Queue.Reverse().Where(ShowInput))
+            {
+                DrawElement(element);
+            }
+            ImGui.EndChild();
+
+            ImGui.SeparatorText("Server side inputs");
+            ImGui.BeginChild("InputManager - server", new System.Numerics.Vector2(0, mServerInputDataQueue.Count > 0 ? 200 : 20), true);
+            foreach (InputData element in mServerInputDataQueue.Queue.Reverse().AsEnumerable().Where(ShowInput))
+            {
+                DrawElement(element);
+            }
+            ImGui.EndChild();
         }
-
-        ImGui.Checkbox("Stop updates", ref mStopUpdates);
-        ImGui.Checkbox("Show synchronized", ref mShowPackets);
-        ImGui.Checkbox("Show only handled inputs", ref mOnlyHandled);
-        ImGui.Combo("Filter##InputManager", ref mCurrentFilter, mInputs.Select(Utils.GetTypeName).ToArray(), mInputs.Length);
-
-        if (mClientPackets.Count > 0) ImGui.PlotLines("Client packets per tick##FSMlib", ref mClientPackets.Queue.ToArray()[0], mClientPackets.Count, 0, $"Max inputs per second: {mClientPackets.Queue.Max()}", 0, mClientPackets.Queue.Max(), new System.Numerics.Vector2(0, 100));
-        if (mServerPackets.Count > 0)  ImGui.PlotLines("Server packets per tick##FSMlib", ref mServerPackets.Queue.ToArray()[0], mServerPackets.Count, 0, $"Max inputs per second: {mServerPackets.Queue.Max()}", 0, mServerPackets.Queue.Max(), new System.Numerics.Vector2(0, 100));
-
-        ImGui.SeparatorText("Client side inputs");
-        ImGui.BeginChild("InputManager - client", new System.Numerics.Vector2(0, mClientInputDataQueue.Count > 0 ? 200 : 20), true);
-        foreach (InputData element in mClientInputDataQueue.Queue.Reverse().Where(ShowInput))
+        catch
         {
-            DrawElement(element);
+            // does not matter
         }
-        ImGui.EndChild();
-
-        ImGui.SeparatorText("Server side inputs");
-        ImGui.BeginChild("InputManager - server", new System.Numerics.Vector2(0, mServerInputDataQueue.Count > 0 ? 200 : 20), true);
-        foreach (InputData element in mServerInputDataQueue.Queue.Reverse().AsEnumerable().Where(ShowInput))
-        {
-            DrawElement(element);
-        }
-        ImGui.EndChild();
 
         ImGui.EndChild();
     }
@@ -249,7 +256,7 @@ internal sealed class InputManagerDebugWindowImpl : IDisposable
 
 internal static class InputManagerDebugWindow
 {
-    public static void Enqueue(Utils.SlotData slot, IPlayer player, IInput input, bool handled, bool clientSide, bool packet) => mInstance?.Enqueue(new(slot, player, input, handled, clientSide, packet));
+    public static void Enqueue(SlotData slot, IPlayer player, IInput input, bool handled, bool clientSide, bool packet) => mInstance?.Enqueue(new(slot, player, input, handled, clientSide, packet));
     public static void EnqueuePacket(int amount, bool clientSide) => mInstance?.EnqueuePackets(amount, clientSide);
     public static void Clear() => mInstance?.Dispose();
     public static void Draw() => mInstance?.Draw();

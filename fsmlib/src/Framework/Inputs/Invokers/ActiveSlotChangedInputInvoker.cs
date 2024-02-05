@@ -50,6 +50,8 @@ public sealed class ActiveSlotChangedInputInvoker : IInputInvoker
 
     private void ActiveSlotChangeAfterServer(IServerPlayer player, ActiveSlotChangeEventArgs eventData)
     {
+        if (player == null) return;
+        
         ItemSlot from = GetSlot(player, eventData.FromSlot);
         ItemSlot to = GetSlot(player, eventData.ToSlot);
 
@@ -68,7 +70,7 @@ public sealed class ActiveSlotChangedInputInvoker : IInputInvoker
     }
     private void ActiveSlotChangeAfterClient(ActiveSlotChangeEventArgs eventData)
     {
-        if (mClientApi == null) return;
+        if (mClientApi?.World?.Player == null) return;
 
         ItemSlot from = GetSlot(eventData.FromSlot, mClientApi);
         ItemSlot to = GetSlot(eventData.ToSlot, mClientApi);
@@ -89,6 +91,8 @@ public sealed class ActiveSlotChangedInputInvoker : IInputInvoker
 
     private EnumHandling ActiveSlotChangeBeforeServer(IServerPlayer player, ActiveSlotChangeEventArgs eventData)
     {
+        if (player == null) return EnumHandling.PassThrough;
+
         ItemSlot from = GetSlot(player, eventData.FromSlot);
         ItemSlot to = GetSlot(player, eventData.ToSlot);
 
@@ -110,7 +114,7 @@ public sealed class ActiveSlotChangedInputInvoker : IInputInvoker
     }
     private EnumHandling ActiveSlotChangeBeforeClient(ActiveSlotChangeEventArgs eventData)
     {
-        if (mClientApi == null) return EnumHandling.PassThrough;
+        if (mClientApi?.World?.Player == null) return EnumHandling.PassThrough;
 
         ItemSlot from = GetSlot(eventData.FromSlot, mClientApi);
         ItemSlot to = GetSlot(eventData.ToSlot, mClientApi);
@@ -152,8 +156,14 @@ public sealed class ActiveSlotChangedInputInvoker : IInputInvoker
     }
     private EnumHandling HandleInput(ItemSlot slot, IInput input)
     {
-        if (mClientApi == null ) return EnumHandling.PassThrough;
-        
+        if (mClientApi == null) return EnumHandling.PassThrough;
+
+        if (mClientApi.World?.Player?.Entity == null)
+        {
+            Logger.Debug(mClientApi, this, $"Player entity is null. Skipping invoking events.");
+            return EnumHandling.PassThrough;
+        }
+
         CollectibleObject? slotCollectible = slot?.Itemstack?.Collectible;
         if (slotCollectible != mCollectibles[input]) return EnumHandling.PassThrough;
 

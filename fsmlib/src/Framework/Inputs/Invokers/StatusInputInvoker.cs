@@ -1,4 +1,5 @@
 ﻿using MaltiezFSM.API;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
@@ -32,12 +33,27 @@ public sealed class StatusInputInvokerClient : IInputInvoker
 
     private void CheckStatuses()
     {
+        if (mClientApi?.World?.Player?.Entity == null) return;
+
         foreach ((IStatusInput input, _) in mCallbacks)
         {
-            if (CheckStatus(input) ^ input.Invert)
+            try
             {
-                _ = HandleInput(input);
+                ProcessInput(input);
             }
+            catch (Exception exception)
+            {
+                Logger.Error(mClientApi, this, $"Exception while processing input '{input}'");
+                Logger.Verbose(mClientApi, this, $"Exception while processing input '{input}'.\n\nException:\n{exception}\n");
+            }
+        }
+    }
+
+    private void ProcessInput(IStatusInput input)
+    {
+        if (CheckStatus(input) ^ input.Invert)
+        {
+            _ = HandleInput(input);
         }
     }
 
@@ -61,12 +77,12 @@ public sealed class StatusInputInvokerClient : IInputInvoker
 
     private bool HandleInput(IStatusInput input)
     {
-        Utils.SlotType slotType = input.Slot;
+        SlotType slotType = input.Slot;
 
-        IEnumerable<Utils.SlotData> slots = Utils.SlotData.GetForAllSlots(slotType, mCollectibles[input], mClientApi.World.Player);
+        IEnumerable<SlotData> slots = SlotData.GetForAllSlots(slotType, mCollectibles[input], mClientApi.World.Player);
 
         bool handled = false;
-        foreach (Utils.SlotData slotData in slots.Where(slotData => mCallbacks[input](slotData, mClientApi.World.Player, input, false)))
+        foreach (SlotData slotData in slots.Where(slotData => mCallbacks[input](slotData, mClientApi.World.Player, input, false)))
         {
             handled = true;
         }
@@ -108,7 +124,7 @@ public sealed class StatusInputInvokerServer : IInputInvoker
 
     private void CheckStatuses()
     {
-        foreach (IPlayer player in mServerApi.World.AllPlayers)
+        foreach (IPlayer player in mServerApi.World.AllPlayers.Where(player => player?.Entity != null))
         {
             CheckPlayerStatuses(player);
         }
@@ -125,7 +141,7 @@ public sealed class StatusInputInvokerServer : IInputInvoker
         }
     }
 
-    private bool CheckPlayerStatus(IStatusInput input, IPlayer player)
+    private static bool CheckPlayerStatus(IStatusInput input, IPlayer player)
     {
         return input.Status switch
         {
@@ -145,12 +161,12 @@ public sealed class StatusInputInvokerServer : IInputInvoker
 
     private bool HandleInput(IStatusInput input, IPlayer player)
     {
-        Utils.SlotType slotType = input.Slot;
+        SlotType slotType = input.Slot;
 
-        IEnumerable<Utils.SlotData> slots = Utils.SlotData.GetForAllSlots(slotType, mCollectibles[input], player);
+        IEnumerable<SlotData> slots = SlotData.GetForAllSlots(slotType, mCollectibles[input], player);
 
         bool handled = false;
-        foreach (Utils.SlotData slotData in slots.Where(slotData => mCallbacks[input](slotData, player, input, false)))
+        foreach (SlotData slotData in slots.Where(slotData => mCallbacks[input](slotData, player, input, false)))
         {
             handled = true;
         }

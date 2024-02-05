@@ -37,6 +37,8 @@ public sealed class HotkeyInputInvoker : IInputInvoker
 
     private void KeyPressListener(KeyEvent ev)
     {
+        if (mClientApi.World?.Player?.Entity == null) return;
+
         foreach (string hotkeyId in mHotkeys)
         {
             if (mClientApi.Input.HotKeys.ContainsKey(hotkeyId) && CompareCombinations(ev, mClientApi.Input.HotKeys[hotkeyId].CurrentMapping))
@@ -47,7 +49,7 @@ public sealed class HotkeyInputInvoker : IInputInvoker
         }
     }
 
-    private bool CompareCombinations(KeyEvent A, KeyCombination B)
+    private static bool CompareCombinations(KeyEvent A, KeyCombination B)
     {
         if (A.KeyCode != B.KeyCode) return false;
         if (A.ShiftPressed != B.Shift) return false;
@@ -71,12 +73,12 @@ public sealed class HotkeyInputInvoker : IInputInvoker
 
     private bool HandleInput(IHotkeyInput input)
     {
-        Utils.SlotType slotType = input.Slot;
+        SlotType slotType = input.Slot;
 
-        IEnumerable<Utils.SlotData> slots = Utils.SlotData.GetForAllSlots(slotType, mCollectibles[input], mClientApi.World.Player);
+        IEnumerable<SlotData> slots = SlotData.GetForAllSlots(slotType, mCollectibles[input], mClientApi.World.Player);
 
         bool handled = false;
-        foreach (Utils.SlotData slotData in slots.Where(slotData => mCallbacks[input](slotData, mClientApi.World.Player, input)))
+        foreach (SlotData slotData in slots.Where(slotData => mCallbacks[input](slotData, mClientApi.World.Player, input)))
         {
             handled = true;
         }

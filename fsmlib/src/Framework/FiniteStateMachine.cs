@@ -59,6 +59,8 @@ internal sealed class FiniteStateMachine : IFiniteStateMachine
                 Logger.Verbose(api, this, $"Exception on processing transitions for '{operationCode}' operation for collectible '{mCollectible.Code}'.\n\nException:\n{exception}\n");
             }
         }
+
+        Logger.Debug(api, this, $"Initialized for '{collectible.Code}'. States: {mOperationsByInputAndState.Count}, operations: {mOperations.Count}");
     }
 
     public List<IInput> GetAvailableInputs(ItemSlot slot)
@@ -211,9 +213,9 @@ internal sealed class StateManager
     private const string cStateAttributeNameServer = "FSMlib.state.server";
     private const string cSyncAttributeName = "FSMlib.sync";
 #if DEBUG
-    private TimeSpan mSynchronizationDelay = TimeSpan.FromMilliseconds(100);
+    private TimeSpan mSynchronizationDelay = TimeSpan.FromMilliseconds(90); // 3+ game ticks (+1 from HoldButtonManager delay)
 #else
-    private readonly TimeSpan mSynchronizationDelay = TimeSpan.FromMilliseconds(100);
+    private readonly TimeSpan mSynchronizationDelay = TimeSpan.FromMilliseconds(90);
 #endif
     private readonly string mInitialState;
     private readonly ICoreAPI mApi;
@@ -224,7 +226,7 @@ internal sealed class StateManager
         mInitialState = initialState;
 
 #if DEBUG
-        DebugWindow.IntSlider("fsmlib", "states", "delay", 0, 1000, () => (int)mSynchronizationDelay.TotalMilliseconds, value => mSynchronizationDelay = TimeSpan.FromMilliseconds(value));
+        DebugWindow.IntSlider("fsmlib", "tweaks", "state sync delay", 0, 1000, () => (int)mSynchronizationDelay.TotalMilliseconds, value => mSynchronizationDelay = TimeSpan.FromMilliseconds(value));
 #endif
     }
     public IState Get(ItemSlot slot) => ReadStateFrom(slot);
@@ -244,7 +246,7 @@ internal sealed class StateManager
     {
         if (slot.Itemstack == null)
         {
-            Logger.Error(mApi, this, $"");
+            Logger.Error(mApi, this, $"ItemStack is null");
             return new(mInitialState);
         }
 
@@ -259,7 +261,7 @@ internal sealed class StateManager
         State clientState = ReadStateFromClient(slot.Itemstack);
 
 #if DEBUG
-        if (clientState != serverState) Logger.Warn(mApi, this, $"State desync ({clientState == serverState}). Client: {clientState}, Server: {serverState}");
+        //if (clientState != serverState) Logger.Warn(mApi, this, $"State desync ({clientState == serverState}). Client: {clientState}, Server: {serverState}");
 #endif
 
         if (clientState != serverState)
@@ -268,7 +270,7 @@ internal sealed class StateManager
         }
         else
         {
-            RemoveTimeStamp(slot.Itemstack);
+            CancelSynchronization(slot.Itemstack);
         }
 
         return clientState;
@@ -277,7 +279,7 @@ internal sealed class StateManager
     {
         if (slot.Itemstack == null)
         {
-            Logger.Error(mApi, this, $"");
+            Logger.Debug(mApi, this, $"ItemStack is null");
             return;
         }
 
@@ -318,10 +320,15 @@ internal sealed class StateManager
             WriteStateToClient(stack, serverState);
         }
     }
+    private void CancelSynchronization(ItemStack stack)
+    {
+        if (!CheckTimestamp(stack)) return;
+        RemoveTimeStamp(stack);
+    }
     private static void RemoveTimeStamp(ItemStack stack) => stack.TempAttributes.RemoveAttribute(cSyncAttributeName);
     private static bool CheckTimestamp(ItemStack stack) => stack.TempAttributes.HasAttribute(cSyncAttributeName);
     private void WriteTimestamp(ItemStack stack) => stack.TempAttributes.SetLong(cSyncAttributeName, mApi.World.ElapsedMilliseconds);
-    private TimeSpan ReadTimestamp(ItemStack stack) => TimeSpan.FromMilliseconds(stack.TempAttributes.GetLong(cSyncAttributeName, mApi.World.ElapsedMilliseconds) - mApi.World.ElapsedMilliseconds);
+    private TimeSpan ReadTimestamp(ItemStack stack) => TimeSpan.FromMilliseconds(mApi.World.ElapsedMilliseconds - stack.TempAttributes.GetLong(cSyncAttributeName, 0));
 
     internal sealed class State : IState, IEquatable<State>
     {
