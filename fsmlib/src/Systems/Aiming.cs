@@ -117,7 +117,7 @@ public class Aiming : BaseSystem, IAimingSystem
     {
         if (mDescription == null) return null;
 
-        return new string[] { Lang.Get(mDescription, (float)mAimTime.TotalMilliseconds, mDispersionMin, mDispersionMax) };
+        return new string[] { Lang.Get(mDescription, (float)mAimTime.TotalSeconds, mDispersionMin, mDispersionMax) };
     }
 
     private void StartSoundTimer(ItemSlot slot, IPlayer player)

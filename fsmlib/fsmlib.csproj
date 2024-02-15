@@ -17,7 +17,7 @@
 	    <Private>False</Private>
     </Reference>
     <Reference Include="SimpleExpressionEngine">
-      <HintPath>..\..\configlib\Releases\configlib\SimpleExpressionEngine.dll</HintPath>
+      <HintPath>C:\Users\user\source\repos\SimpleExpressionEngine\SimpleExpressionEngine\bin\Release\net7.0\SimpleExpressionEngine.dll</HintPath>
     </Reference>
     <Reference Include="VintagestoryAPI">
       <HintPath>..\..\game_19/VintagestoryAPI.dll</HintPath>

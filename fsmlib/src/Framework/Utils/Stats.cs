@@ -1,53 +1,62 @@
 ﻿using SimpleExpressionEngine;
 using System;
+using System.Collections.Generic;
+using System.Diagnostics.Metrics;
+using System.IO;
+using System.Security.Cryptography;
 using Vintagestory.API.Common;
 
 namespace MaltiezFSM.Framework;
 
 public class StatsModifier
 {
-    private readonly Node mFormula;
+    private readonly INode<float, float, float> mFormula;
     private readonly ICoreAPI mApi;
 
     public StatsModifier(ICoreAPI api, string formula)
     {
-        mFormula = Parser.Parse(formula);
+        mFormula = MathParser.Parse(formula);
         mApi = api;
     }
 
     public float Calc(IPlayer player, float value)
     {
-        return (float)mFormula.Eval(new StatsContext(mApi, player, value));
+        return mFormula.Evaluate(new CombinedContext<float, float>(new List<IContext<float, float>>() { new ValueContext(value), new MathContext(), new StatsContext<float>(player) }));
     }
     public TimeSpan CalcMilliseconds(IPlayer player, TimeSpan value)
     {
-        return TimeSpan.FromMilliseconds(mFormula.Eval(new StatsContext(mApi, player, (float)value.TotalMilliseconds)));
+        return TimeSpan.FromMilliseconds(mFormula.Evaluate(new CombinedContext<float, float>(new List<IContext<float, float>>() { new ValueContext((float)value.TotalMilliseconds), new MathContext(), new StatsContext<float>(player) })));
     }
     public TimeSpan CalcSeconds(IPlayer player, TimeSpan value)
     {
-        return TimeSpan.FromSeconds(mFormula.Eval(new StatsContext(mApi, player, (float)value.TotalSeconds)));
+        return TimeSpan.FromSeconds(mFormula.Evaluate(new CombinedContext<float, float>(new List<IContext<float, float>>() { new ValueContext((float)value.TotalSeconds), new MathContext(), new StatsContext<float>(player) })));
     }
 }
 
-public class StatsContext : BaseContext
+public sealed class ValueContext : IContext<float, float>
 {
-    private readonly IPlayer mPlayer;
     private readonly float mValue;
 
-    public StatsContext(ICoreAPI api, IPlayer player, float value) : base(api)
+    public ValueContext(float value)
     {
-        mPlayer = player;
         mValue = value;
     }
 
-    public override double ResolveVariable(string name)
+    public bool Resolvable(string name)
+    {
+        return name switch
+        {
+            "value" => true,
+            _ => false
+        };
+    }
+
+    public float Resolve(string name, params float[] arguments)
     {
         return name switch
         {
             "value" => mValue,
-            "PI" => Math.PI,
-            "E" => Math.E,
-            _ => mPlayer.Entity.Stats.GetBlended(name)
+            _ => 0
         };
     }
 }

@@ -123,7 +123,7 @@ public class ProceduralPlayerAnimation : BaseSystem, IAnimationSystem
     }
     private void PlayAnimation(string code, string category, long entityId)
     {
-        ProceduralEntityAnimationId? runId = mAnimations[(category, code)].Start(mAnimationManager, entityId, (message) => LogDebug($"Animation: '{category}:{code}'. {message}"));
+        ProceduralEntityAnimationId? runId = mAnimations[(category, code)].Start(mAnimationManager, entityId, (message) => LogVerbose($"Animation: '{category}:{code}'. {message}"));
         if (runId == null)
         {
             LogError($"Error on running '{category}:{code}' animation.");

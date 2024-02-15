@@ -17,7 +17,7 @@ public class HotkeyInput : BaseInput, IHotkeyInput
 
         if (mApi is not ICoreClientAPI clientApi)
         {
-            LogError($"HotkeyInput is client side input, but was instantiated on server side");
+            //LogError($"HotkeyInput is client side input, but was instantiated on server side");
             return;
         }
 

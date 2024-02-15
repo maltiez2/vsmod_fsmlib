@@ -11,7 +11,7 @@ internal sealed class FiniteStateMachine : IFiniteStateMachine
 {
     private const string cInitialStateAttribute = "initialState";
 
-    private readonly Dictionary<IState, Dictionary<IInput, IOperation>> mOperationsByInputAndState = new();
+    private readonly Dictionary<IState, Dictionary<IInput, List<IOperation>>> mOperationsByInputAndState = new();
     private readonly Dictionary<IOperation, HashSet<IState>> mStatesByOperationForTimer = new();
     private readonly Dictionary<long, Utils.DelayedCallback> mTimers = new();
     private readonly List<IOperation> mOperations = new();
@@ -75,9 +75,9 @@ internal sealed class FiniteStateMachine : IFiniteStateMachine
             return inputs;
         }
 
-        foreach (KeyValuePair<IInput, IOperation> item in mOperationsByInputAndState[state])
+        foreach ((IInput item, _) in mOperationsByInputAndState[state])
         {
-            inputs.Add(item.Key);
+            inputs.Add(item);
         }
 
         return inputs;
@@ -97,16 +97,20 @@ internal sealed class FiniteStateMachine : IFiniteStateMachine
             return false;
         }
 
-        IOperation operation = mOperationsByInputAndState[state][input];
-
-        try
+        foreach (IOperation operation in mOperationsByInputAndState[state][input])
         {
-            if (RunOperation(slot, player, operation, input, state)) return true;
-        }
-        catch (Exception exception)
-        {
-            Logger.Error(mApi, this, $"Exception on running operation '{operation}' for input '{input}' in state '{state}' for collectible '{mCollectible.Code}'.");
-            Logger.Debug(mApi, this, $"Exception on running operation '{operation}' for input '{input}' in state '{state}' for collectible '{mCollectible.Code}'.\nException:\n{exception}");
+            try
+            {
+                if (RunOperation(slot, player, operation, input, state))
+                {
+                    return true;
+                }
+            }
+            catch (Exception exception)
+            {
+                Logger.Error(mApi, this, $"Exception on running operation '{operation}' for input '{input}' in state '{state}' for collectible '{mCollectible.Code}'.");
+                Logger.Debug(mApi, this, $"Exception on running operation '{operation}' for input '{input}' in state '{state}' for collectible '{mCollectible.Code}'.\nException:\n{exception}");
+            }
         }
 
         return false;
@@ -151,7 +155,14 @@ internal sealed class FiniteStateMachine : IFiniteStateMachine
             }
             else if (transition.Trigger == IOperation.Transition.TriggerType.Input && transition.Input != null)
             {
-                mOperationsByInputAndState[initialState].TryAdd(inputs[transition.Input], operation);
+                IInput input = inputs[transition.Input];
+
+                if (!mOperationsByInputAndState[initialState].ContainsKey(input))
+                {
+                    mOperationsByInputAndState[initialState].Add(input, new());
+                }
+
+                mOperationsByInputAndState[initialState][input].Add(operation);
             }
         }
 
@@ -266,7 +277,7 @@ internal sealed class StateManager
 
         if (clientState != serverState)
         {
-            SynchronizeStates(slot.Itemstack, serverState);
+            clientState = SynchronizeStates(slot.Itemstack, serverState, clientState);
         }
         else
         {
@@ -299,26 +310,29 @@ internal sealed class StateManager
         {
             WriteStateToClient(stack, ReadStateFromServer(stack));
         }
-        
+
         return State.Deserialize(stack.TempAttributes.GetAsString(cStateAttributeNameClient, mInitialState));
     }
     private static void WriteStateToClient(ItemStack stack, State state) => stack.TempAttributes.SetString(cStateAttributeNameClient, state.Serialize());
     private State ReadStateFromServer(ItemStack stack) => State.Deserialize(stack.Attributes.GetAsString(cStateAttributeNameServer, mInitialState));
     private static void WriteStateToServer(ItemStack stack, State state) => stack.Attributes.SetString(cStateAttributeNameServer, state.Serialize());
 
-    private void SynchronizeStates(ItemStack stack, State serverState)
+    private State SynchronizeStates(ItemStack stack, State serverState, State clientState)
     {
         if (!CheckTimestamp(stack))
         {
             WriteTimestamp(stack);
-            return;
+            return clientState;
         }
 
         if (ReadTimestamp(stack) > mSynchronizationDelay)
         {
             RemoveTimeStamp(stack);
             WriteStateToClient(stack, serverState);
+            return serverState;
         }
+
+        return clientState;
     }
     private void CancelSynchronization(ItemStack stack)
     {

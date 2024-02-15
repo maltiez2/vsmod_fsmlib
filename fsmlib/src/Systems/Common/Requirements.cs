@@ -49,7 +49,7 @@ public class Requirement : IRequirement
         Slot = (SlotType)Enum.Parse(typeof(SlotType), definition["slot"].AsString("Inventory"));
         SearchMode = (SearchMode)Enum.Parse(typeof(SearchMode), definition["search"].AsString("Whitelist"));
         Locations = definition.KeyExists("location") ? GetAssetLocations(definition["location"]) : Array.Empty<AssetLocation>();
-        Name = definition["name"].AsString();
+        Name = definition["description"].AsString();
     }
 
     public virtual bool Verify(IPlayer player)
@@ -108,7 +108,7 @@ public class Requirement : IRequirement
                 }
                 break;
             case SlotType.Inventory:
-                foreach ((_, IInventory inventory) in player.InventoryManager.Inventories)
+                foreach (IInventory inventory in SlotData.GetAllOwnInventories(player))
                 {
                     foreach (ItemSlot inventorySlot in inventory.Where(validator))
                     {

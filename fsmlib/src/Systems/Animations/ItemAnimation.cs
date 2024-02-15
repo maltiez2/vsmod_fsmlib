@@ -112,7 +112,7 @@ public class ItemAnimation : BaseSystem // Based on code from TeacupAngel (https
         switch (action)
         {
             case "start":
-                animationBehavior.ClearAttachments();
+                animationBehavior.ClearAttachments(player.Entity.EntityId);
                 string? codeToStart = parameters["animation"].AsString();
                 if (!CheckAnimationCode(codeToStart)) return true;
                 AddActiveAnimation(slot, codeToStart);
@@ -125,10 +125,10 @@ public class ItemAnimation : BaseSystem // Based on code from TeacupAngel (https
                 if (mClientSide) animationBehavior.StopAnimation(mAnimations[codeToStop].Code, true);
                 break;
             case "clear":
-                animationBehavior.ClearAttachments();
+                animationBehavior.ClearAttachments(player.Entity.EntityId);
                 break;
             case "last":
-                animationBehavior.ClearAttachments();
+                animationBehavior.ClearAttachments(player.Entity.EntityId);
                 if (mClientSide) RestoreAnimations(slot, player, animationBehavior);
                 break;
             default:
@@ -162,7 +162,7 @@ public class ItemAnimation : BaseSystem // Based on code from TeacupAngel (https
             List<ItemStack> stacks = system.Get(slot, player);
             if (stacks.Count == 0) continue;
 
-            behavior.AddAttachment(attachment, stacks[0], Utils.ToTransformFrom(mAttachmentsTransforms[code][attachment]) ?? new());
+            behavior.SetAttachment(player.Entity.EntityId, attachment, stacks[0], Utils.ToTransformFrom(mAttachmentsTransforms[code][attachment]) ?? new());
         }
 
         behavior.StartAnimation(animation);

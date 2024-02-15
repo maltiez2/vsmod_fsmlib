@@ -1,5 +1,6 @@
 ﻿using MaltiezFSM.Systems.RequirementsApi;
 using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Common;
@@ -60,6 +61,8 @@ public class Requirements : BaseSystem, IItemStackHolder
 
         string action = parameters["action"].AsString("check");
 
+        if (action == "empty") return Empty(slot);
+
         if (action != "take" && action != "check") return true;
 
         string? code = parameters["requirement"].AsString();
@@ -82,8 +85,7 @@ public class Requirements : BaseSystem, IItemStackHolder
             if (!requirement.Verify(player))
             {
                 fulfilled = false;
-                string? requirementName = requirement.ToString();
-                if (requirementName != null && requirementName != "") (player as IServerPlayer)?.SendMessage(GlobalConstants.InfoLogChatGroup, Lang.GetL((player as IServerPlayer)?.LanguageCode ?? "en" , "fsmlib:requirements-missing", requirementName), EnumChatType.Notification);
+                SendMessage(player, requirement);
             }
         }
 
@@ -93,11 +95,11 @@ public class Requirements : BaseSystem, IItemStackHolder
     {
         if (!base.Process(slot, player, parameters)) return false;
 
-        
         string action = parameters["action"].AsString("check");
 
         switch (action)
         {
+            case "empty":
             case "check":
                 break;
             case "take":
@@ -116,14 +118,31 @@ public class Requirements : BaseSystem, IItemStackHolder
 
                 Take(slot, player, code);
                 break;
+            case "amount":
+                if (mApi.Side == EnumAppSide.Client) return true;
+                int amount = parameters["amount"].AsInt(1);
+                bool putAmount = parameters["put"].AsBool(false);
+                List<ItemStack> amountStacks = TakeAmount(slot, player, amount);
+                if (putAmount && mApi.Side != EnumAppSide.Client) Put(amountStacks, player);
+                break;
+            case "durability":
+                if (mApi.Side == EnumAppSide.Client) return true;
+                int durability = parameters["durability"].AsInt(1);
+                bool destroy = parameters["destroy"].AsBool(true);
+                bool overflow = parameters["overflow"].AsBool(false);
+                bool put = parameters["put"].AsBool(false);
+                List<ItemStack> stacks = TakeDurability(slot, player, durability, destroy, overflow);
+                if (put && mApi.Side != EnumAppSide.Client) Put(stacks, player);
+                break;
             case "put":
+                if (mApi.Side == EnumAppSide.Client) return true;
                 Put(slot, player);
                 break;
             case "clear":
                 Clear(slot);
                 break;
             default:
-                LogActions(action, "check", "take", "put", "clear");
+                LogActions(action, "check", "take", "put", "clear", "empty", "spend");
                 return false;
         }
 
@@ -150,6 +169,10 @@ public class Requirements : BaseSystem, IItemStackHolder
         return output.ToArray();
     }
 
+    public bool Empty(ItemSlot slot)
+    {
+        return !ReadStacks(slot).Any();
+    }
     public List<ItemStack> Get(ItemSlot slot, IPlayer player) => ReadStacks(slot);
     public List<ItemStack> TakeAll(ItemSlot slot, IPlayer player)
     {
@@ -187,6 +210,19 @@ public class Requirements : BaseSystem, IItemStackHolder
         ClearStacks(slot);
     }
 
+    private void SendMessage(IPlayer player, IRequirement requirement)
+    {
+        if (mApi.Side == EnumAppSide.Client) return;
+        
+        string? requirementName = requirement.ToString();
+        if (requirementName == null || requirementName == "") return;
+
+        string message = Lang.GetL((player as IServerPlayer)?.LanguageCode ?? "en", "fsmlib:requirements-missing", requirementName);
+        if (message == "") return;
+
+        (player as IServerPlayer)?.SendMessage(GlobalConstants.InfoLogChatGroup, message, EnumChatType.Notification);
+    }
+
     private void Take(ItemSlot slot, IPlayer player, string code)
     {
         List<ItemStack> stacks = new();
@@ -207,7 +243,17 @@ public class Requirements : BaseSystem, IItemStackHolder
 
         foreach (ItemStack stack in stacks)
         {
-            if (!player.Entity.TryGiveItemStack(stack))
+            if (!player.Entity.TryGiveItemStack(stack) && mApi.Side == EnumAppSide.Server)
+            {
+                mApi.World.SpawnItemEntity(stack, player.Entity.SidedPos.XYZ, player.Entity.SidedPos.Motion);
+            }
+        }
+    }
+    private void Put(List<ItemStack> stacks, IPlayer player)
+    {
+        foreach (ItemStack stack in stacks)
+        {
+            if (!player.Entity.TryGiveItemStack(stack) && mApi.Side == EnumAppSide.Server)
             {
                 mApi.World.SpawnItemEntity(stack, player.Entity.SidedPos.XYZ, player.Entity.SidedPos.Motion);
             }

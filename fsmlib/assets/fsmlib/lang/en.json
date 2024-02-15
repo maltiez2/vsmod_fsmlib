@@ -3,5 +3,24 @@
   "requirements-offhand": "offhand",
   "requirements-mainhand": "main hand",
   "requirements-amount": "amount: {0}",
-  "requirements-durability": "durability: {0}"
+  "requirements-durability": "durability: {0}",
+
+  "damage-list": "Projectile damage types:",
+  "damage-type-gravity": "Gravity",
+  "damage-type-fire": "Fire",
+  "damage-type-bluntattack": "Blunt",
+  "damage-type-slashingattack": "Slashing",
+  "damage-type-piercingattack": "Piercing",
+  "damage-type-suffocation": "Suffocation",
+  "damage-type-heal": "Heal",
+  "damage-type-poison": "Poison",
+  "damage-type-hunger": "Hunger",
+  "damage-type-crushing": "Crushing",
+  "damage-type-frost": "Frost",
+  "damage-type-electricity": "Electricity",
+  "damage-type-heat": "Heat",
+  "damage-type-injury": "Injury",
+  "damage-tier": "tier: {0}",
+  "damage-knockback": "knockback: {0}",
+  "damage-damage": "damage: {0}"
 }

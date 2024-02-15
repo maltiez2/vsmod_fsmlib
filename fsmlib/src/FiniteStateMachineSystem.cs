@@ -154,6 +154,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         mInputFactory.Register<Inputs.OperationFinished>("OperationFinished");
         mInputFactory.Register<Inputs.StatusInput>("Status");
         mInputFactory.Register<Inputs.SlotContent>("SlotContent");
+        mInputFactory.Register<Inputs.Custom>("Custom");
     }
     private void RegisterSystems()
     {
@@ -175,6 +176,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         mSystemFactory.Register<Systems.CameraSettings>("CameraSettings");
         mSystemFactory.Register<Systems.ChangeAttribute>("ChangeAttribute");
 
+        mSystemFactory.Register<Systems.Attachments>("Attachments");
         mSystemFactory.Register<Systems.ItemAnimation>("ItemAnimation");
         mSystemFactory.Register<Systems.PlayerAnimation>("PlayerAnimation");
         mSystemFactory.Register<Systems.ProceduralItemAnimation>("ProceduralItemAnimation");

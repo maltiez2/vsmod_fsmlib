@@ -2,6 +2,7 @@
 using Newtonsoft.Json.Linq;
 using SimpleExpressionEngine;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Common;
@@ -147,21 +148,21 @@ public sealed class AttributeReferencesManager : IAttributeReferencesManager
 
 internal sealed class AttributeModifier
 {
-    private readonly Node mFormula;
+    private readonly INode<float, float, float> mFormula;
     private readonly ICoreAPI mApi;
     private readonly AttributeGetter mGetter;
     private readonly int mId;
 
     public AttributeModifier(ICoreAPI api, string formula, AttributeGetter getter, int id)
     {
-        mFormula = Parser.Parse(formula);
+        mFormula = MathParser.Parse(formula);
         mApi = api;
         mGetter = getter;
         mId = id;
     }
 
-    public float Calc(IPlayer player, ItemStack stack) => (float)mFormula.Eval(new ItemStackAttributeContext(mId, mApi, new(mApi, player, 0), mGetter, stack));
-    public float Calc(CollectibleObject collectible) => (float)mFormula.Eval(new CollectibleAttributeContext(mId, mApi, mGetter, collectible));
+    public float Calc(IPlayer player, ItemStack stack) => mFormula.Evaluate(new CombinedContext<float, float>(new List<IContext<float, float>>() { new MathContext(), new ItemStackAttributeContext(mId, mApi, mGetter, stack), new StatsContext<float>(player) }));
+    public float Calc(CollectibleObject collectible) => mFormula.Evaluate(new CombinedContext<float, float>(new List<IContext<float, float>>() { new MathContext(), new CollectibleAttributeContext(mId, mApi, mGetter, collectible) }));
 }
 
 internal sealed class AttributeGetter
@@ -291,39 +292,38 @@ internal sealed class CollectibleAttributePath
 }
 
 
-internal sealed class ItemStackAttributeContext : BaseContext
+internal sealed class ItemStackAttributeContext : IContext<float, float>
 {
     private readonly ItemStack? mStack;
     private readonly AttributeGetter mGetter;
-    private readonly StatsContext mStats;
     private readonly int mId;
 
-    public ItemStackAttributeContext(int id, ICoreAPI api, StatsContext stats, AttributeGetter getter, ItemStack? stack) : base(api)
+    public ItemStackAttributeContext(int id, ICoreAPI api, AttributeGetter getter, ItemStack? stack)
     {
         mStack = stack;
         mGetter = getter;
-        mStats = stats;
         mId = id;
     }
 
-    public override double ResolveVariable(string name) => mGetter.GetDouble($"{name}_{mId}", mStack?.Attributes) ?? mGetter.GetDouble($"{name}_{mId}", mStack?.Collectible?.Attributes) ?? mStats.ResolveVariable(name);
+    public bool Resolvable(string name) => true;
+    public float Resolve(string name, params float[] arguments) => (float)(mGetter.GetDouble($"{name}_{mId}", mStack?.Attributes) ?? mGetter.GetDouble($"{name}_{mId}", mStack?.Collectible?.Attributes) ?? 0);
 }
 
-internal sealed class CollectibleAttributeContext : BaseContext
+internal sealed class CollectibleAttributeContext : IContext<float, float>
 {
     private readonly CollectibleObject? mCollectible;
     private readonly AttributeGetter mGetter;
     private readonly int mId;
+    private readonly ICoreAPI mApi;
 
-    public CollectibleAttributeContext(int id, ICoreAPI api, AttributeGetter getter, CollectibleObject? collectible) : base(api)
+    public CollectibleAttributeContext(int id, ICoreAPI api, AttributeGetter getter, CollectibleObject? collectible)
     {
         mCollectible = collectible;
         mGetter = getter;
+        mApi = api;
         mId = id;
     }
 
-    public override double ResolveVariable(string name)
-    {
-        return mGetter.GetDouble($"{name}_{mId}", mCollectible?.Attributes) ?? 0;
-    }
+    public bool Resolvable(string name) => true;
+    public float Resolve(string name, params float[] arguments) => (float?)mGetter.GetDouble($"{name}_{mId}", mCollectible?.Attributes) ?? 0;
 }

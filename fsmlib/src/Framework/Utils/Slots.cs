@@ -1,4 +1,5 @@
 ﻿using ProtoBuf;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -122,7 +123,7 @@ public struct SlotData
             SlotType.HotBar => player.InventoryManager.GetHotbarInventory()[SlotId],
             SlotType.MainHand => player.Entity.RightHandItemSlot,
             SlotType.OffHand => player.Entity.LeftHandItemSlot,
-            SlotType.Inventory => player.InventoryManager.GetInventory(InventoryId)[SlotId],
+            SlotType.Inventory => GetOwnInventory(player, InventoryId)?[SlotId],
             SlotType.Character => player.InventoryManager.GetOwnInventory(GlobalConstants.characterInvClassName)[SlotId],
             SlotType.Backpack => player.InventoryManager.GetOwnInventory(GlobalConstants.backpackInvClassName)[SlotId],
             SlotType.Crafting => player.InventoryManager.GetOwnInventory(GlobalConstants.craftingInvClassName)[SlotId],
@@ -210,9 +211,9 @@ public struct SlotData
         return result.ToString();
     }
 
-    private static bool FilterInventories(IInventory inventory, IPlayer player) => player.InventoryManager.GetOwnInventory(GlobalConstants.creativeInvClassName).InventoryID != inventory.InventoryID;
-    private static IEnumerable<IInventory> GetAllOwnInventories(IPlayer player) => player.InventoryManager.Inventories.Where(entry => FilterInventories(entry.Value, player)).Select(entry => entry.Value);
-    private static IInventory? GetOwnInventory(IPlayer player, string id) => FilterInventories(player.InventoryManager.GetInventory(id), player) ? player.InventoryManager.GetInventory(id) : null;
-    private static IEnumerable<ItemSlot> GetOwnSlots(IPlayer player, string id, CollectibleObject collectible) => GetOwnInventory(player, id)?.Where(slot => slot?.Itemstack?.Collectible == collectible) ?? Enumerable.Empty<ItemSlot>();
-    private static IEnumerable<ItemSlot> GetOwnSlots(IPlayer player, CollectibleObject collectible) => GetAllOwnInventories(player).SelectMany(entry => entry).Where(slot => slot?.Itemstack?.Collectible == collectible);
+    public static bool FilterInventories(IInventory? inventory, IPlayer player) => player.InventoryManager.GetOwnInventory(GlobalConstants.creativeInvClassName).InventoryID != inventory?.InventoryID;
+    public static IEnumerable<IInventory> GetAllOwnInventories(IPlayer player) => player.InventoryManager.Inventories.Where(entry => FilterInventories(entry.Value, player)).Select(entry => entry.Value);
+    public static IInventory? GetOwnInventory(IPlayer player, string id) => FilterInventories(player.InventoryManager.GetInventory(id), player) ? player.InventoryManager.GetInventory(id) : null;
+    public static IEnumerable<ItemSlot> GetOwnSlots(IPlayer player, string id, CollectibleObject collectible) => GetOwnInventory(player, id)?.Where(slot => slot?.Itemstack?.Collectible == collectible) ?? Enumerable.Empty<ItemSlot>();
+    public static IEnumerable<ItemSlot> GetOwnSlots(IPlayer player, CollectibleObject collectible) => GetAllOwnInventories(player).SelectMany(entry => entry).Where(slot => slot?.Itemstack?.Collectible == collectible);
 }

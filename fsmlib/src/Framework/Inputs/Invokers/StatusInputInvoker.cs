@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
+using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
 namespace MaltiezFSM.Framework;
@@ -124,9 +126,16 @@ public sealed class StatusInputInvokerServer : IInputInvoker
 
     private void CheckStatuses()
     {
-        foreach (IPlayer player in mServerApi.World.AllPlayers.Where(player => player?.Entity != null))
+        try
         {
-            CheckPlayerStatuses(player);
+            foreach (IPlayer player in mServerApi.World.AllPlayers.Where(player => player?.Entity != null))
+            {
+                CheckPlayerStatuses(player);
+            }
+        }
+        catch (Exception exception)
+        {
+            Logger.Debug(mServerApi, this, $"Exception on checking player status:\n{exception}");
         }
     }
 
@@ -141,22 +150,33 @@ public sealed class StatusInputInvokerServer : IInputInvoker
         }
     }
 
-    private static bool CheckPlayerStatus(IStatusInput input, IPlayer player)
+    private bool CheckPlayerStatus(IStatusInput input, IPlayer player)
     {
-        return input.Status switch
+        if (player.Entity == null) return false;
+
+        try
         {
-            IStatusInput.StatusType.Activity => player.Entity.IsActivityRunning(input.Activity),
-            IStatusInput.StatusType.Swimming => player.Entity.Swimming,
-            IStatusInput.StatusType.OnFire => player.Entity.IsOnFire,
-            IStatusInput.StatusType.Collided => player.Entity.Collided,
-            IStatusInput.StatusType.CollidedHorizontally => player.Entity.CollidedHorizontally,
-            IStatusInput.StatusType.CollidedVertically => player.Entity.CollidedVertically,
-            IStatusInput.StatusType.EyesSubmerged => player.Entity.IsEyesSubmerged(),
-            IStatusInput.StatusType.FeetInLiquid => player.Entity.FeetInLiquid,
-            IStatusInput.StatusType.InLava => player.Entity.InLava,
-            IStatusInput.StatusType.OnGround => player.Entity.OnGround,
-            _ => false,
-        };
+            return input.Status switch
+            {
+                IStatusInput.StatusType.Activity => player.Entity.IsActivityRunning(input.Activity),
+                IStatusInput.StatusType.Swimming => player.Entity.Swimming,
+                IStatusInput.StatusType.OnFire => player.Entity.IsOnFire,
+                IStatusInput.StatusType.Collided => player.Entity.Collided,
+                IStatusInput.StatusType.CollidedHorizontally => player.Entity.CollidedHorizontally,
+                IStatusInput.StatusType.CollidedVertically => player.Entity.CollidedVertically,
+                IStatusInput.StatusType.EyesSubmerged => player.Entity.IsEyesSubmerged(),
+                IStatusInput.StatusType.FeetInLiquid => player.Entity.FeetInLiquid,
+                IStatusInput.StatusType.InLava => player.Entity.InLava,
+                IStatusInput.StatusType.OnGround => player.Entity.OnGround,
+                _ => false,
+            };
+        }
+        catch (Exception exception)
+        {
+            Logger.Debug(mServerApi, this, $"Exception on checking player status for input '{input}':\n{exception}");
+        }
+
+        return false;
     }
 
     private bool HandleInput(IStatusInput input, IPlayer player)

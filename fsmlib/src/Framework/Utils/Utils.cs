@@ -1,60 +1,15 @@
 ﻿using Newtonsoft.Json.Linq;
-using ProtoBuf;
-using SimpleExpressionEngine;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text;
 using Vintagestory.API.Common;
-using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
 namespace MaltiezFSM.Framework;
-
-public abstract class BaseContext : IContext
-{
-    protected readonly ICoreAPI mApi;
-    private const double cEpsilon = 1E-15;
-
-    public BaseContext(ICoreAPI api)
-    {
-        mApi = api;
-    }
-
-    public abstract double ResolveVariable(string name);
-
-    public double CallFunction(string name, double[] arguments)
-    {
-        return name switch
-        {
-            "sin" => Math.Sin(arguments[0]),
-            "cos" => Math.Cos(arguments[0]),
-            "abs" => Math.Abs(arguments[0]),
-            "sqrt" => Math.Sqrt(arguments[0]),
-            "ceiling" => Math.Ceiling(arguments[0]),
-            "floor" => Math.Floor(arguments[0]),
-            "clamp" => Math.Clamp(arguments[0], arguments[1], arguments[2]),
-            "exp" => Math.Exp(arguments[0]),
-            "max" => Math.Max(arguments[0], arguments[1]),
-            "min" => Math.Min(arguments[0], arguments[1]),
-            "log" => Math.Log(arguments[0]),
-            "round" => Math.Round(arguments[0]),
-            "sign" => Math.Sign(arguments[0]),
-            "greater" => arguments[0] > arguments[0] ? arguments[2] : arguments[3],
-            "equal" => Math.Abs(arguments[0] - arguments[1]) < cEpsilon * Math.Min(arguments[0], arguments[1]) ? arguments[2] : arguments[3],
-            _ => UnimplementedFunction(name)
-        };
-    }
-
-    private double UnimplementedFunction(string name)
-    {
-        Logger.Error(mApi, this, $"Math function '{name}' is not implemented. Implemented functions: sin, cos, abs, sqrt, ceiling, floor, clamp, exp, max, min, log, round, sign, greater, equal.");
-        return 0;
-    }
-}
 
 public static class Utils
 {
@@ -412,66 +367,32 @@ public static class Utils
     {
         private readonly ICoreAPI mApi;
         private readonly Action<float> mCallback;
-
-        private float mDuration;
-        private long? mCallbackId;
+        private readonly float mDuration;
+        private readonly long mCallbackId;
+        
         private float mCurrentDuration = 0;
-        private float mCurrentProgress = 0;
-        private bool mForward = true;
-        private bool mAutoStop;
 
-        public TickBasedTimer(ICoreAPI api, TimeSpan duration, Action<float> callback, bool autoStop = true, float startingProgress = 0)
+        public TickBasedTimer(ICoreAPI api, TimeSpan duration, Action<float> callback, float startingProgress = 0)
         {
             mApi = api;
             mDuration = (float)duration.TotalSeconds;
             mCallback = callback;
-            mAutoStop = autoStop;
-            mCurrentProgress = startingProgress;
-            mCurrentDuration = mCurrentProgress * mDuration;
-            StartListener();
+            mCurrentDuration = startingProgress * mDuration;
+            mCallbackId = mApi.World.RegisterGameTickListener(Handler, 0);
         }
         public void Stop()
         {
-            StopListener();
-        }
-        public void Resume(int? duration_ms = null, bool? autoStop = null)
-        {
-            if (duration_ms != null) mDuration = (float)duration_ms / 1000;
-            mCurrentDuration = mDuration * mCurrentProgress;
-            mForward = true;
-            mAutoStop = autoStop == null ? mAutoStop : (bool)autoStop;
-            StartListener();
-        }
-        public void Revert(int? duration_ms = null, bool? autoStop = null)
-        {
-            if (duration_ms != null) mDuration = (float)duration_ms / 1000;
-            mCurrentDuration = mDuration * (1 - mCurrentProgress);
-            mForward = false;
-            mAutoStop = autoStop == null ? mAutoStop : (bool)autoStop;
-            StartListener();
+            mApi.World.UnregisterGameTickListener(mCallbackId);
         }
 
         private void Handler(float time)
         {
             mCurrentDuration += time;
-            mCallback(CalculateProgress(mCurrentDuration));
-            if (mAutoStop && mCurrentDuration >= mDuration) StopListener();
-        }
-        private float CalculateProgress(float time)
-        {
-            float progress = GameMath.Clamp(time / mDuration, 0, 1);
-            mCurrentProgress = mForward ? progress : 1 - progress;
-            return mCurrentProgress;
-        }
-        private void StartListener()
-        {
-            StopListener();
-            mCallbackId = mApi.World.RegisterGameTickListener(Handler, 0);
-        }
-        private void StopListener()
-        {
-            if (mCallbackId != null) mApi.World.UnregisterGameTickListener((long)mCallbackId);
-            mCallbackId = null;
+            mCallback(GameMath.Clamp(mCurrentDuration / mDuration, 0, 1));
+            if (mCurrentDuration >= mDuration)
+            {
+                mApi.World.UnregisterGameTickListener(mCallbackId);
+            }
         }
     }
 
