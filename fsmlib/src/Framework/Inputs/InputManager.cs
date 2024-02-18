@@ -33,12 +33,15 @@ public sealed class InputManager : IInputManager
         }
     }
 
-    public void RegisterInvoker(IInputInvoker invoker, Type inputType)
+    public bool RegisterInvoker(IInputInvoker invoker, Type inputType)
     {
         if (!mInputInvokers.Contains((inputType, invoker)))
         {
             mInputInvokers.Add((inputType, invoker));
+            return true;
         }
+
+        return false;
     }
     public void RegisterInput(IInput input, InputCallback callback, CollectibleObject collectible)
     {

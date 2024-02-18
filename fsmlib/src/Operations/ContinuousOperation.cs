@@ -6,7 +6,7 @@ using Vintagestory.API.Datastructures;
 
 namespace MaltiezFSM.Operations
 {
-    [Obsolete("Operation will be refactored with possible apu changes, currently not tested")]
+    [Obsolete("Operation will be refactored with possible api changes, currently not tested")]
     public class Continuous : Delayed
     {
         public class SystemRequest

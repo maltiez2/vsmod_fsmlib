@@ -13,7 +13,7 @@ public interface IInputManager : IDisposable
 {
     public delegate bool InputCallback(ItemSlot slot, IPlayer player, IInput input);
     void RegisterInput(IInput input, InputCallback callback, CollectibleObject collectible);
-    void RegisterInvoker(IInputInvoker invoker, Type inputType);
+    bool RegisterInvoker(IInputInvoker invoker, Type inputType);
 }
 public interface IInputInvoker : IDisposable
 {

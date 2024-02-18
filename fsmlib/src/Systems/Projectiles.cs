@@ -56,7 +56,7 @@ public class Projectiles : BaseSystem
         if (!systems.ContainsKey(mReloadSystemName))
         {
             IEnumerable<string> reloadSystems = systems.Where((entry, _) => entry.Value is IItemStackHolder).Select((entry, _) => entry.Key);
-            Logger.Error(mApi, this, $"System {mCode}. Reload system '{mReloadSystemName}' not found. Available sound systems: {Utils.PrintList(reloadSystems)}.");
+            Logger.Error(mApi, this, $"System {mCode}. Reload system '{mReloadSystemName}' not found. Available reload systems: {Utils.PrintList(reloadSystems)}.");
             return;
         }
 

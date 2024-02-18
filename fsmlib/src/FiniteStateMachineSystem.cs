@@ -1,5 +1,6 @@
 ﻿using HarmonyLib;
 using MaltiezFSM.API;
+using MaltiezFSM.Framework;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -10,6 +11,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.Server;
+using Vintagestory.Client;
+using Vintagestory.Client.NoObf;
 using Vintagestory.GameContent;
 using Vintagestory.Server;
 
@@ -240,15 +243,15 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
     public Systems.ISoundEffectsManager? SoundEffects => mSoundEffectsManager;
 
     public ICustomInputInvoker? CustomInputInvoker => mCustomInputInvoker;
-    public void RegisterOperation<TProductClass>(string name) where TProductClass : FactoryProduct, IOperation => mOperationFactory?.Register<TProductClass>(name);
-    public void RegisterSystem<TProductClass>(string name) where TProductClass : FactoryProduct, ISystem => mSystemFactory?.Register<TProductClass>(name);
-    public void RegisterInput<TProductClass>(string name) where TProductClass : FactoryProduct, IStandardInput => mInputFactory?.Register<TProductClass>(name);
+    public void RegisterOperation<TProductClass>(string name) where TProductClass : FactoryProduct, IOperation => mOperationFactory.Register<TProductClass>(name);
+    public void RegisterSystem<TProductClass>(string name) where TProductClass : FactoryProduct, ISystem => mSystemFactory.Register<TProductClass>(name);
+    public void RegisterInput<TProductClass>(string name) where TProductClass : FactoryProduct, IStandardInput => mInputFactory.Register<TProductClass>(name);
     public void RegisterInput<TProductClass, TInputInterface>(string name, IInputInvoker invoker)
         where TInputInterface : IInput
         where TProductClass : FactoryProduct, IInput
     {
-        mInputManager?.RegisterInvoker(invoker, typeof(TInputInterface));
-        mInputFactory?.Register<TProductClass>(name);
+        mInputManager.RegisterInvoker(invoker, typeof(TInputInterface));
+        mInputFactory.Register<TProductClass>(name);
     }
 
     private struct BehaviorAsJsonObj
@@ -314,4 +317,81 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
 
         base.Dispose();
     }
+
+    #region Registering in factories
+    public void RegisterOperation<TProductClass>(string name, ICoreAPI api, Mod mod) where TProductClass : FactoryProduct, IOperation
+    {
+        if (!CheckRegisterArguments<TProductClass>(api, mod, "operation")) return;
+        bool registered = mOperationFactory?.Register<TProductClass>($"{mod.Info.ModID}:{name}") ?? false;
+        if (mOperationFactory != null) LogRegistering<TProductClass, IOperation>(registered, name, api, mod, "operation", mOperationFactory);
+    }
+    public void RegisterSystem<TProductClass>(string name, ICoreAPI api, Mod mod) where TProductClass : FactoryProduct, ISystem
+    {
+        if (!CheckRegisterArguments<TProductClass>(api, mod, "system")) return;
+        bool registered = mSystemFactory?.Register<TProductClass>($"{mod.Info.ModID}:{name}") ?? false;
+        if (mSystemFactory != null) LogRegistering<TProductClass, ISystem>(registered, name, api, mod, "system", mSystemFactory);
+    }
+    public void RegisterInput<TProductClass>(string name, ICoreAPI api, Mod mod) where TProductClass : FactoryProduct, IStandardInput
+    {
+        if (!CheckRegisterArguments<TProductClass>(api, mod, "input")) return;
+        bool registered = mInputFactory?.Register<TProductClass>($"{mod.Info.ModID}:{name}") ?? false;
+        if (mInputFactory != null) LogRegistering<TProductClass, IInput>(registered, name, api, mod, "input", mInputFactory);
+    }
+    public void RegisterInput<TProductClass, TInputInterface>(string name, IInputInvoker invoker, ICoreAPI api, Mod mod)
+        where TProductClass : FactoryProduct, IInput
+        where TInputInterface : IInput
+    {
+        if (!CheckRegisterArguments<TProductClass>(api, mod, "input invoker")) return;
+        
+        bool invokerRegistered = mInputManager?.RegisterInvoker(invoker, typeof(TInputInterface)) ?? false;
+        if (invokerRegistered)
+        {
+            Logger.Verbose(api, this, $"({Mod}) Registered input invoker: '{Utils.GetTypeName(invoker.GetType())}' for '{Utils.GetTypeName(typeof(TInputInterface))}' inputs.");
+        }
+        
+        bool registered =  mInputFactory?.Register<TProductClass>($"{mod.Info.ModID}:{name}") ?? false;
+        if (mInputFactory != null) LogRegistering<TProductClass, IInput>(registered, name, api, mod, "input", mInputFactory);
+    }
+
+    private bool CheckRegisterArguments<TProductClass>(ICoreAPI api, Mod mod, string productType)
+    {
+        if (api == null) throw new ArgumentNullException(nameof(api), $"You should supply not null 'ICoreAPI' on registering objects in FSM lib");
+        
+        if (mod == null || mod == Mod)
+        {
+            Logger.Error(api, this, $"Error on registering {productType}: you should pass your Mod class into this method.");
+            return false;
+        }
+
+        bool started = productType switch
+        {
+            "operation" => mOperationFactory != null,
+            "system" => mSystemFactory != null,
+            "input" => mInputFactory != null,
+            "input invoker" => mInputManager != null && mInputFactory != null,
+            _ => true
+        };
+
+        if (!started)
+        {
+            Logger.Error(api, this, $"Error on registering {productType} '{Utils.GetTypeName(typeof(TProductClass))}' for mod '{mod}': long load order, you should register {productType}s after FSM lib is started.");
+            return false;
+        }
+
+        return true;
+    }
+    private void LogRegistering<TProductClass, TProductType>(bool registered, string name, ICoreAPI api, Mod mod, string productType, IFactory<TProductType> factory)
+    {
+        string productName = $"{mod.Info.ModID}:{name}";
+        
+        if (registered)
+        {
+            Logger.Verbose(api, this, $"({Mod}) Registered {productType}: '{Utils.GetTypeName(typeof(TProductClass))}' as '{productName}'.");
+        }
+        else
+        {
+            Logger.Warn(api, this, $"({Mod}) Failed to register {productType}: '{Utils.GetTypeName(typeof(TProductClass))}' as '{productName}' - such {productType} name already used for '{Utils.GetTypeName(factory.TypeOf(productName))}'.");
+        }
+    }
+    #endregion
 }

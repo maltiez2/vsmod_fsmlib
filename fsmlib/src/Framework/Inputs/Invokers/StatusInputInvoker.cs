@@ -173,7 +173,9 @@ public sealed class StatusInputInvokerServer : IInputInvoker
         }
         catch (Exception exception)
         {
+#if DEBUG
             Logger.Debug(mServerApi, this, $"Exception on checking player status for input '{input}':\n{exception}");
+#endif
         }
 
         return false;

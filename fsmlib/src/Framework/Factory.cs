@@ -24,9 +24,9 @@ namespace MaltiezFSM.Framework
         {
             return mProducts[name];
         }
-        public void Register<TObjectClass>(string name) where TObjectClass : FactoryProduct, TProduct
+        public bool Register<TObjectClass>(string name) where TObjectClass : FactoryProduct, TProduct
         {
-            mProducts.TryAdd(name, typeof(TObjectClass));
+            return mProducts.TryAdd(name, typeof(TObjectClass));
         }
         public void SubstituteWith<TObjectClass>(string name) where TObjectClass : FactoryProduct, TProduct
         {

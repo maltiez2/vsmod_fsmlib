@@ -15,7 +15,7 @@ public interface IFactoryProduct
 public interface IFactory<TProductInterface>
 {
     Type TypeOf(string name);
-    void Register<TProductClass>(string name) where TProductClass : FactoryProduct, TProductInterface;
+    bool Register<TProductClass>(string name) where TProductClass : FactoryProduct, TProductInterface;
     void SubstituteWith<TProductClass>(string name) where TProductClass : FactoryProduct, TProductInterface;
     TProductInterface? Instantiate(string code, string name, JsonObject definition, CollectibleObject collectible);
 }
@@ -28,10 +28,21 @@ internal interface IFactoryProvider
 }
 public interface IRegistry
 {
+    [Obsolete("Use RegisterOperation<TProductClass>(string name, ICoreAPI api, Mod mod) instead")]
     void RegisterOperation<TProductClass>(string name) where TProductClass : FactoryProduct, IOperation;
+    [Obsolete("Use RegisterSystem<TProductClass>(string name, ICoreAPI api, Mod mod) instead")]
     void RegisterSystem<TProductClass>(string name) where TProductClass : FactoryProduct, ISystem;
+    [Obsolete("Use RegisterInput<TProductClass>(string name, ICoreAPI api, Mod mod) instead")]
     void RegisterInput<TProductClass>(string name) where TProductClass : FactoryProduct, IStandardInput;
+    [Obsolete("Use RegisterInput<TProductClass>(string name, ICoreAPI api, Mod mod) instead")]
     void RegisterInput<TProductClass, TInputInterface>(string name, IInputInvoker invoker)
+        where TInputInterface : IInput
+        where TProductClass : FactoryProduct, IInput;
+
+    void RegisterOperation<TProductClass>(string name, ICoreAPI api, Mod mod) where TProductClass : FactoryProduct, IOperation;
+    void RegisterSystem<TProductClass>(string name, ICoreAPI api, Mod mod) where TProductClass : FactoryProduct, ISystem;
+    void RegisterInput<TProductClass>(string name, ICoreAPI api, Mod mod) where TProductClass : FactoryProduct, IStandardInput;
+    void RegisterInput<TProductClass, TInputInterface>(string name, IInputInvoker invoker, ICoreAPI api, Mod mod)
         where TInputInterface : IInput
         where TProductClass : FactoryProduct, IInput;
 }
