@@ -106,3 +106,8 @@ public interface ISlotContentInput : IStandardInput
 
     SlotEventType EventType { get; }
 }
+
+public interface IToolModeInput : IStandardInput
+{
+    string ModeId { get; }
+}

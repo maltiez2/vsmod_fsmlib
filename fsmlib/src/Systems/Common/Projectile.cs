@@ -16,6 +16,7 @@ namespace MaltiezFSM.Systems;
 public class AdvancedProjectileBehavior : CollectibleBehavior
 {
     public List<ProjectileDamageType> DamageTypes { get; set; } = new();
+    public int AdditionalDurabilityCost { get; set; } = 0;
 
     private JsonObject? mProperties;
 
@@ -31,6 +32,7 @@ public class AdvancedProjectileBehavior : CollectibleBehavior
         {
             DamageTypes.Add(new(damageType, api));
         }
+        AdditionalDurabilityCost = mProperties["additionalDurabilityCost"].AsInt(0);
     }
 
     public override void Initialize(JsonObject properties)
@@ -43,6 +45,11 @@ public class AdvancedProjectileBehavior : CollectibleBehavior
     public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
     {
         base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
+
+        if (AdditionalDurabilityCost != 0)
+        {
+            dsc.AppendLine($"{Lang.Get("fsmlib:projectile-durability-cost", AdditionalDurabilityCost)}");
+        }
 
         dsc.AppendLine($"{Lang.Get("fsmlib:damage-list")}");
         foreach (ProjectileDamageType item in DamageTypes)

@@ -1,5 +1,6 @@
 ﻿using MaltiezFSM.API;
 using MaltiezFSM.Framework;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Common;
@@ -32,7 +33,7 @@ public class Projectiles : BaseSystem
         mProjectileSpeed = definition["speed"].AsFloat(1);
         mProjectileDamageMultiplier = definition["damageMultiplier"].AsFloat(1);
         mDescription = definition["description"].AsString();
-        mProjectilesCount = definition["projectilesAmount"].AsInt(1);
+        mProjectilesCount = definition["amount"].AsInt(1);
         if (definition.KeyExists("damage_stats")) mDamageModifier = new(api, definition["damage_stats"].AsString());
         if (definition.KeyExists("speed_stats")) mSpeedModifier = new(api, definition["speed_stats"].AsString());
         mHitSound = definition["hitSound"].AsString("game:sounds/player/projectilehit");
@@ -76,13 +77,13 @@ public class Projectiles : BaseSystem
     {
         if (!base.Verify(slot, player, parameters)) return false;
 
-        return mReloadSystem?.Get(slot, player).Count > 0;
+        return mReloadSystem?.Get(slot, player).Any() ?? false;
     }
     public override bool Process(ItemSlot slot, IPlayer player, JsonObject parameters)
     {
         if (!base.Process(slot, player, parameters)) return false;
 
-        List<ItemStack>? ammoStacks = mReloadSystem?.TakeAmount(slot, player, mProjectilesCount);
+        List<ItemStack>? ammoStacks = mReloadSystem?.TakeAmount(slot, player, mProjectilesCount).Select(slot => slot.Itemstack).ToList();
         if (ammoStacks == null || ammoStacks.Count == 0) return false;
 
         SpawnProjectiles(ammoStacks, player, slot);
@@ -98,14 +99,17 @@ public class Projectiles : BaseSystem
 
     private void SpawnProjectiles(List<ItemStack> ammoStacks, IPlayer player, ItemSlot slot)
     {
-        Vec3d projectilePosition = ProjectilePosition(player, new Vec3f(0.0f, 0.0f, 0.0f));
-        Utils.DirectionOffset dispersion = GetDirectionOffset(slot, player);
-        Vec3d projectileVelocity = ProjectileVelocity(player, dispersion);
         float damageMultiplier = GetDamageMultiplier(player);
 
         foreach (ItemStack ammo in ammoStacks)
         {
-            SpawnProjectile(ammo, player, projectilePosition, projectileVelocity, damageMultiplier);
+            for (int count = 0; count < ammo.StackSize; count++)
+            {
+                Vec3d projectilePosition = ProjectilePosition(player, new Vec3f(0.0f, 0.0f, 0.0f));
+                Utils.DirectionOffset dispersion = GetDirectionOffset(slot, player);
+                Vec3d projectileVelocity = ProjectileVelocity(player, dispersion);
+                SpawnProjectile(ammo, player, projectilePosition, projectileVelocity, damageMultiplier, slot);
+            }
         }
     }
     private Utils.DirectionOffset GetDirectionOffset(ItemSlot slot, IPlayer player)
@@ -142,11 +146,12 @@ public class Projectiles : BaseSystem
         Vec3d aheadPos = pos.AheadCopy(1, player.Entity.SidedPos.Pitch + dispersion.Pitch, player.Entity.SidedPos.Yaw + dispersion.Yaw);
         return (aheadPos - pos).Normalize() * GetSpeed(player);
     }
-    private void SpawnProjectile(ItemStack projectileStack, IPlayer player, Vec3d position, Vec3d velocity, float damageMultiplier)
+    private void SpawnProjectile(ItemStack projectileStack, IPlayer player, Vec3d position, Vec3d velocity, float damageMultiplier, ItemSlot slot)
     {
         if (projectileStack?.Item?.Code == null) return;
 
         List<ProjectileDamageType>? damageTypes = projectileStack.Collectible.GetBehavior<AdvancedProjectileBehavior>()?.DamageTypes;
+        int durabilityDamage = projectileStack.Collectible.GetBehavior<AdvancedProjectileBehavior>()?.AdditionalDurabilityCost ?? 0;
 
         if (damageTypes == null || damageTypes.Count == 0)
         {
@@ -186,5 +191,6 @@ public class Projectiles : BaseSystem
         projectile.ImpactSound = mImpactSound;
 
         mApi.World.SpawnEntity(projectile);
+        if (durabilityDamage != 0) slot.Itemstack.Item.DamageItem(mApi.World, projectile, slot, durabilityDamage);
     }
 }

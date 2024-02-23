@@ -10,6 +10,7 @@ namespace MaltiezFSM.API;
 
 public interface IState
 {
+    string Serialize();
 }
 public interface IOperation : IFactoryProduct, IDisposable
 {

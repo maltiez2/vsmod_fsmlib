@@ -1,6 +1,5 @@
 ﻿using HarmonyLib;
 using MaltiezFSM.API;
-using MaltiezFSM.Framework;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -11,8 +10,6 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.Server;
-using Vintagestory.Client;
-using Vintagestory.Client.NoObf;
 using Vintagestory.GameContent;
 using Vintagestory.Server;
 
@@ -27,6 +24,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
     private IOperationInputInvoker? mOperationInputInvoker;
     private ICustomInputInvoker? mCustomInputInvoker;
     private IAttributeReferencesManager? mAttributeReferencesManager;
+    private Framework.ToolModeInputInvoker? mToolModeInvoker;
     private Systems.ParticleEffectsManager? mParticleEffectsManager;
     private Systems.SoundEffectsManager? mSoundEffectsManager;
     private readonly List<IInputInvoker> mInputInvokers = new();
@@ -56,6 +54,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
 
         api.RegisterEntityBehaviorClass("constresist", typeof(Additional.EntityBehaviorConstResists<Additional.ConstResist>));
         api.RegisterEntityBehaviorClass("tempresists", typeof(Additional.EntityBehaviorResists));
+        api.RegisterEntityBehaviorClass("EntityBehaviorAimingAccuracyNoReticle", typeof(Systems.EntityBehaviorAimingAccuracyNoReticle));
 
         mAttributeReferencesManager = new Framework.AttributeReferencesManager(api);
 
@@ -97,6 +96,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         Framework.ActiveSlotChangedInputInvoker activeSlotChanged = new(api);
         Framework.CustomInputInvoker customInput = new();
         Framework.SlotInputInvoker slotInput = new(api);
+        mToolModeInvoker = new();
 
         mInputManager.RegisterInvoker(invoker, typeof(IOperationInput));
         mInputManager.RegisterInvoker(keyInput, typeof(IKeyInput));
@@ -107,6 +107,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         mInputManager.RegisterInvoker(activeSlotChanged, typeof(ISlotChangedAfter));
         mInputManager.RegisterInvoker(activeSlotChanged, typeof(ISlotChangedBefore));
         mInputManager.RegisterInvoker(customInput, typeof(ICustomInput));
+        mInputManager.RegisterInvoker(mToolModeInvoker, typeof(IToolModeInput));
 
         mInputInvokers.Add(invoker);
         mInputInvokers.Add(keyInput);
@@ -128,6 +129,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         Framework.StatusInputInvokerServer statusInput = new(api);
         Framework.ActiveSlotChangedInputInvoker activeSlotChanged = new(api);
         Framework.SlotInputInvoker slotInput = new(api);
+        mToolModeInvoker = new();
 
         mInputManager.RegisterInvoker(invoker, typeof(IOperationInput));
         mInputManager.RegisterInvoker(slotInput, typeof(ISlotContentInput));
@@ -135,6 +137,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         mInputManager.RegisterInvoker(statusInput, typeof(IStatusInput));
         mInputManager.RegisterInvoker(activeSlotChanged, typeof(ISlotChangedAfter));
         mInputManager.RegisterInvoker(activeSlotChanged, typeof(ISlotChangedBefore));
+        mInputManager.RegisterInvoker(mToolModeInvoker, typeof(IToolModeInput));
 
         mInputInvokers.Add(invoker);
         mInputInvokers.Add(slotInput);
@@ -158,6 +161,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         mInputFactory.Register<Inputs.StatusInput>("Status");
         mInputFactory.Register<Inputs.SlotContent>("SlotContent");
         mInputFactory.Register<Inputs.Custom>("Custom");
+        mInputFactory.Register<Inputs.ToolMode>("ToolMode");
     }
     private void RegisterSystems()
     {
@@ -178,6 +182,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         mSystemFactory.Register<Systems.Stats>("Stats");
         mSystemFactory.Register<Systems.CameraSettings>("CameraSettings");
         mSystemFactory.Register<Systems.ChangeAttribute>("ChangeAttribute");
+        mSystemFactory.Register<Systems.SelectionMatch>("SelectionMatch");
 
         mSystemFactory.Register<Systems.Attachments>("Attachments");
         mSystemFactory.Register<Systems.ItemAnimation>("ItemAnimation");
@@ -238,21 +243,10 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
     internal IInputManager? GetInputManager() => mInputManager;
     internal IOperationInputInvoker? GetOperationInputInvoker() => mOperationInputInvoker;
     internal IAttributeReferencesManager? GetAttributeReferencesManager() => mAttributeReferencesManager;
+    internal IToolModeInvoker? GetToolModeInvoker() => mToolModeInvoker;
 
     public Systems.IParticleEffectsManager? ParticleEffects => mParticleEffectsManager;
     public Systems.ISoundEffectsManager? SoundEffects => mSoundEffectsManager;
-
-    public ICustomInputInvoker? CustomInputInvoker => mCustomInputInvoker;
-    public void RegisterOperation<TProductClass>(string name) where TProductClass : FactoryProduct, IOperation => mOperationFactory.Register<TProductClass>(name);
-    public void RegisterSystem<TProductClass>(string name) where TProductClass : FactoryProduct, ISystem => mSystemFactory.Register<TProductClass>(name);
-    public void RegisterInput<TProductClass>(string name) where TProductClass : FactoryProduct, IStandardInput => mInputFactory.Register<TProductClass>(name);
-    public void RegisterInput<TProductClass, TInputInterface>(string name, IInputInvoker invoker)
-        where TInputInterface : IInput
-        where TProductClass : FactoryProduct, IInput
-    {
-        mInputManager.RegisterInvoker(invoker, typeof(TInputInterface));
-        mInputFactory.Register<TProductClass>(name);
-    }
 
     private struct BehaviorAsJsonObj
     {
@@ -302,6 +296,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
     {
         // In case 'AssetsFinalize' method failed to add behavior to player.
         if (!player.HasBehavior<Additional.EntityBehaviorResists>()) player.SidedProperties.Behaviors.Insert(0, new Additional.EntityBehaviorResists(player));
+        if (!player.HasBehavior<Systems.EntityBehaviorAimingAccuracyNoReticle>()) player.SidedProperties.Behaviors.Insert(0, new Systems.EntityBehaviorAimingAccuracyNoReticle(player));
     }
 
     public override void Dispose()
@@ -319,6 +314,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
     }
 
     #region Registering in factories
+    public ICustomInputInvoker? CustomInputInvoker => mCustomInputInvoker;
     public void RegisterOperation<TProductClass>(string name, ICoreAPI api, Mod mod) where TProductClass : FactoryProduct, IOperation
     {
         if (!CheckRegisterArguments<TProductClass>(api, mod, "operation")) return;
@@ -346,20 +342,27 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         bool invokerRegistered = mInputManager?.RegisterInvoker(invoker, typeof(TInputInterface)) ?? false;
         if (invokerRegistered)
         {
-            Logger.Verbose(api, this, $"({Mod}) Registered input invoker: '{Utils.GetTypeName(invoker.GetType())}' for '{Utils.GetTypeName(typeof(TInputInterface))}' inputs.");
+            Framework.Logger.Verbose(api, this, $"({Mod}) Registered input invoker: '{Framework.Utils.GetTypeName(invoker.GetType())}' for '{Framework.Utils.GetTypeName(typeof(TInputInterface))}' inputs.");
         }
         
         bool registered =  mInputFactory?.Register<TProductClass>($"{mod.Info.ModID}:{name}") ?? false;
         if (mInputFactory != null) LogRegistering<TProductClass, IInput>(registered, name, api, mod, "input", mInputFactory);
     }
 
+    private const int cModIdMinimumLength = 4;
     private bool CheckRegisterArguments<TProductClass>(ICoreAPI api, Mod mod, string productType)
     {
         if (api == null) throw new ArgumentNullException(nameof(api), $"You should supply not null 'ICoreAPI' on registering objects in FSM lib");
         
         if (mod == null || mod == Mod)
         {
-            Logger.Error(api, this, $"Error on registering {productType}: you should pass your Mod class into this method.");
+            Framework.Logger.Error(api, this, $"Error on registering {productType}: you should pass your Mod class into this method.");
+            return false;
+        }
+
+        if (mod.Info.ModID.Length <= cModIdMinimumLength)
+        {
+            Framework.Logger.Error(api, this, $"Error on registering {productType} for mod {mod}: mod id should be longer than {cModIdMinimumLength} letters, not '{mod.Info.ModID}'. Stop abbreviating domains and mod-ids!");
             return false;
         }
 
@@ -374,7 +377,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
 
         if (!started)
         {
-            Logger.Error(api, this, $"Error on registering {productType} '{Utils.GetTypeName(typeof(TProductClass))}' for mod '{mod}': long load order, you should register {productType}s after FSM lib is started.");
+            Framework.Logger.Error(api, this, $"Error on registering {productType} '{Framework.Utils.GetTypeName(typeof(TProductClass))}' for mod '{mod}': wrong load order, you should register {productType}s after FSM lib is started.");
             return false;
         }
 
@@ -386,11 +389,11 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         
         if (registered)
         {
-            Logger.Verbose(api, this, $"({Mod}) Registered {productType}: '{Utils.GetTypeName(typeof(TProductClass))}' as '{productName}'.");
+            Framework.Logger.Verbose(api, this, $"({Mod}) Registered {productType}: '{Framework.Utils.GetTypeName(typeof(TProductClass))}' as '{productName}'.");
         }
         else
         {
-            Logger.Warn(api, this, $"({Mod}) Failed to register {productType}: '{Utils.GetTypeName(typeof(TProductClass))}' as '{productName}' - such {productType} name already used for '{Utils.GetTypeName(factory.TypeOf(productName))}'.");
+            Framework.Logger.Warn(api, this, $"({Mod}) Failed to register {productType}: '{Framework.Utils.GetTypeName(typeof(TProductClass))}' as '{productName}' - such {productType} name already used for '{Framework.Utils.GetTypeName(factory.TypeOf(productName))}'.");
         }
     }
     #endregion

@@ -32,6 +32,14 @@ public interface ICustomInputInvoker
 {
     public bool Invoke(string input, IPlayer player, ItemSlot? inSlot = null);
 }
+public interface IToolModeInvoker
+{
+    void Invoke(ItemSlot slot, IPlayer player, string id);
+}
+public interface IToolModeEventProvider
+{
+    event ToolModesGetter? OnGetToolModes;
+}
 
 public struct KeyPressModifiers
 {

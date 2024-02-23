@@ -4,10 +4,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
-
-
+using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
+using Vintagestory.GameContent;
 
 namespace MaltiezFSM.Systems;
 
@@ -71,6 +73,7 @@ public class Aiming : BaseSystem, IAimingSystem
         switch (action)
         {
             case "start":
+                player.Entity.Attributes.SetInt("aiming-noreticle", 1);
                 WriteStartTimeTo(slot, mApi.World.ElapsedMilliseconds);
                 SetAimingTime(player);
                 SetDispersions(player);
@@ -78,6 +81,7 @@ public class Aiming : BaseSystem, IAimingSystem
                 mIsAiming = true;
                 break;
             case "stop":
+                player.Entity.Attributes.SetInt("aiming-noreticle", 0);
                 WriteStartTimeTo(slot, 0);
                 StopSoundTimer(player);
                 mIsAiming = false;
@@ -93,7 +97,8 @@ public class Aiming : BaseSystem, IAimingSystem
     {
         long currentTime = mApi.World.ElapsedMilliseconds;
         float aimProgress = mIsAiming ? Math.Clamp((currentTime - ReadStartTimeFrom(slot)) / mAimingTimes[player.Entity.EntityId], 0, 1) : 0;
-        float dispersion = GetDispersion(aimProgress, player);
+        float aimingInaccuracy = Math.Max(0.001f, 1f - player.Entity.Attributes.GetFloat("aimingAccuracy"));
+        float dispersion = GetDispersion(aimProgress, player) * aimingInaccuracy;
         float randomPitch = (float)(2 * (sRand.NextDouble() - 0.5) * (Math.PI / 180 / 60) * dispersion);
         float randomYaw = (float)(2 * (sRand.NextDouble() - 0.5) * (Math.PI / 180 / 60) * dispersion);
         return (randomPitch, randomYaw);
@@ -184,5 +189,91 @@ public class Aiming : BaseSystem, IAimingSystem
     {
         long? startTime = slot?.Itemstack?.Attributes?.GetLong(mTimeAttrName, 0);
         return startTime == null || startTime == 0 ? mApi.World.ElapsedMilliseconds : startTime.Value;
+    }
+}
+
+public class EntityBehaviorAimingAccuracyNoReticle : EntityBehavior
+{
+    public Random Rand { get; set; }
+    public bool IsAiming { get; set; }
+
+    private readonly List<AccuracyModifier> mModifiers = new();
+
+    public EntityBehaviorAimingAccuracyNoReticle(Entity entity)
+        : base(entity)
+    {
+        EntityAgent entityAgent = entity as EntityAgent;
+        mModifiers.Add(new BaseAimingAccuracy(entityAgent));
+        mModifiers.Add(new MovingAimingAccuracy(entityAgent));
+        mModifiers.Add(new SprintAimingAccuracy(entityAgent));
+        mModifiers.Add(new OnHurtAimingAccuracy(entityAgent));
+        entity.Attributes.RegisterModifiedListener("aiming-noreticle", OnAimingChanged);
+        Rand = new Random((int)(entity.EntityId + entity.World.ElapsedMilliseconds));
+    }
+
+    private void OnAimingChanged()
+    {
+        bool isAiming = IsAiming;
+        IsAiming = entity.Attributes.GetInt("aiming") > 0;
+        if (isAiming == IsAiming)
+        {
+            return;
+        }
+
+        if (IsAiming && entity.World is IServerWorldAccessor)
+        {
+            double value = Rand.NextDouble() - 0.5;
+            double value2 = Rand.NextDouble() - 0.5;
+            entity.WatchedAttributes.SetDouble("aimingRandPitch", value);
+            entity.WatchedAttributes.SetDouble("aimingRandYaw", value2);
+        }
+
+        for (int i = 0; i < mModifiers.Count; i++)
+        {
+            if (IsAiming)
+            {
+                mModifiers[i].BeginAim();
+            }
+            else
+            {
+                mModifiers[i].EndAim();
+            }
+        }
+    }
+
+    public override void OnGameTick(float deltaTime)
+    {
+        if (IsAiming)
+        {
+            if (!entity.Alive)
+            {
+                entity.Attributes.SetInt("aiming-noreticle", 0);
+            }
+
+            float accuracy = 0f;
+            for (int i = 0; i < mModifiers.Count; i++)
+            {
+                mModifiers[i].Update(deltaTime, ref accuracy);
+            }
+
+            entity.Attributes.SetFloat("aimingAccuracy-noReticle", accuracy);
+        }
+    }
+
+    public override void OnEntityReceiveDamage(DamageSource damageSource, ref float damage)
+    {
+        base.OnEntityReceiveDamage(damageSource, ref damage);
+        if (damageSource.Type != EnumDamageType.Heal)
+        {
+            for (int i = 0; i < mModifiers.Count; i++)
+            {
+                mModifiers[i].OnHurt(damage);
+            }
+        }
+    }
+
+    public override string PropertyName()
+    {
+        return "aimingaccuracy-noreticle";
     }
 }

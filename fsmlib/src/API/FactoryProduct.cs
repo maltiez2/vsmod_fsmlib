@@ -53,5 +53,22 @@ namespace MaltiezFSM.API
             }
             return fields;
         }
+        protected static List<JsonObject> ParseField(JsonObject definition)
+        {
+            List<JsonObject> fields = new();
+
+            if (definition.IsArray())
+            {
+                foreach (JsonObject fieldObject in definition.AsArray())
+                {
+                    fields.Add(fieldObject);
+                }
+            }
+            else
+            {
+                fields.Add(definition);
+            }
+            return fields;
+        }
     }
 }

@@ -5,6 +5,8 @@
   "requirements-amount": "amount: {0}",
   "requirements-durability": "durability: {0}",
 
+  "projectile-durability-cost": "Additional durability cost: {0}",
+
   "damage-list": "Projectile damage types:",
   "damage-type-gravity": "Gravity",
   "damage-type-fire": "Fire",

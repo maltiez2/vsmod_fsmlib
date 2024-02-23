@@ -1,8 +1,10 @@
 ﻿using MaltiezFSM.API;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.Util;
 using VSImGui;
 
 namespace MaltiezFSM.Framework;
@@ -16,18 +18,28 @@ internal sealed class FiniteStateMachine : IFiniteStateMachine
     private readonly Dictionary<long, Utils.DelayedCallback> mTimers = new();
     private readonly List<IOperation> mOperations = new();
     private readonly IOperationInputInvoker? mOperationInputInvoker;
+    private readonly System.Func<string, IState> mDeserializeState;
     private readonly CollectibleObject mCollectible;
     private readonly StateManager mStateManager;
     private readonly ICoreAPI mApi;
 
     private bool mDisposed = false;
 
-    public FiniteStateMachine(ICoreAPI api, Dictionary<string, IOperation> operations, Dictionary<string, ISystem> systems, Dictionary<string, IInput> inputs, JsonObject behaviourAttributes, CollectibleObject collectible, IOperationInputInvoker? invoker)
+    public FiniteStateMachine(
+        ICoreAPI api,
+        Dictionary<string, IOperation> operations,
+        Dictionary<string, ISystem> systems,
+        Dictionary<string, IInput> inputs,
+        JsonObject behaviourAttributes,
+        CollectibleObject collectible,
+        IOperationInputInvoker? invoker
+    )
     {
         mCollectible = collectible;
         string initialState = behaviourAttributes[cInitialStateAttribute].AsString();
         mOperationInputInvoker = invoker;
-        mStateManager = new(api, initialState);
+        mDeserializeState = (string value) => new State(value);
+        mStateManager = new(api, initialState, mDeserializeState);
         mApi = api;
 
         foreach ((string systemCode, ISystem system) in systems)
@@ -139,8 +151,8 @@ internal sealed class FiniteStateMachine : IFiniteStateMachine
 
         foreach (IOperation.Transition transition in transitions)
         {
-            IState initialState = StateManager.Construct(transition.FromState);
-            IState finalState = StateManager.Construct(transition.ToState);
+            IState initialState = mDeserializeState(transition.FromState);
+            IState finalState = mDeserializeState(transition.ToState);
 
             operationStateMapping.TryAdd(transition.FromState, initialState);
             operationStateMapping.TryAdd(transition.ToState, finalState);
@@ -168,6 +180,7 @@ internal sealed class FiniteStateMachine : IFiniteStateMachine
 
         return operationStateMapping;
     }
+
     private bool RunOperation(ItemSlot slot, IPlayer player, IOperation operation, IInput input, IState state)
     {
         if (player == null || slot == null) return false;
@@ -230,11 +243,13 @@ internal sealed class StateManager
 #endif
     private readonly string mInitialState;
     private readonly ICoreAPI mApi;
+    private readonly System.Func<string, IState> mDeserialize;
 
-    public StateManager(ICoreAPI api, string initialState)
+    public StateManager(ICoreAPI api, string initialState, System.Func<string, IState> stateDeserializer)
     {
         mApi = api;
         mInitialState = initialState;
+        mDeserialize = stateDeserializer;
 
 #if DEBUG
         DebugWindow.IntSlider("fsmlib", "tweaks", "state sync delay", 0, 1000, () => (int)mSynchronizationDelay.TotalMilliseconds, value => mSynchronizationDelay = TimeSpan.FromMilliseconds(value));
@@ -250,18 +265,17 @@ internal sealed class StateManager
         }
         WriteStateTo(slot, supportedState);
     }
-    public void Reset(ItemSlot slot) => WriteStateTo(slot, new(mInitialState));
-    public static IState Construct(string state) => new State(state);
+    public void Reset(ItemSlot slot) => WriteStateTo(slot, mDeserialize(mInitialState));
 
-    private State ReadStateFrom(ItemSlot slot)
+    private IState ReadStateFrom(ItemSlot slot)
     {
         if (slot.Itemstack == null)
         {
             Logger.Error(mApi, this, $"ItemStack is null");
-            return new(mInitialState);
+            return mDeserialize(mInitialState);
         }
 
-        State serverState = ReadStateFromServer(slot.Itemstack);
+        IState serverState = ReadStateFromServer(slot.Itemstack);
 
         if (mApi.Side == EnumAppSide.Server)
         {
@@ -269,7 +283,7 @@ internal sealed class StateManager
             return serverState;
         }
 
-        State clientState = ReadStateFromClient(slot.Itemstack);
+        IState clientState = ReadStateFromClient(slot.Itemstack);
 
 #if DEBUG
         //if (clientState != serverState) Logger.Warn(mApi, this, $"State desync ({clientState == serverState}). Client: {clientState}, Server: {serverState}");
@@ -286,7 +300,7 @@ internal sealed class StateManager
 
         return clientState;
     }
-    private void WriteStateTo(ItemSlot slot, State state)
+    private void WriteStateTo(ItemSlot slot, IState state)
     {
         if (slot.Itemstack == null)
         {
@@ -304,20 +318,20 @@ internal sealed class StateManager
             WriteStateToClient(slot.Itemstack, state);
         }
     }
-    private State ReadStateFromClient(ItemStack stack)
+    private IState ReadStateFromClient(ItemStack stack)
     {
         if (!stack.TempAttributes.HasAttribute(cStateAttributeNameClient))
         {
             WriteStateToClient(stack, ReadStateFromServer(stack));
         }
 
-        return State.Deserialize(stack.TempAttributes.GetAsString(cStateAttributeNameClient, mInitialState));
+        return mDeserialize(stack.TempAttributes.GetAsString(cStateAttributeNameClient, mInitialState));
     }
-    private static void WriteStateToClient(ItemStack stack, State state) => stack.TempAttributes.SetString(cStateAttributeNameClient, state.Serialize());
-    private State ReadStateFromServer(ItemStack stack) => State.Deserialize(stack.Attributes.GetAsString(cStateAttributeNameServer, mInitialState));
-    private static void WriteStateToServer(ItemStack stack, State state) => stack.Attributes.SetString(cStateAttributeNameServer, state.Serialize());
+    private static void WriteStateToClient(ItemStack stack, IState state) => stack.TempAttributes.SetString(cStateAttributeNameClient, state.Serialize());
+    private IState ReadStateFromServer(ItemStack stack) => mDeserialize(stack.Attributes.GetAsString(cStateAttributeNameServer, mInitialState));
+    private static void WriteStateToServer(ItemStack stack, IState state) => stack.Attributes.SetString(cStateAttributeNameServer, state.Serialize());
 
-    private State SynchronizeStates(ItemStack stack, State serverState, State clientState)
+    private IState SynchronizeStates(ItemStack stack, IState serverState, IState clientState)
     {
         if (!CheckTimestamp(stack))
         {
@@ -343,28 +357,28 @@ internal sealed class StateManager
     private static bool CheckTimestamp(ItemStack stack) => stack.TempAttributes.HasAttribute(cSyncAttributeName);
     private void WriteTimestamp(ItemStack stack) => stack.TempAttributes.SetLong(cSyncAttributeName, mApi.World.ElapsedMilliseconds);
     private TimeSpan ReadTimestamp(ItemStack stack) => TimeSpan.FromMilliseconds(mApi.World.ElapsedMilliseconds - stack.TempAttributes.GetLong(cSyncAttributeName, 0));
+}
 
-    internal sealed class State : IState, IEquatable<State>
+internal sealed class State : IState, IEquatable<State>
+{
+    private readonly string mState;
+    private readonly int mHash;
+
+    public State(string state)
     {
-        private readonly string mState;
-        private readonly int mHash;
-
-        public State(string state)
-        {
-            mState = state;
-            mHash = mState.GetHashCode();
-        }
-        public override string ToString() { return $"{mState}"; }
-        public override bool Equals(object? obj) => (obj as State)?.mHash == mHash;
-        public bool Equals(State? other) => other?.mHash == mHash;
-        public override int GetHashCode()
-        {
-            return mHash;
-        }
-        public string Serialize() => mState;
-        public static State Deserialize(string state) => new(state);
-
-        public static bool operator ==(State first, State second) => first.Equals(second);
-        public static bool operator !=(State first, State second) => !first.Equals(second);
+        mState = state;
+        mHash = mState.GetHashCode();
     }
+    public override string ToString() => mState;
+    public override bool Equals(object? obj) => (obj as State)?.mHash == mHash;
+    public bool Equals(State? other) => other?.mHash == mHash;
+    public override int GetHashCode()
+    {
+        return mHash;
+    }
+    public string Serialize() => mState;
+    public static State Deserialize(string state) => new(state);
+
+    public static bool operator ==(State first, State second) => first.Equals(second);
+    public static bool operator !=(State first, State second) => !first.Equals(second);
 }

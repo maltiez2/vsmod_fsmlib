@@ -2,6 +2,7 @@
 using MaltiezFSM.API;
 using MaltiezFSM.Framework;
 using System.Collections.Generic;
+using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
@@ -72,7 +73,7 @@ public class Attachments : BaseSystem
                 mBehavior.ToggleAttachment(player.Entity.EntityId, attachmentPoint, false);
                 break;
             case "refresh":
-                if (mStackProvider.Get(slot, player).Count == 0)
+                if (mStackProvider.Get(slot, player).Any())
                 {
                     mBehavior.ToggleAttachment(player.Entity.EntityId, attachmentPoint, false);
                     return true;
@@ -105,8 +106,8 @@ public class Attachments : BaseSystem
             return;
         }
         string transform = parameters["transform"].AsString();
-        List<ItemStack> stacks = mStackProvider?.Get(slot, player) ?? new();
-        if (stacks.Count == 0) return;
-        mBehavior?.SetAttachment(player.Entity.EntityId, attachmentPoint, stacks[0], mTransforms[transform], true);
+        IEnumerable<ItemSlot> stacks = mStackProvider?.Get(slot, player) ?? new List<ItemSlot>();
+        if (!stacks.Any()) return;
+        mBehavior?.SetAttachment(player.Entity.EntityId, attachmentPoint, stacks.First().Itemstack, mTransforms[transform], true);
     }
 }

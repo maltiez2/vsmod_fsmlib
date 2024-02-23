@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
@@ -63,7 +64,15 @@ public class Sounds : BaseSystem, ISoundSystem
         ISound? sound = mEffectsManager?.Get(soundCode, mDomain);
         if (sound == null)
         {
-            LogWarn($"Sound with code '{soundCode}' amd domain '{mDomain}' not found");
+            try
+            {
+                target.World.PlaySoundAt(new AssetLocation(mDomain, soundCode), target);
+            }
+            catch (Exception exception)
+            {
+                LogWarn($"Sound with code '{soundCode}' amd domain '{mDomain}' not found, or specified error occured during playing it directly");
+                LogVerbose($"Sound with code '{soundCode}' amd domain '{mDomain}' not found, or specified error occured during playing it directly.\nException:{exception}\n");
+            }
             return;
         }
         PlaySound(soundCode, sound, target);
@@ -97,5 +106,10 @@ public class Sounds : BaseSystem, ISoundSystem
             mTimers[(target.EntityId, soundCode)]?.Stop();
             mTimers.Remove((target.EntityId, soundCode));
         }
+    }
+
+    public void Play(IWorldAccessor world, Entity target, AssetLocation location)
+    {
+        world.PlaySoundAt(location, target);
     }
 }

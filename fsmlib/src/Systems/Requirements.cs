@@ -12,11 +12,14 @@ using Vintagestory.API.Server;
 
 namespace MaltiezFSM.Systems;
 
-public class Requirements : BaseSystem, IItemStackHolder
+public class Requirements : BaseSystem, IItemStackHolder, IRequirementsSystem
 {
-    private readonly Dictionary<string, List<IRequirement>> mRequirements = new();
-    private readonly Dictionary<string, string> mDescriptions = new();
-    private readonly string mStackAttrName;
+    protected readonly Dictionary<string, List<IRequirement>> mRequirements = new();
+    protected readonly Dictionary<string, string> mDescriptions = new();
+    protected readonly string mStackAttrName;
+    protected readonly AmmoSelector? mAmmoSelector;
+
+    Dictionary<string, List<IRequirement>> IRequirementsSystem.Requirements => mRequirements;
 
     public Requirements(int id, string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api) : base(id, code, definition, collectible, api)
     {
@@ -41,6 +44,26 @@ public class Requirements : BaseSystem, IItemStackHolder
             }
 
             mDescriptions.Add(packCode, pack["description"].AsString(""));
+        }
+
+        if (definition.KeyExists("selectorInput") || definition.KeyExists("selectorRequirement"))
+        {
+            string selectorInput = definition["selectorInput"].AsString("");
+            string selectorDescription = definition["selectorDescription"].AsString("");
+
+            mAmmoSelector = new(collectible, api)
+            {
+                Input = selectorInput,
+                Description = selectorDescription,
+                Enabled = false
+            };
+
+            if (definition.KeyExists("selectorRequirement"))
+            {
+                string requirement = definition["selectorRequirement"].AsString("");
+                mAmmoSelector.Requirements = mRequirements[requirement];
+                mAmmoSelector.Enabled = true;
+            }
         }
     }
     private static List<IRequirement> GetRequirements(JsonObject requirements)
@@ -80,6 +103,20 @@ public class Requirements : BaseSystem, IItemStackHolder
         }
 
         bool fulfilled = true;
+        if (mAmmoSelector?.Enabled == true)
+        {
+            foreach (IRequirement requirement in mAmmoSelector.Requirements)
+            {
+                if (!requirement.Verify(player))
+                {
+                    fulfilled = false;
+                    SendMessage(player, requirement);
+                }
+            }
+
+            return fulfilled;
+        }
+
         foreach (IRequirement requirement in mRequirements[code])
         {
             if (!requirement.Verify(player))
@@ -116,13 +153,13 @@ public class Requirements : BaseSystem, IItemStackHolder
                     return false;
                 }
 
-                Take(slot, player, code);
+                Take(slot, player, mRequirements[code]);
                 break;
             case "amount":
                 if (mApi.Side == EnumAppSide.Client) return true;
                 int amount = parameters["amount"].AsInt(1);
                 bool putAmount = parameters["put"].AsBool(false);
-                List<ItemStack> amountStacks = TakeAmount(slot, player, amount);
+                IEnumerable<ItemSlot> amountStacks = TakeAmount(slot, player, amount);
                 if (putAmount && mApi.Side != EnumAppSide.Client) Put(amountStacks, player);
                 break;
             case "durability":
@@ -131,7 +168,7 @@ public class Requirements : BaseSystem, IItemStackHolder
                 bool destroy = parameters["destroy"].AsBool(true);
                 bool overflow = parameters["overflow"].AsBool(false);
                 bool put = parameters["put"].AsBool(false);
-                List<ItemStack> stacks = TakeDurability(slot, player, durability, destroy, overflow);
+                IEnumerable<ItemSlot> stacks = TakeDurability(slot, player, durability, destroy, overflow);
                 if (put && mApi.Side != EnumAppSide.Client) Put(stacks, player);
                 break;
             case "put":
@@ -140,6 +177,27 @@ public class Requirements : BaseSystem, IItemStackHolder
                 break;
             case "clear":
                 Clear(slot);
+                break;
+            case "setSelector":
+                string? codeToSelector = parameters["requirement"].AsString();
+                if (codeToSelector == null)
+                {
+                    LogError($"No 'requirement' in system request");
+                    return false;
+                }
+                if (!mRequirements.ContainsKey(codeToSelector))
+                {
+                    LogError($"Requirement with code '{codeToSelector}' not found.");
+                    return false;
+                }
+                if (mAmmoSelector == null) return false;
+
+                mAmmoSelector.Requirements = mRequirements[codeToSelector];
+                mAmmoSelector.Enabled = true;
+                break;
+            case "disableSelector":
+                if (mAmmoSelector == null) return false;
+                mAmmoSelector.Enabled = false;
                 break;
             default:
                 LogActions(action, "check", "take", "put", "clear", "empty", "spend");
@@ -173,34 +231,32 @@ public class Requirements : BaseSystem, IItemStackHolder
     {
         return !ReadStacks(slot).Any();
     }
-    public List<ItemStack> Get(ItemSlot slot, IPlayer player) => ReadStacks(slot);
-    public List<ItemStack> TakeAll(ItemSlot slot, IPlayer player)
+    public IEnumerable<ItemSlot> Get(ItemSlot slot, IPlayer player) => ReadStacks(slot);
+    public IEnumerable<ItemSlot> TakeAll(ItemSlot slot, IPlayer player)
     {
-        List<ItemStack> result = ReadStacks(slot);
+        IEnumerable<ItemSlot> result = ReadStacks(slot);
         ClearStacks(slot);
         return result;
     }
-    public List<ItemStack> TakeAmount(ItemSlot slot, IPlayer player, int amount)
+    public IEnumerable<ItemSlot> TakeAmount(ItemSlot slot, IPlayer player, int amount)
     {
-        List<ItemStack> stacks = ReadStacks(slot);
-        List<ItemSlot> slots = stacks.Select((stack) => new DummySlot(stack) as ItemSlot).ToList();
-        List<ItemStack> result = AmountRequirement.CollectFromSlots(slots, amount);
-        List<ItemStack> remained = slots.Where((slot) => slot.StackSize > 0).Select((slot) => slot.Itemstack).ToList();
-        ClearStacks(slot);
-        WriteStacks(slot, remained);
-        return result;
-    }
-    public List<ItemStack> TakeDurability(ItemSlot slot, IPlayer player, int durability, bool destroy = true, bool overflow = false)
-    {
-        List<ItemStack> stacks = ReadStacks(slot);
-        List<ItemSlot> slots = stacks.Select((stack) => new DummySlot(stack) as ItemSlot).ToList();
-        List<ItemStack> result = DurabilityRequirement.CollectFromSlots(slots, player, durability, destroy, overflow);
-        List<ItemStack> remained = slots.Where((slot) => slot.StackSize > 0).Select((slot) => slot.Itemstack).ToList();
+        IEnumerable<ItemSlot> stacks = ReadStacks(slot);
+        IEnumerable<ItemSlot> result = AmountRequirement.CollectFromSlots(stacks, amount, player.Entity.World);
+        IEnumerable<ItemSlot> remained = stacks.Where((slot) => slot.StackSize > 0);
         ClearStacks(slot);
         WriteStacks(slot, remained);
         return result;
     }
-    public void Put(ItemSlot slot, IPlayer player, List<ItemStack> items)
+    public IEnumerable<ItemSlot> TakeDurability(ItemSlot slot, IPlayer player, int durability, bool destroy = true, bool overflow = false)
+    {
+        IEnumerable<ItemSlot> stacks = ReadStacks(slot);
+        IEnumerable<ItemSlot> result = DurabilityRequirement.CollectFromSlots(stacks, player, durability, destroy, overflow);
+        IEnumerable<ItemSlot> remained = stacks.Where((slot) => slot.StackSize > 0);
+        ClearStacks(slot);
+        WriteStacks(slot, remained);
+        return result;
+    }
+    public void Put(ItemSlot slot, IPlayer player, IEnumerable<ItemSlot> items)
     {
         ClearStacks(slot);
         WriteStacks(slot, items);
@@ -223,35 +279,39 @@ public class Requirements : BaseSystem, IItemStackHolder
         (player as IServerPlayer)?.SendMessage(GlobalConstants.InfoLogChatGroup, message, EnumChatType.Notification);
     }
 
-    private void Take(ItemSlot slot, IPlayer player, string code)
+    protected void Take(ItemSlot slot, IPlayer player, List<IRequirement> requirements)
     {
-        List<ItemStack> stacks = new();
+        List<ItemSlot> stacks = new();
 
-        foreach (IRequirement requirement in mRequirements[code])
+        bool selected = true;
+        if (mAmmoSelector?.Enabled == true)
         {
-            List<ItemStack> requirementStacks = requirement.Process(player);
+            stacks.Add(mAmmoSelector.Process(player));
+            if (stacks[0]?.Itemstack == null || stacks[0].Itemstack.StackSize == 0) selected = false;
+        }
+        
+        if (!selected)
+        {
+            foreach (IRequirement requirement in requirements)
+            {
+                IEnumerable<ItemSlot> requirementStacks = requirement.Process(player);
 
-            stacks.AddRange(requirementStacks);
+                stacks.AddRange(requirementStacks);
+            }
         }
 
         ClearStacks(slot);
         WriteStacks(slot, stacks);
     }
-    private void Put(ItemSlot slot, IPlayer player)
+    protected void Put(ItemSlot slot, IPlayer player)
     {
-        List<ItemStack> stacks = ReadStacks(slot);
+        IEnumerable<ItemSlot> stacks = ReadStacks(slot);
 
-        foreach (ItemStack stack in stacks)
-        {
-            if (!player.Entity.TryGiveItemStack(stack) && mApi.Side == EnumAppSide.Server)
-            {
-                mApi.World.SpawnItemEntity(stack, player.Entity.SidedPos.XYZ, player.Entity.SidedPos.Motion);
-            }
-        }
+        Put(stacks, player);
     }
-    private void Put(List<ItemStack> stacks, IPlayer player)
+    protected void Put(IEnumerable<ItemSlot> stacks, IPlayer player)
     {
-        foreach (ItemStack stack in stacks)
+        foreach (ItemStack stack in stacks.Select(slot => slot.Itemstack))
         {
             if (!player.Entity.TryGiveItemStack(stack) && mApi.Side == EnumAppSide.Server)
             {
@@ -259,11 +319,15 @@ public class Requirements : BaseSystem, IItemStackHolder
             }
         }
     }
-    private void Clear(ItemSlot slot)
+    protected void Clear(ItemSlot slot)
     {
         ClearStacks(slot);
     }
 
+    private void WriteStacks(ItemSlot slot, IEnumerable<ItemSlot> stacks)
+    {
+        WriteStacks(slot, stacks.Select(slot => slot.Itemstack).ToList());
+    }
     private void WriteStacks(ItemSlot slot, List<ItemStack> stacks)
     {
         slot.Itemstack.Attributes.SetInt($"{mStackAttrName}.count", stacks.Count);
@@ -273,11 +337,11 @@ public class Requirements : BaseSystem, IItemStackHolder
         }
         slot.MarkDirty();
     }
-    private List<ItemStack> ReadStacks(ItemSlot slot)
+    private IEnumerable<ItemSlot> ReadStacks(ItemSlot slot)
     {
         List<ItemStack> stacks = new();
 
-        if (!slot.Itemstack.Attributes.HasAttribute($"{mStackAttrName}.count")) return stacks;
+        if (!slot.Itemstack.Attributes.HasAttribute($"{mStackAttrName}.count")) return new List<ItemSlot>();
 
         int count = slot.Itemstack.Attributes.GetInt($"{mStackAttrName}.count");
         for (int index = 0; index < count; index++)
@@ -287,7 +351,7 @@ public class Requirements : BaseSystem, IItemStackHolder
             if (stack != null) stacks.Add(stack);
         }
 
-        return stacks;
+        return stacks.Select(stack => new DummySlot(stack));
     }
     private void ClearStacks(ItemSlot slot)
     {

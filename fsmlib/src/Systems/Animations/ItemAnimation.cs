@@ -159,10 +159,10 @@ public class ItemAnimation : BaseSystem // Based on code from TeacupAngel (https
 
         foreach ((string attachment, IItemStackHolder system) in mAttachments[code])
         {
-            List<ItemStack> stacks = system.Get(slot, player);
-            if (stacks.Count == 0) continue;
+            IEnumerable<ItemSlot> stacks = system.Get(slot, player);
+            if (!stacks.Any()) continue;
 
-            behavior.SetAttachment(player.Entity.EntityId, attachment, stacks[0], Utils.ToTransformFrom(mAttachmentsTransforms[code][attachment]) ?? new());
+            behavior.SetAttachment(player.Entity.EntityId, attachment, stacks.First().Itemstack, Utils.ToTransformFrom(mAttachmentsTransforms[code][attachment]) ?? new());
         }
 
         behavior.StartAnimation(animation);

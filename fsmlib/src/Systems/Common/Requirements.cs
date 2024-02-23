@@ -34,7 +34,8 @@ public interface IRequirement
 {
     bool Verify(IPlayer player);
 
-    List<ItemStack> Process(IPlayer player);
+    IEnumerable<ItemSlot> Process(IPlayer player);
+    IEnumerable<ItemSlot> Search(IPlayer player, bool findAll = false);
 }
 
 public class Requirement : IRequirement
@@ -62,11 +63,17 @@ public class Requirement : IRequirement
             _ => throw new NotImplementedException()
         };
     }
-    public virtual List<ItemStack> Process(IPlayer player)
+    public virtual IEnumerable<ItemSlot> Process(IPlayer player)
     {
         ItemStack? stack = null;
         Search(Slot, player, CheckSlot, (slot) => ProcessSlot(slot, out stack));
-        return stack == null ? new() : new() { stack };
+        return stack == null ? new List<ItemSlot>() : new List<ItemSlot>() { new DummySlot(stack) };
+    }
+    public virtual IEnumerable<ItemSlot> Search(IPlayer player, bool findAll = false)
+    {
+        List<ItemSlot> slots = new();
+        Search(Slot, player, CheckSlot, (slot) => ProcessSlot(slot, slots));
+        return slots;
     }
 
     protected bool CheckSlot(ItemSlot slot)
@@ -78,6 +85,11 @@ public class Requirement : IRequirement
     {
         stack = slot.Itemstack;
         return true;
+    }
+    private static bool ProcessSlot(ItemSlot slot, List<ItemSlot> slots)
+    {
+        slots.Add(slot);
+        return false;
     }
 
     private static AssetLocation[] GetAssetLocations(JsonObject definition)
@@ -189,12 +201,19 @@ public sealed class AmountRequirement : Requirement
             _ => throw new NotImplementedException()
         };
     }
-    public override List<ItemStack> Process(IPlayer player)
+    public override IEnumerable<ItemSlot> Process(IPlayer player)
     {
         int amount = 0;
         List<ItemSlot> slots = new();
         bool found = Search(Slot, player, CheckSlot, (slot) => CollectSlot(slot, ref amount, slots));
-        return found ? CollectFromSlots(slots, Amount) : new();
+        return found ? CollectFromSlots(slots, Amount, player.Entity.World) : new List<ItemSlot>();
+    }
+    public override IEnumerable<ItemSlot> Search(IPlayer player, bool findAll = false)
+    {
+        int amount = 0;
+        List<ItemSlot> slots = new();
+        Search(Slot, player, CheckSlot, (slot) => CollectSlot(slot, ref amount, slots, all: true));
+        return slots;
     }
 
     private bool CountSlot(ItemSlot slot, ref int amount)
@@ -203,7 +222,7 @@ public sealed class AmountRequirement : Requirement
 
         return amount >= Amount;
     }
-    private bool CollectSlot(ItemSlot slot, ref int amount, List<ItemSlot> slots)
+    private bool CollectSlot(ItemSlot slot, ref int amount, List<ItemSlot> slots, bool all = false)
     {
         amount += slot.StackSize;
 
@@ -218,31 +237,36 @@ public sealed class AmountRequirement : Requirement
 
         slots.Add(slot);
 
-        return amount >= Amount;
+        return !all && amount >= Amount;
     }
-    public static List<ItemStack> CollectFromSlots(List<ItemSlot> slots, int amount)
+    public static IEnumerable<ItemSlot> CollectFromSlots(IEnumerable<ItemSlot> slots, int amount, IWorldAccessor world)
     {
-        Dictionary<string, ItemStack> stacks = new();
-        int amountTaken = 0;
+        Dictionary<string, Stack<ItemSlot>> stacks = new();
+        int takenTotal = 0;
 
         foreach (ItemSlot slot in slots)
         {
             string code = slot.Itemstack.Collectible.Code.ToString();
 
-            ItemStack takenStack = slot.TakeOut(amount - amountTaken);
-            amountTaken += takenStack.StackSize;
-
-            if (stacks.ContainsKey(code))
+            if (!stacks.ContainsKey(code))
             {
-                stacks[code].StackSize += takenStack.StackSize;
+                stacks.Add(code, new());
+                stacks[code].Push(new DummySlot());
             }
-            else
+
+            while (takenTotal < amount && slot.StackSize > 0)
             {
-                stacks.Add(code, takenStack);
+                int taken = slot.TryPutInto(world, stacks[code].Peek(), amount - takenTotal);
+                takenTotal += taken;
+
+                if (taken == 0 && slot.StackSize > 0 && takenTotal < amount)
+                {
+                    stacks[code].Push(new DummySlot());
+                }
             }
         }
 
-        return stacks.Values.ToList();
+        return stacks.Values.SelectMany(slots => slots);
     }
 
     public static bool IsAmountRequirement(JsonObject definition) => definition.KeyExists("amount");
@@ -272,12 +296,19 @@ public sealed class DurabilityRequirement : Requirement
             _ => throw new NotImplementedException()
         };
     }
-    public override List<ItemStack> Process(IPlayer player)
+    public override IEnumerable<ItemSlot> Process(IPlayer player)
     {
         int amount = 0;
         List<ItemSlot> slots = new();
         bool found = Search(Slot, player, CheckSlot, (slot) => CollectSlot(slot, ref amount, slots));
-        return found ? CollectFromSlots(slots, player, Durability, Destroy, Overflow) : new();
+        return found ? CollectFromSlots(slots, player, Durability, Destroy, Overflow) : new List<ItemSlot>();
+    }
+    public override IEnumerable<ItemSlot> Search(IPlayer player, bool findAll = false)
+    {
+        int amount = 0;
+        List<ItemSlot> slots = new();
+        Search(Slot, player, CheckSlot, (slot) => CollectSlot(slot, ref amount, slots, all: true));
+        return slots;
     }
 
     private bool CountSlot(ItemSlot slot, ref int amount)
@@ -286,7 +317,7 @@ public sealed class DurabilityRequirement : Requirement
 
         return Overflow || amount >= Math.Abs(Durability);
     }
-    private bool CollectSlot(ItemSlot slot, ref int amount, List<ItemSlot> slots)
+    private bool CollectSlot(ItemSlot slot, ref int amount, List<ItemSlot> slots, bool all = false)
     {
         int durability = slot.Itemstack.Collectible.GetRemainingDurability(slot.Itemstack);
         amount += durability;
@@ -297,17 +328,17 @@ public sealed class DurabilityRequirement : Requirement
             if (slotDurability > durability)
             {
                 slots.Insert(index, slot);
-                return amount >= Durability;
+                if (!all) return amount >= Durability;
             }
         }
 
         slots.Add(slot);
 
-        return amount >= Durability;
+        return !all && amount >= Durability;
     }
-    public static List<ItemStack> CollectFromSlots(List<ItemSlot> slots, IPlayer player, int amount, bool destroy, bool overflow)
+    public static IEnumerable<ItemSlot> CollectFromSlots(IEnumerable<ItemSlot> slots, IPlayer player, int amount, bool destroy, bool overflow)
     {
-        Dictionary<string, ItemStack> stacks = new();
+        Dictionary<string, Stack<ItemSlot>> stacks = new();
 
         int amountTaken = 0;
 
@@ -315,21 +346,22 @@ public sealed class DurabilityRequirement : Requirement
         {
             string code = slot.Itemstack.Collectible.Code.ToString();
             ItemStack takenStack = slot.Itemstack.Clone();
-            takenStack.Attributes.SetInt("durability", 0);
             int durabilityTaken = TakeDurability(slot, amountTaken, player, amount, destroy);
-
+            takenStack.Attributes.SetInt("durability", durabilityTaken);
             amountTaken += durabilityTaken;
-            if (!stacks.ContainsKey(code)) stacks.Add(code, takenStack);
-            int durability = stacks[code].Collectible.GetRemainingDurability(stacks[code]);
-            int maxDurability = stacks[code].Collectible.GetMaxDurability(stacks[code]);
-            int newDurability = Math.Clamp(durability + durabilityTaken, 0, maxDurability);
-            stacks[code].Attributes.SetInt("durability", newDurability);
+
+            if (!stacks.ContainsKey(code))
+            {
+                stacks.Add(code, new());
+            }
+
+            stacks[code].Push(new DummySlot(takenStack));
 
             if (amountTaken != 0 && !overflow) break;
             if (Math.Abs(amountTaken) >= Math.Abs(amount)) break;
         }
 
-        return stacks.Values.ToList();
+        return stacks.Values.SelectMany(slots => slots);
     }
     public static int TakeDurability(ItemSlot slot, int amountTaken, IPlayer player, int amount, bool destroy)
     {

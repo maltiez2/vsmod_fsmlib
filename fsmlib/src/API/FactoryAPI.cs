@@ -28,17 +28,6 @@ internal interface IFactoryProvider
 }
 public interface IRegistry
 {
-    [Obsolete("Use RegisterOperation<TProductClass>(string name, ICoreAPI api, Mod mod) instead")]
-    void RegisterOperation<TProductClass>(string name) where TProductClass : FactoryProduct, IOperation;
-    [Obsolete("Use RegisterSystem<TProductClass>(string name, ICoreAPI api, Mod mod) instead")]
-    void RegisterSystem<TProductClass>(string name) where TProductClass : FactoryProduct, ISystem;
-    [Obsolete("Use RegisterInput<TProductClass>(string name, ICoreAPI api, Mod mod) instead")]
-    void RegisterInput<TProductClass>(string name) where TProductClass : FactoryProduct, IStandardInput;
-    [Obsolete("Use RegisterInput<TProductClass>(string name, ICoreAPI api, Mod mod) instead")]
-    void RegisterInput<TProductClass, TInputInterface>(string name, IInputInvoker invoker)
-        where TInputInterface : IInput
-        where TProductClass : FactoryProduct, IInput;
-
     void RegisterOperation<TProductClass>(string name, ICoreAPI api, Mod mod) where TProductClass : FactoryProduct, IOperation;
     void RegisterSystem<TProductClass>(string name, ICoreAPI api, Mod mod) where TProductClass : FactoryProduct, ISystem;
     void RegisterInput<TProductClass>(string name, ICoreAPI api, Mod mod) where TProductClass : FactoryProduct, IStandardInput;

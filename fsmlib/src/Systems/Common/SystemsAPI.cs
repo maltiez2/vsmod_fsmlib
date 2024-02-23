@@ -1,4 +1,5 @@
 ﻿using MaltiezFSM.Framework;
+using MaltiezFSM.Systems.RequirementsApi;
 using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
@@ -52,12 +53,17 @@ namespace MaltiezFSM.Systems
 
     public interface IItemStackHolder
     {
-        List<ItemStack> Get(ItemSlot slot, IPlayer player);
-        List<ItemStack> TakeAll(ItemSlot slot, IPlayer player);
-        List<ItemStack> TakeAmount(ItemSlot slot, IPlayer player, int amount);
-        List<ItemStack> TakeDurability(ItemSlot slot, IPlayer player, int durability, bool destroy = true, bool overflow = false);
-        void Put(ItemSlot slot, IPlayer player, List<ItemStack> items);
+        IEnumerable<ItemSlot> Get(ItemSlot slot, IPlayer player);
+        IEnumerable<ItemSlot> TakeAll(ItemSlot slot, IPlayer player);
+        IEnumerable<ItemSlot> TakeAmount(ItemSlot slot, IPlayer player, int amount);
+        IEnumerable<ItemSlot> TakeDurability(ItemSlot slot, IPlayer player, int durability, bool destroy = true, bool overflow = false);
+        void Put(ItemSlot slot, IPlayer player, IEnumerable<ItemSlot> items);
         void Clear(ItemSlot slot, IPlayer player);
+    }
+
+    public interface IRequirementsSystem
+    {
+        Dictionary<string, List<IRequirement>> Requirements { get; }
     }
 
     public interface IAimingSystem

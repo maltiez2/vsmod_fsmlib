@@ -2,8 +2,7 @@
 using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
-
-
+using Vintagestory.API.Config;
 
 namespace MaltiezFSM.Framework;
 
@@ -32,7 +31,7 @@ public sealed class KeyToHotkeyMapper : IDisposable
         if (!mInputs.ContainsKey(hotkeyCode))
         {
             mInputs.Add(hotkeyCode, new());
-            mClientApi.Input.RegisterHotKey(hotkeyCode, input.Name, input.Key, HotkeyType.CharacterControls, modifiers.Alt == true, modifiers.Ctrl == true, modifiers.Shift == true);
+            mClientApi.Input.RegisterHotKey(hotkeyCode, Lang.Get(input.Name), input.Key, HotkeyType.CharacterControls, modifiers.Alt == true, modifiers.Ctrl == true, modifiers.Shift == true);
         }
 
         mInputs[hotkeyCode].Add(input);
