@@ -19,12 +19,18 @@ internal sealed class StateManager : IStateManager
     private readonly string mInitialState;
     private readonly ICoreAPI mApi;
     private readonly System.Func<string, IState> mDeserialize;
+    private readonly int mId;
 
-    public StateManager(ICoreAPI api, JsonObject behaviourAttributes)
+    private readonly string mClientStateAttribute;
+    private readonly string mServerStateAttribute;
+
+    public StateManager(ICoreAPI api, JsonObject behaviourAttributes, int id)
     {
         mApi = api;
         mInitialState = behaviourAttributes["initialState"].AsString();
         mDeserialize = (string value) => new State(value);
+        mClientStateAttribute = $"{cStateAttributeNameClient}.{mId}";
+        mServerStateAttribute = $"{cStateAttributeNameServer}.{mId}";
 
 #if DEBUG
         DebugWindow.IntSlider("fsmlib", "tweaks", "state sync delay", 0, 1000, () => (int)mSynchronizationDelay.TotalMilliseconds, value => mSynchronizationDelay = TimeSpan.FromMilliseconds(value));
@@ -103,9 +109,9 @@ internal sealed class StateManager : IStateManager
 
         return mDeserialize(stack.TempAttributes.GetAsString(cStateAttributeNameClient, mInitialState));
     }
-    private static void WriteStateToClient(ItemStack stack, IState state) => stack.TempAttributes.SetString(cStateAttributeNameClient, state.Serialize());
-    private IState ReadStateFromServer(ItemStack stack) => mDeserialize(stack.Attributes.GetAsString(cStateAttributeNameServer, mInitialState));
-    private static void WriteStateToServer(ItemStack stack, IState state) => stack.Attributes.SetString(cStateAttributeNameServer, state.Serialize());
+    private void WriteStateToClient(ItemStack stack, IState state) => stack.TempAttributes.SetString(mClientStateAttribute, state.Serialize());
+    private IState ReadStateFromServer(ItemStack stack) => mDeserialize(stack.Attributes.GetAsString(mServerStateAttribute, mInitialState));
+    private void WriteStateToServer(ItemStack stack, IState state) => stack.Attributes.SetString(mServerStateAttribute, state.Serialize());
 
     private IState SynchronizeStates(ItemStack stack, IState serverState, IState clientState)
     {
@@ -135,7 +141,7 @@ internal sealed class StateManager : IStateManager
     private TimeSpan ReadTimestamp(ItemStack stack) => TimeSpan.FromMilliseconds(mApi.World.ElapsedMilliseconds - stack.TempAttributes.GetLong(cSyncAttributeName, 0));
 }
 
-internal sealed class State : IState, IEquatable<State>
+internal sealed class State : IState
 {
     private readonly string mState;
     private readonly int mHash;
@@ -147,7 +153,7 @@ internal sealed class State : IState, IEquatable<State>
     }
     public override string ToString() => mState;
     public override bool Equals(object? obj) => (obj as State)?.mHash == mHash;
-    public bool Equals(State? other) => other?.mHash == mHash;
+    public bool Equals(IState? other) => other?.GetHashCode() == mHash;
     public override int GetHashCode()
     {
         return mHash;

@@ -1,6 +1,4 @@
 ﻿using MaltiezFSM.API;
-using MaltiezFSM.Inputs;
-using MaltiezFSM.Systems;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,7 +6,6 @@ using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
-using Vintagestory.GameContent;
 
 namespace MaltiezFSM.Framework;
 
@@ -23,24 +20,14 @@ public class FiniteStateMachineBehaviour<TAttributesFormat> : CollectibleBehavio
 
     }
 
-    public bool PreventAttack { get; set; } = false;
-    public bool PreventInteraction { get; set; } = false;
+    public int FSMId { get; private set; } = -1;
+    public IStateManager? StateManager { get; private set; }
 
-
-    private IFiniteStateMachine? mFsm;
-    private IInputManager? mInputManager;
+    private FiniteStateMachine? mFsm;
     private JsonObject? mProperties;
-    private readonly List<ISystem> mSystems = new();
     private ICoreAPI? mApi;
-    private IToolModeInvoker? mToolModeInvoker;
 
-    public event ToolModesGetter? OnGetToolModes;
-
-    private readonly Dictionary<long, List<(int size, ToolModeSetter setter)>> mToolModesConversion = new();
-    private readonly Dictionary<long, TimeSpan> mToolModesUpdatesCooldown = new();
-    private readonly Dictionary<long, SkillItem[]> mToolModesCache = new();
-    private readonly TimeSpan mToolModesCooldown = TimeSpan.FromSeconds(3);
-
+    #region Initializing/deinitialising
     public override void OnLoaded(ICoreAPI api)
     {
         base.OnLoaded(api);
@@ -53,17 +40,11 @@ public class FiniteStateMachineBehaviour<TAttributesFormat> : CollectibleBehavio
             return;
         }
 
-        if (mProperties.KeyExists("PreventAttack"))
-        {
-            PreventAttack = mProperties["PreventAttack"].AsBool();
-        }
+        FSMId = mProperties["id"].AsInt(0);
+        if (mProperties.KeyExists("PreventAttack")) PreventAttack = mProperties["PreventAttack"].AsBool();
+        if (mProperties.KeyExists("PreventInteraction")) PreventInteraction = mProperties["PreventInteraction"].AsBool();
 
-        if (mProperties.KeyExists("PreventInteraction"))
-        {
-            PreventInteraction = mProperties["PreventInteraction"].AsBool();
-        }
-
-        Logger.Debug(api, this, $"Initializing FSM for: {collObj.Code}");
+        Logger.Verbose(api, this, $"Initializing FSM for: {collObj.Code}");
 
         FiniteStateMachineSystem modSystem = api.ModLoader.GetModSystem<FiniteStateMachineSystem>();
 
@@ -79,7 +60,6 @@ public class FiniteStateMachineBehaviour<TAttributesFormat> : CollectibleBehavio
             Logger.Verbose(api, this, $"Exception on substituting 'FromAttr' values '{collObj.Code}'.\n\nException:\n{exception}\n");
         }
 
-        mInputManager = api.ModLoader.GetModSystem<FiniteStateMachineSystem>().GetInputManager();
         IOperationInputInvoker? operationInputInvoker = api.ModLoader.GetModSystem<FiniteStateMachineSystem>().GetOperationInputInvoker();
 
         IBehaviourAttributesParser parser = new TAttributesFormat();
@@ -89,6 +69,7 @@ public class FiniteStateMachineBehaviour<TAttributesFormat> : CollectibleBehavio
 
         try
         {
+            StateManager = new StateManager(api, mProperties, FSMId);
             mFsm = new FiniteStateMachine(
                 api,
                 parser.GetOperations(),
@@ -96,7 +77,7 @@ public class FiniteStateMachineBehaviour<TAttributesFormat> : CollectibleBehavio
                 parser.GetInputs(),
                 collObj,
                 operationInputInvoker,
-                new StateManager(api, mProperties)
+                StateManager
             );
         }
         catch (Exception exception)
@@ -106,6 +87,15 @@ public class FiniteStateMachineBehaviour<TAttributesFormat> : CollectibleBehavio
             return;
         }
 
+        RegisterInputs(api, parser);
+        SetSystemsForGui(parser);
+    }
+
+    private void RegisterInputs(ICoreAPI api, IBehaviourAttributesParser parser)
+    {
+        IInputManager? inputManager = api.ModLoader.GetModSystem<FiniteStateMachineSystem>().GetInputManager();
+
+        if (mFsm == null || inputManager == null) return;
 
         Dictionary<string, IOperation> operations = parser.GetOperations();
 
@@ -126,7 +116,7 @@ public class FiniteStateMachineBehaviour<TAttributesFormat> : CollectibleBehavio
 
             try
             {
-                mInputManager?.RegisterInput(input, mFsm.Process, collObj);
+                inputManager.RegisterInput(input, mFsm.Process, collObj);
             }
             catch (Exception exception)
             {
@@ -135,8 +125,10 @@ public class FiniteStateMachineBehaviour<TAttributesFormat> : CollectibleBehavio
             }
 
         }
-
-        foreach ((string code, ISystem system) in parser.GetSystems())
+    }
+    private void SetSystemsForGui(IBehaviourAttributesParser parser)
+    {
+        foreach ((_, ISystem system) in parser.GetSystems())
         {
             mSystems.Add(system);
         }
@@ -145,8 +137,6 @@ public class FiniteStateMachineBehaviour<TAttributesFormat> : CollectibleBehavio
     public override void OnUnloaded(ICoreAPI api)
     {
         base.OnUnloaded(api);
-
-        mInputManager?.Dispose();
         mFsm?.Dispose();
     }
 
@@ -156,6 +146,10 @@ public class FiniteStateMachineBehaviour<TAttributesFormat> : CollectibleBehavio
 
         mProperties = properties;
     }
+    #endregion
+
+    #region Providing info to GUI
+    private readonly List<ISystem> mSystems = new();
 
     public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
     {
@@ -196,6 +190,11 @@ public class FiniteStateMachineBehaviour<TAttributesFormat> : CollectibleBehavio
 
         return interactionsHelp.ToArray();
     }
+    #endregion
+
+    #region Managing collectible interations/attacks
+    public bool PreventAttack { get; set; } = false;
+    public bool PreventInteraction { get; set; } = false;
 
     public override void OnHeldAttackStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling, ref EnumHandling handling)
     {
@@ -218,6 +217,16 @@ public class FiniteStateMachineBehaviour<TAttributesFormat> : CollectibleBehavio
     }
 
     public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandling handling) => false;
+    #endregion
+
+    #region Managing tool modes
+    public event ToolModesGetter? OnGetToolModes;
+
+    private IToolModeInvoker? mToolModeInvoker;
+    private readonly Dictionary<long, List<(int size, ToolModeSetter setter)>> mToolModesConversion = new();
+    private readonly Dictionary<long, TimeSpan> mToolModesUpdatesCooldown = new();
+    private readonly Dictionary<long, SkillItem[]> mToolModesCache = new();
+    private readonly TimeSpan mToolModesCooldown = TimeSpan.FromSeconds(3);
 
     public override SkillItem[] GetToolModes(ItemSlot slot, IClientPlayer forPlayer, BlockSelection blockSel)
     {
@@ -250,7 +259,7 @@ public class FiniteStateMachineBehaviour<TAttributesFormat> : CollectibleBehavio
     {
         long entityId = forPlayer.Entity.EntityId;
         TimeSpan timeElapsed = TimeSpan.FromMilliseconds(mApi?.World.ElapsedMilliseconds ?? 0);
-        
+
         if (mToolModesUpdatesCooldown.ContainsKey(entityId))
         {
             TimeSpan previousTime = mToolModesUpdatesCooldown[entityId];
@@ -306,7 +315,7 @@ public class FiniteStateMachineBehaviour<TAttributesFormat> : CollectibleBehavio
     private void CallSetToolModeSetter(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSelection, int toolMode, ToolModeSetter setter)
     {
         string? id;
-        
+
         try
         {
             id = setter(slot, byPlayer, blockSelection, toolMode);
@@ -328,4 +337,5 @@ public class FiniteStateMachineBehaviour<TAttributesFormat> : CollectibleBehavio
             Logger.Verbose(mApi, this, $"Exception while invoking tool mode input for tool mode '{id}' for collectible '{slot.Itemstack.Collectible}' with code '{slot.Itemstack.Item?.Code ?? slot.Itemstack.Block?.Code}'.\nException: {exception}\n");
         }
     }
+    #endregion
 }

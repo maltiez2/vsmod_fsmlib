@@ -8,7 +8,7 @@ using Vintagestory.API.Datastructures;
 
 namespace MaltiezFSM.API;
 
-public interface IState
+public interface IState : IEquatable<IState>
 {
     string Serialize();
 }
@@ -105,23 +105,8 @@ public interface IBehaviourAttributesParser
     Dictionary<string, ISystem> GetSystems();
     Dictionary<string, IInput> GetInputs();
 }
-public interface IFiniteStateMachine : IDisposable
-{
-    /// <summary>
-    /// Handles supplied input. 
-    /// </summary>
-    /// <param name="slot">Slot related to given input and player</param>
-    /// <param name="player">Player related to given input</param>
-    /// <param name="input">Input to handle</param>
-    /// <returns>if input was successfully handled</returns>
-    bool Process(ItemSlot slot, IPlayer player, IInput input);
-    /// <summary>
-    /// Gathers available inputs for state of item in given slot.
-    /// </summary>
-    /// <param name="slot">Slot containing collectible with FSM attached to it</param>
-    /// <returns>list of available inputs for current state of item stack in given slot.</returns>
-    List<IInput> GetAvailableInputs(ItemSlot slot);
-}
+
+
 public interface IOperationInputInvoker
 {
     bool Started(IOperation operation, ItemSlot inSlot, IPlayer player);

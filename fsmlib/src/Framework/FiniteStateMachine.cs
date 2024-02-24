@@ -1,19 +1,16 @@
 ﻿using MaltiezFSM.API;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Vintagestory.API.Common;
-using Vintagestory.API.Datastructures;
-using Vintagestory.API.Util;
-using VSImGui;
 
 namespace MaltiezFSM.Framework;
 
 /// <summary>
-/// Determines what operations to perform on a given item stack for it current state and given input.<\br>
-/// Runs operations themselves and manages timers for timed operations. Gets and sets states using supplied <see cref="IStateManager"/>.
+/// Determines what operations to perform on a given item stack for its current state and given input.<br/>
+/// Runs operations themselves and manages timers for timed operations.<br/>
+/// Gets and sets states using supplied <see cref="IStateManager"/>.
 /// </summary>
-internal sealed class FiniteStateMachine : IFiniteStateMachine
+internal sealed class FiniteStateMachine
 {
     private readonly Dictionary<IState, Dictionary<IInput, List<IOperation>>> mOperationsByInputAndState = new();
     private readonly Dictionary<IOperation, HashSet<IState>> mStatesByOperationForTimer = new();
@@ -108,7 +105,7 @@ internal sealed class FiniteStateMachine : IFiniteStateMachine
 
         return inputs;
     }
-    
+
     /// <summary>
     /// Verifies and performs operations for collectible in slot corresponding to input-state pair, where state is current state of collectible in slot.
     /// Player is passed to operation, should not be null. If current item state does not correspond to any operation it will be reset to initial one.
@@ -150,7 +147,7 @@ internal sealed class FiniteStateMachine : IFiniteStateMachine
 
         return false;
     }
-    
+
     /// <summary>
     /// If operation requested timer this is its timer callback. It will check if current state correspond to timer and then run supplied operation. Used primarily for timed operations like 'Delayed'.
     /// </summary>
