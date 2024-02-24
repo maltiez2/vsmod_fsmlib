@@ -12,7 +12,7 @@ namespace MaltiezFSM.Framework;
 public delegate (ToolModeSetter, SkillItem[]) ToolModesGetter(ItemSlot slot, IPlayer forPlayer, BlockSelection blockSel);
 public delegate string? ToolModeSetter(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSelection, int toolMode);
 
-public class FiniteStateMachineBehaviour : CollectibleBehavior, IToolModeEventProvider
+public class FiniteStateMachineBehaviour : CollectibleBehavior, IToolModeEventProvider, IFsmBehavior
 {
     public FiniteStateMachineBehaviour(CollectibleObject collObj) : base(collObj)
     {
@@ -92,6 +92,8 @@ public class FiniteStateMachineBehaviour : CollectibleBehavior, IToolModeEventPr
 
         RegisterInputs(api, operations, inputs);
         SetSystemsForGui(systems);
+
+        mProperties = null;
     }
 
     public bool ParseDefinition(

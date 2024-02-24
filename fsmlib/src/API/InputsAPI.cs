@@ -40,6 +40,11 @@ public interface IToolModeEventProvider
 {
     event ToolModesGetter? OnGetToolModes;
 }
+public interface IFsmBehavior
+{
+    int FsmId { get; }
+    IStateManager? StateManager { get; }
+}
 public interface IActionInputInvoker
 {
     bool IsActive(EnumEntityAction action, bool asModifier = false);

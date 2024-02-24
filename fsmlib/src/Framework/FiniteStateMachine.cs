@@ -10,7 +10,7 @@ namespace MaltiezFSM.Framework;
 /// Runs operations themselves and manages timers for timed operations.<br/>
 /// Gets and sets states using supplied <see cref="IStateManager"/>.
 /// </summary>
-internal sealed class FiniteStateMachine
+internal sealed class FiniteStateMachine : IDisposable
 {
     private readonly Dictionary<IState, Dictionary<IInput, List<IOperation>>> mOperationsByInputAndState = new();
     private readonly Dictionary<IOperation, HashSet<IState>> mStatesByOperationForTimer = new();

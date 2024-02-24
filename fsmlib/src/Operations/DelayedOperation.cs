@@ -265,7 +265,7 @@ public class Delayed : BaseOperation
                 continue;
             }
 
-            systemsRequests.Add(new(system["code"].AsString(), system));
+            systemsRequests.Add(new(system["code"].AsString(), system.Clone()));
         }
         return systemsRequests;
     }
