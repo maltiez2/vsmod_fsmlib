@@ -76,9 +76,9 @@ public interface IOperation : IFactoryProduct, IDisposable
             return new Transition() { Trigger = TriggerType.Input, Input = parameters.input, FromState = parameters.fromState, ToState = parameters.toState };
         }
     }
-    List<Transition> GetTransitions();
+    List<Transition> GetTransitions(IStateManager stateManager);
 
-    void SetInputsStatesSystems(Dictionary<string, IInput> inputs, Dictionary<string, IState> states, Dictionary<string, ISystem> systems);
+    void SetInputsStatesSystems(Dictionary<string, IInput> inputs, Dictionary<string, ISystem> systems, IStateManager stateManager);
 }
 public interface ISystem : IFactoryProduct
 {
@@ -87,6 +87,16 @@ public interface ISystem : IFactoryProduct
     bool Process(ItemSlot slot, IPlayer player, JsonObject parameters);
     string[]? GetDescription(ItemSlot slot, IWorldAccessor world);
 }
+
+
+public interface IStateManager
+{
+    IState DeserializeState(string state);
+    IState Get(ItemSlot slot);
+    public void Set(ItemSlot slot, IState state);
+    void Reset(ItemSlot slot);
+}
+
 
 public interface IBehaviourAttributesParser
 {
@@ -98,7 +108,6 @@ public interface IBehaviourAttributesParser
 public interface IFiniteStateMachine : IDisposable
 {
     bool Process(ItemSlot slot, IPlayer player, IInput input);
-    bool OnTimer(ItemSlot slot, IPlayer player, IInput input, IOperation operation);
     List<IInput> GetAvailableInputs(ItemSlot slot);
 }
 public interface IOperationInputInvoker

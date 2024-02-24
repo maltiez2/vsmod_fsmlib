@@ -94,9 +94,9 @@ public class FiniteStateMachineBehaviour<TAttributesFormat> : CollectibleBehavio
                 parser.GetOperations(),
                 parser.GetSystems(),
                 parser.GetInputs(),
-                mProperties,
                 collObj,
-                operationInputInvoker
+                operationInputInvoker,
+                new StateManager(api, mProperties)
             );
         }
         catch (Exception exception)

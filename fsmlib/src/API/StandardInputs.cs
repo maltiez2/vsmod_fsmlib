@@ -1,12 +1,52 @@
 ﻿using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-
-
-
 namespace MaltiezFSM.API;
 
-public interface IStandardInput : IInput
+public interface IStandardInput : IInput, IKeyModifier, IStatusModifier, IActivityModifier
 {
+    enum MultipleCheckType
+    {
+        AtLeastOne,
+        AtLeastNotOne,
+        All,
+        None
+    }
+
+    bool CheckModifiers(IPlayer? player, ICoreClientAPI? api);
+}
+public interface IStatusModifier
+{
+    enum StatusType
+    {
+        Swimming,
+        OnFire,
+        Collided,
+        CollidedHorizontally,
+        CollidedVertically,
+        EyesSubmerged,
+        FeetInLiquid,
+        InLava,
+        OnGround
+    }
+    IStandardInput.MultipleCheckType StatusCheckType { get; }
+    StatusType[] Statuses { get; }
+}
+public interface IActivityModifier
+{
+    IStandardInput.MultipleCheckType ActivityCheckType { get; }
+    string[] Activities { get; }
+}
+public interface IKeyModifier
+{
+    enum KeyModifierType
+    {
+        Strict,
+        Present,
+        NotPresent
+    }
+
+    KeyModifierType ModifierType { get; }
+    EnumModifierKey ModifierKey { get; }
 }
 public interface IOperationInput : IStandardInput
 {
@@ -23,22 +63,8 @@ public interface IOperationFinished : IOperationInput
 }
 public interface IStatusInput : IStandardInput
 {
-    enum StatusType
-    {
-        Activity,
-        Swimming,
-        OnFire,
-        Collided,
-        CollidedHorizontally,
-        CollidedVertically,
-        EyesSubmerged,
-        FeetInLiquid,
-        InLava,
-        OnGround
-    }
-    string Activity { get; }
-    bool Invert { get; }
     StatusType Status { get; }
+    bool InvertStatus { get; }
 }
 public interface IKeyInput : IStandardInput
 {

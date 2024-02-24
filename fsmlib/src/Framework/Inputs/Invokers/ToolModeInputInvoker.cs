@@ -24,6 +24,7 @@ public sealed class ToolModeInputInvoker : IInputInvoker, IToolModeInvoker
             .Where(entry => mCollectibles[entry.Key] == slot?.Itemstack.Collectible)
             .Where(entry => entry.Key.ModeId == id))
         {
+            if (!input.CheckModifiers(player, null)) continue;
             if (callback.Invoke(new SlotData(input.Slot, slot, player), player, input, synchronize: false)) return;
         }
     }

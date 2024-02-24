@@ -232,6 +232,8 @@ public sealed class KeyInputInvoker : IInputInvoker
     {
         if (mClientApi.World?.Player == null) return false;
 
+        if ((input as IStandardInput)?.CheckModifiers(mClientApi.World.Player, mClientApi) == false) return false;
+
         SlotType slotType = input.Slot;
 
         IEnumerable<SlotData> slots = SlotData.GetForAllSlots(slotType, mCollectibles[input], mClientApi.World.Player);

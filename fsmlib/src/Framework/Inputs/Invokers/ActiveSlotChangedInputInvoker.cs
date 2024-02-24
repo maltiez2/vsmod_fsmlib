@@ -147,6 +147,8 @@ public sealed class ActiveSlotChangedInputInvoker : IInputInvoker
 
     private EnumHandling HandleInput(IServerPlayer player, ItemSlot slot, IInput input)
     {
+        if (input is IStandardInput standard && !standard.CheckModifiers(player, null)) return EnumHandling.PassThrough;
+
         CollectibleObject? slotCollectible = slot?.Itemstack?.Collectible;
         if (slotCollectible != mCollectibles[input]) return EnumHandling.PassThrough;
 
@@ -156,6 +158,8 @@ public sealed class ActiveSlotChangedInputInvoker : IInputInvoker
     }
     private EnumHandling HandleInput(ItemSlot slot, IInput input)
     {
+        if (input is IStandardInput standard && !standard.CheckModifiers(mClientApi?.World?.Player, null)) return EnumHandling.PassThrough;
+
         if (mClientApi == null) return EnumHandling.PassThrough;
 
         if (mClientApi.World?.Player?.Entity == null)

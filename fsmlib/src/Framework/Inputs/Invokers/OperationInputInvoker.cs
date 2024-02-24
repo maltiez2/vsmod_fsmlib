@@ -38,6 +38,8 @@ public sealed class OperationInputInvoker : IInputInvoker, IOperationInputInvoke
         {
             if (inSlot?.Itemstack?.Collectible != mCollectibles[input]) continue;
 
+            if (!input.CheckModifiers(player, null)) continue;
+
             SlotData? slotData = SlotData.Construct(input.Slot, inSlot, player);
 
             if (slotData == null) continue;

@@ -24,6 +24,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
     private IOperationInputInvoker? mOperationInputInvoker;
     private ICustomInputInvoker? mCustomInputInvoker;
     private IAttributeReferencesManager? mAttributeReferencesManager;
+    private IActionInputInvoker? mActionInvoker;
     private Framework.ToolModeInputInvoker? mToolModeInvoker;
     private Systems.ParticleEffectsManager? mParticleEffectsManager;
     private Systems.SoundEffectsManager? mSoundEffectsManager;
@@ -98,6 +99,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         Framework.SlotInputInvoker slotInput = new(api);
         Framework.ActionInputInvoker actionInput = new(api);
         mToolModeInvoker = new();
+        mActionInvoker = actionInput;
 
         mInputManager.RegisterInvoker(invoker, typeof(IOperationInput));
         mInputManager.RegisterInvoker(keyInput, typeof(IKeyInput));
@@ -250,6 +252,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
     internal IOperationInputInvoker? GetOperationInputInvoker() => mOperationInputInvoker;
     internal IAttributeReferencesManager? GetAttributeReferencesManager() => mAttributeReferencesManager;
     internal IToolModeInvoker? GetToolModeInvoker() => mToolModeInvoker;
+    internal IActionInputInvoker? GetActionInvoker() => mActionInvoker;
 
     public Systems.IParticleEffectsManager? ParticleEffects => mParticleEffectsManager;
     public Systems.ISoundEffectsManager? SoundEffects => mSoundEffectsManager;

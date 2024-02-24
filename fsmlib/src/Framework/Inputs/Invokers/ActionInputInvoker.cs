@@ -7,7 +7,7 @@ using Vintagestory.API.Common;
 
 namespace MaltiezFSM.Framework;
 
-public sealed class ActionInputInvoker : IInputInvoker
+public sealed class ActionInputInvoker : IInputInvoker, IActionInputInvoker
 {
     private readonly Dictionary<IInput, IInputInvoker.InputCallback> mCallbacks = new();
     private readonly Dictionary<EnumEntityAction, List<IActionInput>> mInputs = new();
@@ -37,6 +37,18 @@ public sealed class ActionInputInvoker : IInputInvoker
         }
     }
 
+    public bool IsActive(EnumEntityAction action, bool asModifier = false)
+    {
+        if (asModifier && mModifiers.Contains(action) && !mClientApi.Settings.Bool.Get("separateCtrlKeyForMouse"))
+        {
+            return mActionsStatuses[action] || mActionsStatuses[mModifiersRemapping[action]];
+        }
+        else
+        {
+            return mActionsStatuses[action];
+        }
+    }
+
     private void OnEntityAction(EnumEntityAction action, bool on, ref EnumHandling handled)
     {
         if (!mInputs.ContainsKey(action)) return;
@@ -57,6 +69,10 @@ public sealed class ActionInputInvoker : IInputInvoker
 
     private bool TestInput(IActionInput input, bool on)
     {
+        if (!input.CheckModifiers(mClientApi.World.Player, mClientApi)) return false;
+        
+        if (!InputsUtils.TestModifiers(input, this, mClientApi)) return false;
+
         if (input.OnRelease == on) return false;
 
         if (input.Modifiers && !mClientApi.Settings.Bool.Get("separateCtrlKeyForMouse"))
@@ -77,7 +93,7 @@ public sealed class ActionInputInvoker : IInputInvoker
             if (!mActionsStatuses[action]) return false;
         }
 
-        return true;
+        return InputsUtils.TestStatus(input, mClientApi.World.Player);
     }
 
     public void RegisterInput(IInput input, IInputInvoker.InputCallback callback, CollectibleObject collectible)

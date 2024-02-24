@@ -21,8 +21,8 @@ public abstract class BaseOperation : FactoryProduct, IOperation
         mRequestProcessor = api.ModLoader.GetModSystem<FiniteStateMachineSystem>().GetAttributeReferencesManager();
     }
 
-    public abstract List<Transition> GetTransitions();
-    public abstract void SetInputsStatesSystems(Dictionary<string, IInput> inputs, Dictionary<string, IState> states, Dictionary<string, ISystem> systems);
+    public abstract List<Transition> GetTransitions(IStateManager stateManager);
+    public abstract void SetInputsStatesSystems(Dictionary<string, IInput> inputs, Dictionary<string, ISystem> systems, IStateManager stateManager);
     public abstract Outcome Verify(ItemSlot slot, IPlayer player, IState state, IInput input);
     public abstract Result Perform(ItemSlot slot, IPlayer player, IState state, IInput input);
 

@@ -48,9 +48,9 @@ namespace MaltiezFSM.Operations
             }
         }
 
-        public override void SetInputsStatesSystems(Dictionary<string, IInput> inputs, Dictionary<string, IState> states, Dictionary<string, ISystem> systems)
+        public override void SetInputsStatesSystems(Dictionary<string, IInput> inputs, Dictionary<string, ISystem> systems, IStateManager stateManager)
         {
-            base.SetInputsStatesSystems(inputs, states, systems);
+            base.SetInputsStatesSystems(inputs, systems, stateManager);
 
             foreach ((_, List<SystemRequest> requests) in mTimedSystems)
             {

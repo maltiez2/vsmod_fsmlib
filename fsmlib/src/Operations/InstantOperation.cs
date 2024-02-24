@@ -39,27 +39,15 @@ public class Instant : BaseOperation
         }
     }
 
-    public override List<Transition> GetTransitions()
+    public override List<Transition> GetTransitions(IStateManager stateManager)
     {
         return mTransitions;
     }
-    public override void SetInputsStatesSystems(Dictionary<string, IInput> inputs, Dictionary<string, IState> states, Dictionary<string, ISystem> systems)
+    public override void SetInputsStatesSystems(Dictionary<string, IInput> inputs, Dictionary<string, ISystem> systems, IStateManager stateManager)
     {
         foreach ((string first, string second) in mStatesInitialData)
         {
-            if (!states.ContainsKey(first))
-            {
-                mApi?.Logger.Warning("[FSMlib] [BasicInstant: {0}] State '{1}' not found.", mCode, first);
-                continue;
-            }
-
-            if (!states.ContainsKey(second))
-            {
-                mApi?.Logger.Warning("[FSMlib] [BasicInstant: {0}] State '{1}' not found.", mCode, second);
-                continue;
-            }
-
-            mStates.Add(states[first], states[second]);
+            mStates.Add(stateManager.DeserializeState(first), stateManager.DeserializeState(second));
         }
         mStatesInitialData.Clear();
 

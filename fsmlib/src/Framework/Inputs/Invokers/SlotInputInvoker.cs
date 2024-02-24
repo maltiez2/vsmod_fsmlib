@@ -51,6 +51,8 @@ public sealed class SlotInputInvoker : IInputInvoker
 
         foreach ((ISlotContentInput input, IInputInvoker.InputCallback callback) in inputs.Where(entry => entry.Key.Collectible == collectible))
         {
+            if (!input.CheckModifiers(player, null)) continue;
+
             if (callback.Invoke(new(input.Slot, slot, player), player, input, false))
             {
                 return;

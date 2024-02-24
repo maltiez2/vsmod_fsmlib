@@ -40,6 +40,10 @@ public interface IToolModeEventProvider
 {
     event ToolModesGetter? OnGetToolModes;
 }
+public interface IActionInputInvoker
+{
+    bool IsActive(EnumEntityAction action, bool asModifier = false);
+}
 
 public struct KeyPressModifiers
 {

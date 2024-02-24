@@ -51,7 +51,7 @@ public sealed class StatusInputInvokerClient : IInputInvoker
 
     private void ProcessInput(IStatusInput input)
     {
-        if (CheckStatus(input) ^ input.Invert)
+        if (CheckStatus(input) ^ input.InvertStatus)
         {
             _ = HandleInput(input);
         }
@@ -63,16 +63,15 @@ public sealed class StatusInputInvokerClient : IInputInvoker
 
         return input.Status switch
         {
-            IStatusInput.StatusType.Activity => mClientApi.World.Player.Entity.IsActivityRunning(input.Activity),
-            IStatusInput.StatusType.Swimming => mClientApi.World.Player.Entity.Swimming,
-            IStatusInput.StatusType.OnFire => mClientApi.World.Player.Entity.IsOnFire,
-            IStatusInput.StatusType.Collided => mClientApi.World.Player.Entity.Collided,
-            IStatusInput.StatusType.CollidedHorizontally => mClientApi.World.Player.Entity.CollidedHorizontally,
-            IStatusInput.StatusType.CollidedVertically => mClientApi.World.Player.Entity.CollidedVertically,
-            IStatusInput.StatusType.EyesSubmerged => mClientApi.World.Player.Entity.IsEyesSubmerged(),
-            IStatusInput.StatusType.FeetInLiquid => mClientApi.World.Player.Entity.FeetInLiquid,
-            IStatusInput.StatusType.InLava => mClientApi.World.Player.Entity.InLava,
-            IStatusInput.StatusType.OnGround => mClientApi.World.Player.Entity.OnGround,
+            IStatusModifier.StatusType.Swimming => mClientApi.World.Player.Entity.Swimming,
+            IStatusModifier.StatusType.OnFire => mClientApi.World.Player.Entity.IsOnFire,
+            IStatusModifier.StatusType.Collided => mClientApi.World.Player.Entity.Collided,
+            IStatusModifier.StatusType.CollidedHorizontally => mClientApi.World.Player.Entity.CollidedHorizontally,
+            IStatusModifier.StatusType.CollidedVertically => mClientApi.World.Player.Entity.CollidedVertically,
+            IStatusModifier.StatusType.EyesSubmerged => mClientApi.World.Player.Entity.IsEyesSubmerged(),
+            IStatusModifier.StatusType.FeetInLiquid => mClientApi.World.Player.Entity.FeetInLiquid,
+            IStatusModifier.StatusType.InLava => mClientApi.World.Player.Entity.InLava,
+            IStatusModifier.StatusType.OnGround => mClientApi.World.Player.Entity.OnGround,
             _ => false,
         };
     }
@@ -143,7 +142,7 @@ public sealed class StatusInputInvokerServer : IInputInvoker
     {
         foreach ((IStatusInput input, _) in mCallbacks)
         {
-            if (CheckPlayerStatus(input, player) ^ input.Invert)
+            if (CheckPlayerStatus(input, player) ^ input.InvertStatus)
             {
                 _ = HandleInput(input, player);
             }
@@ -158,16 +157,15 @@ public sealed class StatusInputInvokerServer : IInputInvoker
         {
             return input.Status switch
             {
-                IStatusInput.StatusType.Activity => player.Entity.IsActivityRunning(input.Activity),
-                IStatusInput.StatusType.Swimming => player.Entity.Swimming,
-                IStatusInput.StatusType.OnFire => player.Entity.IsOnFire,
-                IStatusInput.StatusType.Collided => player.Entity.Collided,
-                IStatusInput.StatusType.CollidedHorizontally => player.Entity.CollidedHorizontally,
-                IStatusInput.StatusType.CollidedVertically => player.Entity.CollidedVertically,
-                IStatusInput.StatusType.EyesSubmerged => player.Entity.IsEyesSubmerged(),
-                IStatusInput.StatusType.FeetInLiquid => player.Entity.FeetInLiquid,
-                IStatusInput.StatusType.InLava => player.Entity.InLava,
-                IStatusInput.StatusType.OnGround => player.Entity.OnGround,
+                IStatusModifier.StatusType.Swimming => player.Entity.Swimming,
+                IStatusModifier.StatusType.OnFire => player.Entity.IsOnFire,
+                IStatusModifier.StatusType.Collided => player.Entity.Collided,
+                IStatusModifier.StatusType.CollidedHorizontally => player.Entity.CollidedHorizontally,
+                IStatusModifier.StatusType.CollidedVertically => player.Entity.CollidedVertically,
+                IStatusModifier.StatusType.EyesSubmerged => player.Entity.IsEyesSubmerged(),
+                IStatusModifier.StatusType.FeetInLiquid => player.Entity.FeetInLiquid,
+                IStatusModifier.StatusType.InLava => player.Entity.InLava,
+                IStatusModifier.StatusType.OnGround => player.Entity.OnGround,
                 _ => false,
             };
         }

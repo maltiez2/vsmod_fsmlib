@@ -11,16 +11,13 @@ namespace MaltiezFSM.Framework;
 
 internal sealed class FiniteStateMachine : IFiniteStateMachine
 {
-    private const string cInitialStateAttribute = "initialState";
-
     private readonly Dictionary<IState, Dictionary<IInput, List<IOperation>>> mOperationsByInputAndState = new();
     private readonly Dictionary<IOperation, HashSet<IState>> mStatesByOperationForTimer = new();
     private readonly Dictionary<long, Utils.DelayedCallback> mTimers = new();
     private readonly List<IOperation> mOperations = new();
     private readonly IOperationInputInvoker? mOperationInputInvoker;
-    private readonly System.Func<string, IState> mDeserializeState;
     private readonly CollectibleObject mCollectible;
-    private readonly StateManager mStateManager;
+    private readonly IStateManager mStateManager;
     private readonly ICoreAPI mApi;
 
     private bool mDisposed = false;
@@ -30,16 +27,14 @@ internal sealed class FiniteStateMachine : IFiniteStateMachine
         Dictionary<string, IOperation> operations,
         Dictionary<string, ISystem> systems,
         Dictionary<string, IInput> inputs,
-        JsonObject behaviourAttributes,
         CollectibleObject collectible,
-        IOperationInputInvoker? invoker
+        IOperationInputInvoker? invoker,
+        IStateManager stateManager
     )
     {
         mCollectible = collectible;
-        string initialState = behaviourAttributes[cInitialStateAttribute].AsString();
         mOperationInputInvoker = invoker;
-        mDeserializeState = (string value) => new State(value);
-        mStateManager = new(api, initialState, mDeserializeState);
+        mStateManager = stateManager;
         mApi = api;
 
         foreach ((string systemCode, ISystem system) in systems)
@@ -53,16 +48,15 @@ internal sealed class FiniteStateMachine : IFiniteStateMachine
                 Logger.Error(api, this, $"Exception on setting systems for '{systemCode}' system for collectible '{mCollectible.Code}'.");
                 Logger.Verbose(api, this, $"Exception on setting systems for '{systemCode}' system for collectible '{mCollectible.Code}'.\n\nException:\n{exception}\n");
             }
-
         }
 
         foreach ((string operationCode, IOperation operation) in operations)
         {
             try
             {
-                List<IOperation.Transition> transitions = operation.GetTransitions();
-                Dictionary<string, IState> operationStateMapping = ProcessTransitions(operation, transitions, inputs);
-                operation.SetInputsStatesSystems(inputs, operationStateMapping, systems);
+                List<IOperation.Transition> transitions = operation.GetTransitions(stateManager);
+                ProcessTransitions(operation, transitions, inputs);
+                operation.SetInputsStatesSystems(inputs, systems, stateManager);
                 mOperations.Add(operation);
             }
             catch (Exception exception)
@@ -75,6 +69,11 @@ internal sealed class FiniteStateMachine : IFiniteStateMachine
         Logger.Debug(api, this, $"Initialized for '{collectible.Code}'. States: {mOperationsByInputAndState.Count}, operations: {mOperations.Count}");
     }
 
+    /// <summary>
+    /// Returns available inputs for state of item in given slot
+    /// </summary>
+    /// <param name="slot">Slot containing collectible with FSM attached to it</param>
+    /// <returns>List of available inputs for this state. Operations still may fail verification stage for this inputs and nit be performed.</returns>
     public List<IInput> GetAvailableInputs(ItemSlot slot)
     {
         List<IInput> inputs = new();
@@ -94,6 +93,15 @@ internal sealed class FiniteStateMachine : IFiniteStateMachine
 
         return inputs;
     }
+    
+    /// <summary>
+    /// Verifies and performs operations for collectible in slot corresponding to input-state pair, where state is current state of collectible in slot.
+    /// Player is passed to operation, should not be null. If current item state does not correspond to any operation it will be reset to initial one.
+    /// </summary>
+    /// <param name="slot">Slot that contains collectible with this FSM attached. If it does not contain such collectible false will be returned, but it not the only outcome that returns false.</param>
+    /// <param name="player">Player associated with given slot and input. If null will return false, but it not the only outcome that returns false.</param>
+    /// <param name="input">Is used to determine from it and current item state what operation to perform.</param>
+    /// <returns>Returns if supplied input was successfully handled by some operation</returns>
     public bool Process(ItemSlot slot, IPlayer player, IInput input)
     {
         if (slot?.Itemstack?.Collectible != mCollectible || player == null) return false;
@@ -127,35 +135,81 @@ internal sealed class FiniteStateMachine : IFiniteStateMachine
 
         return false;
     }
-    public bool OnTimer(ItemSlot slot, IPlayer player, IInput input, IOperation operation)
+    
+    /// <summary>
+    /// If operation requested timer this is its timer callback. It will check if current state correspond to timer and then run supplied operation. Used primarily for timed operations like 'Delayed'.
+    /// </summary>
+    /// <param name="slot">Same that was provided to FSM at the moment of timer creation.</param>
+    /// <param name="player">Same that was provided to FSM at the moment of timer creation.</param>
+    /// <param name="input">Same that was provided to FSM at the moment of timer creation.</param>
+    /// <param name="operation">Operation correspoding to this timer</param>
+    private void OnTimer(ItemSlot slot, IPlayer player, IInput input, IOperation operation)
     {
-        if (slot?.Itemstack?.Collectible != mCollectible || player == null) return false;
+        if (slot?.Itemstack?.Collectible != mCollectible || player == null) return;
 
         IState state = mStateManager.Get(slot);
         if (!mStatesByOperationForTimer.ContainsKey(operation) || !mStatesByOperationForTimer[operation].Contains(state))
         {
+            return;
+        }
+
+        RunOperation(slot, player, operation, input, state);
+    }
+
+    /// <summary>
+    /// Verifies and then performs given operation. Creates timer if needed. Invokes operation inputs using <see cref="IOperationInputInvoker"/>.
+    /// </summary>
+    /// <param name="slot">Slot with collectible this FSM attached to</param>
+    /// <param name="player">Player associated with slot and input</param>
+    /// <param name="operation">Operation to verify and perform</param>
+    /// <param name="input">Input that corresponds to supplied operation and state</param>
+    /// <param name="state">Current state of collectible in slot</param>
+    /// <returns>Returns if supplied input was successfully handled by operation</returns>
+    private bool RunOperation(ItemSlot slot, IPlayer player, IOperation operation, IInput input, IState state)
+    {
+        if (player == null || slot == null) return false;
+
+        IOperation.Outcome outcome = operation.Verify(slot, player, state, input);
+
+        if (outcome == IOperation.Outcome.Failed)
+        {
+            OperationsDebugWindow.Enqueue(operation, player, input, state, state, outcome, mApi.Side == EnumAppSide.Client); // Does nothing in RELEASE configuration
             return false;
         }
 
-        if (RunOperation(slot, player, operation, input, state))
+        if ((outcome == IOperation.Outcome.Started || outcome == IOperation.Outcome.StartedAndFinished) && mOperationInputInvoker?.Started(operation, slot, player) == true)
         {
-            return true;
+            OperationsDebugWindow.Enqueue(operation, player, input, state, state, outcome, mApi.Side == EnumAppSide.Client); // Does nothing in RELEASE configuration
+            return false;
         }
 
-        return false;
+        IOperation.Result result = operation.Perform(slot, player, state, input);
+
+        OperationsDebugWindow.Enqueue(operation, player, input, state, result.State, result.Outcome, mApi.Side == EnumAppSide.Client, result); // Does nothing in RELEASE configuration
+
+        mStateManager.Set(slot, result.State);
+
+        if (result.Timeout != IOperation.Timeout.Ignore && mTimers.ContainsKey(player.Entity.EntityId)) mTimers[player.Entity.EntityId]?.Cancel();
+
+        if (result.Timeout == IOperation.Timeout.Start) mTimers[player.Entity.EntityId] = new(mApi, result.TimeoutDelay, () => OnTimer(slot, player, input, operation));
+
+        if (result.Outcome == IOperation.Outcome.Finished) mOperationInputInvoker?.Finished(operation, slot, player);
+
+        return input.Handle;
     }
 
-    private Dictionary<string, IState> ProcessTransitions(IOperation operation, List<IOperation.Transition> transitions, Dictionary<string, IInput> inputs)
+    /// <summary>
+    /// Adds operation to mapping from inputs and states
+    /// </summary>
+    /// <param name="operation">Operation that provided given transitions</param>
+    /// <param name="transitions">Transitions provided by given operation</param>
+    /// <param name="inputs">Registered inputs</param>
+    private void ProcessTransitions(IOperation operation, List<IOperation.Transition> transitions, Dictionary<string, IInput> inputs)
     {
-        Dictionary<string, IState> operationStateMapping = new();
-
         foreach (IOperation.Transition transition in transitions)
         {
-            IState initialState = mDeserializeState(transition.FromState);
-            IState finalState = mDeserializeState(transition.ToState);
-
-            operationStateMapping.TryAdd(transition.FromState, initialState);
-            operationStateMapping.TryAdd(transition.ToState, finalState);
+            IState initialState = mStateManager.DeserializeState(transition.FromState);
+            IState finalState = mStateManager.DeserializeState(transition.ToState);
 
             mOperationsByInputAndState.TryAdd(initialState, new());
             mOperationsByInputAndState.TryAdd(finalState, new());
@@ -177,41 +231,6 @@ internal sealed class FiniteStateMachine : IFiniteStateMachine
                 mOperationsByInputAndState[initialState][input].Add(operation);
             }
         }
-
-        return operationStateMapping;
-    }
-
-    private bool RunOperation(ItemSlot slot, IPlayer player, IOperation operation, IInput input, IState state)
-    {
-        if (player == null || slot == null) return false;
-
-        IOperation.Outcome outcome = operation.Verify(slot, player, state, input);
-
-        if (outcome == IOperation.Outcome.Failed)
-        {
-            OperationsDebugWindow.Enqueue(operation, player, input, state, state, outcome, mApi.Side == EnumAppSide.Client);
-            return false;
-        }
-
-        if ((outcome == IOperation.Outcome.Started || outcome == IOperation.Outcome.StartedAndFinished) && mOperationInputInvoker?.Started(operation, slot, player) == true)
-        {
-            OperationsDebugWindow.Enqueue(operation, player, input, state, state, outcome, mApi.Side == EnumAppSide.Client);
-            return false;
-        }
-
-        IOperation.Result result = operation.Perform(slot, player, state, input);
-
-        OperationsDebugWindow.Enqueue(operation, player, input, state, result.State, result.Outcome, mApi.Side == EnumAppSide.Client, result);
-
-        mStateManager.Set(slot, result.State);
-
-        if (result.Timeout != IOperation.Timeout.Ignore && mTimers.ContainsKey(player.Entity.EntityId)) mTimers[player.Entity.EntityId]?.Cancel();
-
-        if (result.Timeout == IOperation.Timeout.Start) mTimers[player.Entity.EntityId] = new(mApi, result.TimeoutDelay, () => OnTimer(slot, player, input, operation));
-
-        if (result.Outcome == IOperation.Outcome.Finished) mOperationInputInvoker?.Finished(operation, slot, player);
-
-        return input.Handle;
     }
 
     public void Dispose()
@@ -229,156 +248,4 @@ internal sealed class FiniteStateMachine : IFiniteStateMachine
             operation.Dispose();
         }
     }
-}
-
-internal sealed class StateManager
-{
-    private const string cStateAttributeNameClient = "FSMlib.state.client";
-    private const string cStateAttributeNameServer = "FSMlib.state.server";
-    private const string cSyncAttributeName = "FSMlib.sync";
-#if DEBUG
-    private TimeSpan mSynchronizationDelay = TimeSpan.FromMilliseconds(90); // 3+ game ticks (+1 from HoldButtonManager delay)
-#else
-    private readonly TimeSpan mSynchronizationDelay = TimeSpan.FromMilliseconds(90);
-#endif
-    private readonly string mInitialState;
-    private readonly ICoreAPI mApi;
-    private readonly System.Func<string, IState> mDeserialize;
-
-    public StateManager(ICoreAPI api, string initialState, System.Func<string, IState> stateDeserializer)
-    {
-        mApi = api;
-        mInitialState = initialState;
-        mDeserialize = stateDeserializer;
-
-#if DEBUG
-        DebugWindow.IntSlider("fsmlib", "tweaks", "state sync delay", 0, 1000, () => (int)mSynchronizationDelay.TotalMilliseconds, value => mSynchronizationDelay = TimeSpan.FromMilliseconds(value));
-#endif
-    }
-    public IState Get(ItemSlot slot) => ReadStateFrom(slot);
-    public void Set(ItemSlot slot, IState state)
-    {
-        if (state is not State supportedState)
-        {
-            Logger.Error(mApi, this, $"Unsupported state class was passed: {state}");
-            return;
-        }
-        WriteStateTo(slot, supportedState);
-    }
-    public void Reset(ItemSlot slot) => WriteStateTo(slot, mDeserialize(mInitialState));
-
-    private IState ReadStateFrom(ItemSlot slot)
-    {
-        if (slot.Itemstack == null)
-        {
-            Logger.Error(mApi, this, $"ItemStack is null");
-            return mDeserialize(mInitialState);
-        }
-
-        IState serverState = ReadStateFromServer(slot.Itemstack);
-
-        if (mApi.Side == EnumAppSide.Server)
-        {
-            slot.MarkDirty();
-            return serverState;
-        }
-
-        IState clientState = ReadStateFromClient(slot.Itemstack);
-
-#if DEBUG
-        //if (clientState != serverState) Logger.Warn(mApi, this, $"State desync ({clientState == serverState}). Client: {clientState}, Server: {serverState}");
-#endif
-
-        if (clientState != serverState)
-        {
-            clientState = SynchronizeStates(slot.Itemstack, serverState, clientState);
-        }
-        else
-        {
-            CancelSynchronization(slot.Itemstack);
-        }
-
-        return clientState;
-    }
-    private void WriteStateTo(ItemSlot slot, IState state)
-    {
-        if (slot.Itemstack == null)
-        {
-            Logger.Debug(mApi, this, $"ItemStack is null");
-            return;
-        }
-
-        if (mApi.Side == EnumAppSide.Server)
-        {
-            WriteStateToServer(slot.Itemstack, state);
-            slot.MarkDirty();
-        }
-        else
-        {
-            WriteStateToClient(slot.Itemstack, state);
-        }
-    }
-    private IState ReadStateFromClient(ItemStack stack)
-    {
-        if (!stack.TempAttributes.HasAttribute(cStateAttributeNameClient))
-        {
-            WriteStateToClient(stack, ReadStateFromServer(stack));
-        }
-
-        return mDeserialize(stack.TempAttributes.GetAsString(cStateAttributeNameClient, mInitialState));
-    }
-    private static void WriteStateToClient(ItemStack stack, IState state) => stack.TempAttributes.SetString(cStateAttributeNameClient, state.Serialize());
-    private IState ReadStateFromServer(ItemStack stack) => mDeserialize(stack.Attributes.GetAsString(cStateAttributeNameServer, mInitialState));
-    private static void WriteStateToServer(ItemStack stack, IState state) => stack.Attributes.SetString(cStateAttributeNameServer, state.Serialize());
-
-    private IState SynchronizeStates(ItemStack stack, IState serverState, IState clientState)
-    {
-        if (!CheckTimestamp(stack))
-        {
-            WriteTimestamp(stack);
-            return clientState;
-        }
-
-        if (ReadTimestamp(stack) > mSynchronizationDelay)
-        {
-            RemoveTimeStamp(stack);
-            WriteStateToClient(stack, serverState);
-            return serverState;
-        }
-
-        return clientState;
-    }
-    private void CancelSynchronization(ItemStack stack)
-    {
-        if (!CheckTimestamp(stack)) return;
-        RemoveTimeStamp(stack);
-    }
-    private static void RemoveTimeStamp(ItemStack stack) => stack.TempAttributes.RemoveAttribute(cSyncAttributeName);
-    private static bool CheckTimestamp(ItemStack stack) => stack.TempAttributes.HasAttribute(cSyncAttributeName);
-    private void WriteTimestamp(ItemStack stack) => stack.TempAttributes.SetLong(cSyncAttributeName, mApi.World.ElapsedMilliseconds);
-    private TimeSpan ReadTimestamp(ItemStack stack) => TimeSpan.FromMilliseconds(mApi.World.ElapsedMilliseconds - stack.TempAttributes.GetLong(cSyncAttributeName, 0));
-}
-
-internal sealed class State : IState, IEquatable<State>
-{
-    private readonly string mState;
-    private readonly int mHash;
-
-    public State(string state)
-    {
-        mState = state;
-        mHash = mState.GetHashCode();
-    }
-    public override string ToString() => mState;
-    public override bool Equals(object? obj) => (obj as State)?.mHash == mHash;
-    public bool Equals(State? other) => other?.mHash == mHash;
-    public override int GetHashCode()
-    {
-        return mHash;
-    }
-    public string Serialize() => mState;
-    public static State Deserialize(string state) => new(state);
-
-    public static bool operator ==(State first, State second) => first.Equals(second);
-    public static bool operator !=(State first, State second) => !first.Equals(second);
 }

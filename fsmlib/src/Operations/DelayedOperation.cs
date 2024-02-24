@@ -132,17 +132,11 @@ public class Delayed : BaseOperation
             }
         }
     }
-    public override List<Transition> GetTransitions() => mTriggerConditions;
-    public override void SetInputsStatesSystems(Dictionary<string, IInput> inputs, Dictionary<string, IState> states, Dictionary<string, ISystem> systems)
+    public override List<Transition> GetTransitions(IStateManager stateManager) => mTriggerConditions;
+    public override void SetInputsStatesSystems(Dictionary<string, IInput> inputs, Dictionary<string, ISystem> systems, IStateManager stateManager)
     {
         foreach ((TransitionTriggerInitial trigger, TransitionResultInitial result) in mTransitionsInitialData)
         {
-            if (!states.ContainsKey(trigger.State))
-            {
-                LogWarn($"State '{trigger.State}' not found");
-                continue;
-            }
-
             if (!inputs.ContainsKey(trigger.Input))
             {
                 LogWarn($"Input '{trigger.Input}' not found");
@@ -162,24 +156,12 @@ public class Delayed : BaseOperation
                 mSystemsCodes.TryAdd(systems[system], system);
             }
 
-            mTransitions.Add((states[trigger.State], inputs[trigger.Input]), (states[result.State], transitionSystems, result.Outcome));
+            mTransitions.Add((stateManager.DeserializeState(trigger.State), inputs[trigger.Input]), (stateManager.DeserializeState(result.State), transitionSystems, result.Outcome));
         }
 
         foreach ((TransitionTriggerInitial trigger, int? delay) in mTimersInitialData)
         {
-            if (!states.ContainsKey(trigger.State))
-            {
-                LogWarn($"State '{trigger.State}' not found");
-                continue;
-            }
-
-            if (!inputs.ContainsKey(trigger.Input))
-            {
-                LogWarn($"Input '{trigger.Input}' not found");
-                continue;
-            }
-
-            mTimers.Add((states[trigger.State], inputs[trigger.Input]), delay != null ? TimeSpan.FromMilliseconds(delay.Value) : null);
+            mTimers.Add((stateManager.DeserializeState(trigger.State), inputs[trigger.Input]), delay != null ? TimeSpan.FromMilliseconds(delay.Value) : null);
         }
 
         mTransitionsInitialData.Clear();

@@ -73,6 +73,8 @@ public sealed class HotkeyInputInvoker : IInputInvoker
 
     private bool HandleInput(IHotkeyInput input)
     {
+        if (!input.CheckModifiers(mClientApi.World.Player, mClientApi)) return false;
+        
         SlotType slotType = input.Slot;
 
         IEnumerable<SlotData> slots = SlotData.GetForAllSlots(slotType, mCollectibles[input], mClientApi.World.Player);

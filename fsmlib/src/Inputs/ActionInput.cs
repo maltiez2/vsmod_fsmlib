@@ -53,6 +53,5 @@ public sealed class ActionInput : BaseInput, IActionInput
         return modifiers.ToArray();
     }
 
-
     public override string ToString() => $"Action input: {Utils.PrintList(Actions.Select(action => action.ToString()))}";
 }
