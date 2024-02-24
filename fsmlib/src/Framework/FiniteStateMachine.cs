@@ -22,6 +22,17 @@ internal sealed class FiniteStateMachine : IFiniteStateMachine
 
     private bool mDisposed = false;
 
+    /// <summary>
+    /// Manages timers and handles inputs. The only internal state mutating after initializing is timers per entity.<br/>
+    /// Provides system to other systems. Gets transitions from operations and gives back systems, inputs and states.
+    /// </summary>
+    /// <param name="api"></param>
+    /// <param name="operations">Instantiated operations.</param>
+    /// <param name="systems">Instantiated systems.</param>
+    /// <param name="inputs">Instantiated inputs.</param>
+    /// <param name="collectible">Collectible this FSM attached to.</param>
+    /// <param name="invoker">Is used to invoke inputs about start amd finish of operations managed by this FSM.</param>
+    /// <param name="stateManager">Used to get and set states of item stacks in provided slots.</param>
     public FiniteStateMachine(
         ICoreAPI api,
         Dictionary<string, IOperation> operations,
@@ -66,7 +77,7 @@ internal sealed class FiniteStateMachine : IFiniteStateMachine
             }
         }
 
-        Logger.Debug(api, this, $"Initialized for '{collectible.Code}'. States: {mOperationsByInputAndState.Count}, operations: {mOperations.Count}");
+        Logger.Verbose(api, this, $"Initialized for '{collectible.Code}'. States: {mOperationsByInputAndState.Count}, operations: {mOperations.Count}");
     }
 
     /// <summary>
@@ -142,7 +153,7 @@ internal sealed class FiniteStateMachine : IFiniteStateMachine
     /// <param name="slot">Same that was provided to FSM at the moment of timer creation.</param>
     /// <param name="player">Same that was provided to FSM at the moment of timer creation.</param>
     /// <param name="input">Same that was provided to FSM at the moment of timer creation.</param>
-    /// <param name="operation">Operation correspoding to this timer</param>
+    /// <param name="operation">Operation corresponding to this timer</param>
     private void OnTimer(ItemSlot slot, IPlayer player, IInput input, IOperation operation)
     {
         if (slot?.Itemstack?.Collectible != mCollectible || player == null) return;
