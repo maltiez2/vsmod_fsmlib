@@ -12,15 +12,14 @@ namespace MaltiezFSM.Framework;
 public delegate (ToolModeSetter, SkillItem[]) ToolModesGetter(ItemSlot slot, IPlayer forPlayer, BlockSelection blockSel);
 public delegate string? ToolModeSetter(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSelection, int toolMode);
 
-public class FiniteStateMachineBehaviour<TAttributesFormat> : CollectibleBehavior, IToolModeEventProvider
-    where TAttributesFormat : IBehaviourAttributesParser, new()
+public class FiniteStateMachineBehaviour : CollectibleBehavior, IToolModeEventProvider
 {
     public FiniteStateMachineBehaviour(CollectibleObject collObj) : base(collObj)
     {
 
     }
 
-    public int FSMId { get; private set; } = -1;
+    public int FsmId { get; private set; } = -1;
     public IStateManager? StateManager { get; private set; }
 
     private FiniteStateMachine? mFsm;
@@ -40,7 +39,7 @@ public class FiniteStateMachineBehaviour<TAttributesFormat> : CollectibleBehavio
             return;
         }
 
-        FSMId = mProperties["id"].AsInt(0);
+        FsmId = mProperties["id"].AsInt(0);
         if (mProperties.KeyExists("PreventAttack")) PreventAttack = mProperties["PreventAttack"].AsBool();
         if (mProperties.KeyExists("PreventInteraction")) PreventInteraction = mProperties["PreventInteraction"].AsBool();
 
@@ -62,19 +61,22 @@ public class FiniteStateMachineBehaviour<TAttributesFormat> : CollectibleBehavio
 
         IOperationInputInvoker? operationInputInvoker = api.ModLoader.GetModSystem<FiniteStateMachineSystem>().GetOperationInputInvoker();
 
-        IBehaviourAttributesParser parser = new TAttributesFormat();
-        bool successfullyParsed = parser.ParseDefinition(api, modSystem.GetOperationFactory(), modSystem.GetSystemFactory(), modSystem.GetInputFactory(), mProperties, collObj);
+        bool successfullyParsed = ParseDefinition(api, mProperties, collObj, out Dictionary<string, IOperation> operations, out Dictionary<string, ISystem> systems, out Dictionary<string, IInput> inputs);
 
-        if (!successfullyParsed) return;
+        if (!successfullyParsed)
+        {
+            Logger.Verbose(api, this, $"Aborting initializing FSM for: {collObj.Code}");
+            return;
+        }
 
         try
         {
-            StateManager = new StateManager(api, mProperties, FSMId);
+            StateManager = new StateManager(api, mProperties, FsmId);
             mFsm = new FiniteStateMachine(
                 api,
-                parser.GetOperations(),
-                parser.GetSystems(),
-                parser.GetInputs(),
+                operations,
+                systems,
+                inputs,
                 collObj,
                 operationInputInvoker,
                 StateManager
@@ -84,22 +86,105 @@ public class FiniteStateMachineBehaviour<TAttributesFormat> : CollectibleBehavio
         {
             Logger.Error(api, this, $"Exception on instantiating FSM for collectible '{collObj.Code}'.");
             Logger.Verbose(api, this, $"Exception on instantiating FSM for collectible '{collObj.Code}'.\n\nException:\n{exception}\n");
+            Logger.Verbose(api, this, $"Aborting initializing FSM for: {collObj.Code}");
             return;
         }
 
-        RegisterInputs(api, parser);
-        SetSystemsForGui(parser);
+        RegisterInputs(api, operations, inputs);
+        SetSystemsForGui(systems);
     }
 
-    private void RegisterInputs(ICoreAPI api, IBehaviourAttributesParser parser)
+    public bool ParseDefinition(
+        ICoreAPI api,
+        JsonObject behaviourAttributes,
+        CollectibleObject collectible,
+        out Dictionary<string, IOperation> operations,
+        out Dictionary<string, ISystem> systems,
+        out Dictionary<string, IInput> inputs
+        )
+    {
+        FiniteStateMachineSystem modSystem = api.ModLoader.GetModSystem<FiniteStateMachineSystem>();
+
+        IFactory<IOperation>? operationTypes = modSystem.GetOperationFactory();
+        IFactory<ISystem>? systemTypes = modSystem.GetSystemFactory();
+        IFactory<IInput>? inputTypes = modSystem.GetInputFactory();
+
+        Dictionary<string, IOperation> operationsLocal = new();
+        Dictionary<string, ISystem> systemsLocal = new();
+        Dictionary<string, IInput> inputsLocal = new();
+
+        operations = operationsLocal;
+        systems = systemsLocal;
+        inputs = inputsLocal;
+
+        if (systemTypes == null || operationTypes == null || inputTypes == null) return false;
+
+        try
+        {
+            Utils.Iterate(behaviourAttributes["systems"], (code, definition) => AddObject(api, "System", code, definition, collectible, systemTypes, systemsLocal));
+        }
+        catch (Exception exception)
+        {
+            Logger.Error(api, this, $"Exception on instantiating a system for '{collectible.Code}'");
+            Logger.Debug(api, this, $"Exception on instantiating a system for '{collectible.Code}'.\nException:\n{exception}");
+            return false;
+        }
+
+        try
+        {
+            Utils.Iterate(behaviourAttributes["operations"], (code, definition) => AddObject(api, "Operation", code, definition, collectible, operationTypes, operationsLocal));
+        }
+        catch (Exception exception)
+        {
+            Logger.Error(api, this, $"Exception on instantiating an operation for '{collectible.Code}'");
+            Logger.Debug(api, this, $"Exception on instantiating an operation for '{collectible.Code}'.\nException:\n{exception}");
+            return false;
+        }
+
+        try
+        {
+            Utils.Iterate(behaviourAttributes["inputs"], (code, definition) => AddObject(api, "Input", code, definition, collectible, inputTypes, inputsLocal));
+        }
+        catch (Exception exception)
+        {
+            Logger.Error(api, this, $"Exception on instantiating an input for '{collectible.Code}'");
+            Logger.Debug(api, this, $"Exception on instantiating an input for '{collectible.Code}'.\nException:\n{exception}");
+            return false;
+        }
+
+
+
+        return true;
+    }
+
+    private void AddObject<TObjectInterface>(
+        ICoreAPI api,
+        string objectType,
+        string objectCode,
+        JsonObject definition,
+        CollectibleObject collectible,
+        IFactory<TObjectInterface> factory,
+        Dictionary<string, TObjectInterface> container
+        )
+    {
+        string? objectClass = definition["class"].AsString(null);
+        if (objectClass == null)
+        {
+            Logger.Error(api, this, $"{objectType} '{objectCode}' in '{collectible.Code}' has no class specified.");
+            return;
+        }
+        TObjectInterface? objectInstance = factory.Instantiate(objectCode, objectClass, definition, collectible);
+        if (objectInstance != null) container.Add(objectCode, objectInstance);
+    }
+
+    private void RegisterInputs(ICoreAPI api, Dictionary<string, IOperation> operations, Dictionary<string, IInput> inputs)
     {
         IInputManager? inputManager = api.ModLoader.GetModSystem<FiniteStateMachineSystem>().GetInputManager();
 
         if (mFsm == null || inputManager == null) return;
 
-        Dictionary<string, IOperation> operations = parser.GetOperations();
 
-        foreach ((string code, IInput input) in parser.GetInputs())
+        foreach ((string code, IInput input) in inputs)
         {
             if (input is IOperationInput operationInput)
             {
@@ -126,9 +211,9 @@ public class FiniteStateMachineBehaviour<TAttributesFormat> : CollectibleBehavio
 
         }
     }
-    private void SetSystemsForGui(IBehaviourAttributesParser parser)
+    private void SetSystemsForGui(Dictionary<string, ISystem> systems)
     {
-        foreach ((_, ISystem system) in parser.GetSystems())
+        foreach ((_, ISystem system) in systems)
         {
             mSystems.Add(system);
         }

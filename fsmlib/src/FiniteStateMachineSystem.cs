@@ -50,7 +50,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         if (api.Side == EnumAppSide.Server) PatchServer();
 
         api.RegisterEntity("AdvancedEntityProjectile", typeof(Systems.AdvancedEntityProjectile));
-        api.RegisterCollectibleBehaviorClass("FiniteStateMachine", typeof(Framework.FiniteStateMachineBehaviour<Framework.BehaviourAttributesParser>));
+        api.RegisterCollectibleBehaviorClass("FiniteStateMachine", typeof(Framework.FiniteStateMachineBehaviour));
         api.RegisterCollectibleBehaviorClass("FSMAdvancedProjectile", typeof(Systems.AdvancedProjectileBehavior));
 
         api.RegisterEntityBehaviorClass("constresist", typeof(Additional.EntityBehaviorConstResists<Additional.ConstResist>));

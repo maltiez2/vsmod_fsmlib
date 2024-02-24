@@ -19,7 +19,6 @@ internal sealed class StateManager : IStateManager
     private readonly string mInitialState;
     private readonly ICoreAPI mApi;
     private readonly System.Func<string, IState> mDeserialize;
-    private readonly int mId;
 
     private readonly string mClientStateAttribute;
     private readonly string mServerStateAttribute;
@@ -29,8 +28,8 @@ internal sealed class StateManager : IStateManager
         mApi = api;
         mInitialState = behaviourAttributes["initialState"].AsString();
         mDeserialize = (string value) => new State(value);
-        mClientStateAttribute = $"{cStateAttributeNameClient}.{mId}";
-        mServerStateAttribute = $"{cStateAttributeNameServer}.{mId}";
+        mClientStateAttribute = $"{cStateAttributeNameClient}.{id}";
+        mServerStateAttribute = $"{cStateAttributeNameServer}.{id}";
 
 #if DEBUG
         DebugWindow.IntSlider("fsmlib", "tweaks", "state sync delay", 0, 1000, () => (int)mSynchronizationDelay.TotalMilliseconds, value => mSynchronizationDelay = TimeSpan.FromMilliseconds(value));
