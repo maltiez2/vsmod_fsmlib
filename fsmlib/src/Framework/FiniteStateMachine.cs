@@ -9,6 +9,10 @@ using VSImGui;
 
 namespace MaltiezFSM.Framework;
 
+/// <summary>
+/// Determines what operations to perform on a given item stack for it current state and given input.<\br>
+/// Runs operations themselves and manages timers for timed operations. Gets and sets states using supplied <see cref="IStateManager"/>.
+/// </summary>
 internal sealed class FiniteStateMachine : IFiniteStateMachine
 {
     private readonly Dictionary<IState, Dictionary<IInput, List<IOperation>>> mOperationsByInputAndState = new();
@@ -81,10 +85,10 @@ internal sealed class FiniteStateMachine : IFiniteStateMachine
     }
 
     /// <summary>
-    /// Returns available inputs for state of item in given slot
+    /// Gathers available inputs for state of item in given slot.
     /// </summary>
     /// <param name="slot">Slot containing collectible with FSM attached to it</param>
-    /// <returns>List of available inputs for this state. Operations still may fail verification stage for this inputs and nit be performed.</returns>
+    /// <returns>list of available inputs for current state of item stack in given slot. Operations still may fail verification stage for this inputs and nit be performed.</returns>
     public List<IInput> GetAvailableInputs(ItemSlot slot)
     {
         List<IInput> inputs = new();
@@ -112,7 +116,7 @@ internal sealed class FiniteStateMachine : IFiniteStateMachine
     /// <param name="slot">Slot that contains collectible with this FSM attached. If it does not contain such collectible false will be returned, but it not the only outcome that returns false.</param>
     /// <param name="player">Player associated with given slot and input. If null will return false, but it not the only outcome that returns false.</param>
     /// <param name="input">Is used to determine from it and current item state what operation to perform.</param>
-    /// <returns>Returns if supplied input was successfully handled by some operation</returns>
+    /// <returns>if supplied input was successfully handled by some operation</returns>
     public bool Process(ItemSlot slot, IPlayer player, IInput input)
     {
         if (slot?.Itemstack?.Collectible != mCollectible || player == null) return false;
@@ -170,12 +174,12 @@ internal sealed class FiniteStateMachine : IFiniteStateMachine
     /// <summary>
     /// Verifies and then performs given operation. Creates timer if needed. Invokes operation inputs using <see cref="IOperationInputInvoker"/>.
     /// </summary>
-    /// <param name="slot">Slot with collectible this FSM attached to</param>
-    /// <param name="player">Player associated with slot and input</param>
-    /// <param name="operation">Operation to verify and perform</param>
-    /// <param name="input">Input that corresponds to supplied operation and state</param>
-    /// <param name="state">Current state of collectible in slot</param>
-    /// <returns>Returns if supplied input was successfully handled by operation</returns>
+    /// <param name="slot">Slot with collectible this FSM attached to.</param>
+    /// <param name="player">Player associated with slot and input.</param>
+    /// <param name="operation">Operation to verify and perform.</param>
+    /// <param name="input">Input that corresponds to supplied operation and state.</param>
+    /// <param name="state">Current state of collectible in slot.</param>
+    /// <returns>if supplied input was successfully handled by operation.</returns>
     private bool RunOperation(ItemSlot slot, IPlayer player, IOperation operation, IInput input, IState state)
     {
         if (player == null || slot == null) return false;
@@ -210,11 +214,11 @@ internal sealed class FiniteStateMachine : IFiniteStateMachine
     }
 
     /// <summary>
-    /// Adds operation to mapping from inputs and states
+    /// Adds operation to mapping from inputs and states.
     /// </summary>
-    /// <param name="operation">Operation that provided given transitions</param>
-    /// <param name="transitions">Transitions provided by given operation</param>
-    /// <param name="inputs">Registered inputs</param>
+    /// <param name="operation">Operation that provided given transitions.</param>
+    /// <param name="transitions">Transitions provided by given operation.</param>
+    /// <param name="inputs">Registered inputs.</param>
     private void ProcessTransitions(IOperation operation, List<IOperation.Transition> transitions, Dictionary<string, IInput> inputs)
     {
         foreach (IOperation.Transition transition in transitions)
