@@ -78,7 +78,7 @@ internal sealed class FiniteStateMachine : IDisposable
             }
         }
 
-        Logger.Verbose(api, this, $"Initialized for '{collectible.Code}'. States: {mOperationsByInputAndState.Count}, operations: {mOperations.Count}");
+        Logger.Dev(api, this, $"FSM for '{collectible.Code}'. States: {mOperationsByInputAndState.Count}, operations: {mOperations.Count}");
     }
 
     /// <summary>

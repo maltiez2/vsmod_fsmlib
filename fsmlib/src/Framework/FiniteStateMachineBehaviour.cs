@@ -1,6 +1,7 @@
 ﻿using MaltiezFSM.API;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
@@ -22,6 +23,8 @@ public class FiniteStateMachineBehaviour : CollectibleBehavior, IToolModeEventPr
     public int FsmId { get; private set; } = -1;
     public IStateManager? StateManager { get; private set; }
 
+    internal static TimeSpan TotalInitializingTime = TimeSpan.Zero;
+
     private FiniteStateMachine? mFsm;
     private JsonObject? mProperties;
     private ICoreAPI? mApi;
@@ -29,6 +32,9 @@ public class FiniteStateMachineBehaviour : CollectibleBehavior, IToolModeEventPr
     #region Initializing/deinitialising
     public override void OnLoaded(ICoreAPI api)
     {
+        Stopwatch stopwatch = new();
+        stopwatch.Start();
+
         base.OnLoaded(api);
 
         mApi = api;
@@ -43,7 +49,7 @@ public class FiniteStateMachineBehaviour : CollectibleBehavior, IToolModeEventPr
         if (mProperties.KeyExists("PreventAttack")) PreventAttack = mProperties["PreventAttack"].AsBool();
         if (mProperties.KeyExists("PreventInteraction")) PreventInteraction = mProperties["PreventInteraction"].AsBool();
 
-        Logger.Verbose(api, this, $"Initializing FSM for: {collObj.Code}");
+        Logger.Dev(api, this, $"Initializing FSM '{FsmId}' for: {collObj.Code}");
 
         FiniteStateMachineSystem modSystem = api.ModLoader.GetModSystem<FiniteStateMachineSystem>();
 
@@ -65,7 +71,7 @@ public class FiniteStateMachineBehaviour : CollectibleBehavior, IToolModeEventPr
 
         if (!successfullyParsed)
         {
-            Logger.Verbose(api, this, $"Aborting initializing FSM for: {collObj.Code}");
+            Logger.Dev(api, this, $"Aborting initializing FSM '{FsmId}' for: {collObj.Code}");
             return;
         }
 
@@ -86,12 +92,19 @@ public class FiniteStateMachineBehaviour : CollectibleBehavior, IToolModeEventPr
         {
             Logger.Error(api, this, $"Exception on instantiating FSM for collectible '{collObj.Code}'.");
             Logger.Verbose(api, this, $"Exception on instantiating FSM for collectible '{collObj.Code}'.\n\nException:\n{exception}\n");
-            Logger.Verbose(api, this, $"Aborting initializing FSM for: {collObj.Code}");
+            Logger.Dev(api, this, $"Aborting initializing FSM for: {collObj.Code}");
             return;
         }
 
         RegisterInputs(api, operations, inputs);
         SetSystemsForGui(systems);
+
+        stopwatch.Stop();
+
+        TotalInitializingTime += stopwatch.Elapsed;
+        Logger.Dev(api, this, $"Finished initializing FSM '{FsmId}' for: {collObj.Code}.\n" +
+            $"Took {stopwatch.ElapsedMilliseconds} ms. Total: {TotalInitializingTime.TotalMilliseconds} ms.\n" +
+            $"Instantiated operations: {operations.Count}, systems: {systems.Count}, inputs: {inputs.Count}.\n");
 
         mProperties = null;
     }
@@ -115,9 +128,9 @@ public class FiniteStateMachineBehaviour : CollectibleBehavior, IToolModeEventPr
         Dictionary<string, ISystem> systemsLocal = new();
         Dictionary<string, IInput> inputsLocal = new();
 
-        operations = operationsLocal;
-        systems = systemsLocal;
-        inputs = inputsLocal;
+        operations = new();
+        systems = new();
+        inputs = new();
 
         if (systemTypes == null || operationTypes == null || inputTypes == null) return false;
 
@@ -154,7 +167,9 @@ public class FiniteStateMachineBehaviour : CollectibleBehavior, IToolModeEventPr
             return false;
         }
 
-
+        operations = operationsLocal;
+        systems = systemsLocal;
+        inputs = inputsLocal;
 
         return true;
     }
@@ -185,7 +200,7 @@ public class FiniteStateMachineBehaviour : CollectibleBehavior, IToolModeEventPr
 
         if (mFsm == null || inputManager == null) return;
 
-
+        int registeredCount = 0;
         foreach ((string code, IInput input) in inputs)
         {
             if (input is IOperationInput operationInput)
@@ -204,14 +219,15 @@ public class FiniteStateMachineBehaviour : CollectibleBehavior, IToolModeEventPr
             try
             {
                 inputManager.RegisterInput(input, mFsm.Process, collObj);
+                registeredCount++;
             }
             catch (Exception exception)
             {
                 Logger.Error(api, this, $"Exception on registering input '{Utils.GetTypeName(input.GetType())}' with code '{code}' for collectible '{collObj.Code}'.");
                 Logger.Verbose(api, this, $"Exception on registering input '{Utils.GetTypeName(input.GetType())}' with code '{code}' for collectible '{collObj.Code}'.\n\nException:\n{exception}\n");
             }
-
         }
+        Logger.Verbose(api, this, $"Inputs registered for '{collObj.Code}': {registeredCount}");
     }
     private void SetSystemsForGui(Dictionary<string, ISystem> systems)
     {

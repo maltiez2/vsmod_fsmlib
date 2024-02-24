@@ -254,7 +254,7 @@ public class Delayed : BaseOperation
         List<(string, JsonObject)> systemsRequests = new();
         if (!definition.KeyExists("systems") || !definition["systems"].KeyExists(systemsType))
         {
-            LogDebug($"No systems in '{systemsType}' category in '{mCode}' operation");
+            LogDev($"No systems in '{systemsType}' category in '{mCode}' operation");
             return systemsRequests;
         }
         foreach (JsonObject system in definition["systems"][systemsType].AsArray())

@@ -32,6 +32,7 @@ namespace MaltiezFSM.API
         protected void LogNotify(string message) => Logger.Notify(mApi, this, LogFormat(message));
         protected void LogDebug(string message) => Logger.Debug(mApi, this, LogFormat(message));
         protected void LogVerbose(string message) => Logger.Verbose(mApi, this, LogFormat(message));
+        protected void LogDev(string message) => Logger.Dev(mApi, this, LogFormat(message));
 
         protected string LogFormat(string message) => $"({mCollectible.Code}:{mCode}) {message}";
 

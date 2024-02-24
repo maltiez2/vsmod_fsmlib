@@ -44,15 +44,23 @@ public class BaseInput : FactoryProduct, IStandardInput
         
         ModifierType = (IKeyModifier.KeyModifierType)Enum.Parse(typeof(IKeyModifier.KeyModifierType), definition["modifierType"].AsString("Present"));
         
-        List<JsonObject> modifierKeys = ParseField(definition["modifierKeys"]);
-        ModifierKey = modifierKeys.Select(key => (EnumModifierKey)Enum.Parse(typeof(EnumModifierKey), key.AsString())).Aggregate((first, second) => first | second);
+        List<JsonObject> modifierKeys = ParseField(definition, "modifierKeys");
+        if (modifierKeys.Count > 0)
+        {
+            ModifierKey = modifierKeys.Select(key => (EnumModifierKey)Enum.Parse(typeof(EnumModifierKey), key.AsString())).Aggregate((first, second) => first | second);
+        }
+        else
+        {
+            ModifierKey = 0;
+        }
+        
         mCheckModifiers = modifierKeys.Any();
 
-        List<JsonObject> statuses = ParseField(definition["statuses"]);
+        List<JsonObject> statuses = ParseField(definition, "statuses");
         Statuses = statuses.Select(key => (IStatusModifier.StatusType)Enum.Parse(typeof(IStatusModifier.StatusType), key.AsString())).ToArray();
         mCheckStatuses = statuses.Any();
 
-        List<JsonObject> activities = ParseField(definition["activities"]);
+        List<JsonObject> activities = ParseField(definition, "activities");
         Activities = activities.Select(activity => activity.AsString()).ToArray();
         mCheckActivities = activities.Any();
 
