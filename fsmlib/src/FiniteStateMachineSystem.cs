@@ -96,6 +96,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         Framework.ActiveSlotChangedInputInvoker activeSlotChanged = new(api);
         Framework.CustomInputInvoker customInput = new();
         Framework.SlotInputInvoker slotInput = new(api);
+        Framework.ActionInputInvoker actionInput = new(api);
         mToolModeInvoker = new();
 
         mInputManager.RegisterInvoker(invoker, typeof(IOperationInput));
@@ -108,6 +109,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         mInputManager.RegisterInvoker(activeSlotChanged, typeof(ISlotChangedBefore));
         mInputManager.RegisterInvoker(customInput, typeof(ICustomInput));
         mInputManager.RegisterInvoker(mToolModeInvoker, typeof(IToolModeInput));
+        mInputManager.RegisterInvoker(actionInput, typeof(IActionInput));
 
         mInputInvokers.Add(invoker);
         mInputInvokers.Add(keyInput);
@@ -116,6 +118,8 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         mInputInvokers.Add(hotkey);
         mInputInvokers.Add(activeSlotChanged);
         mInputInvokers.Add(customInput);
+        mInputInvokers.Add(mToolModeInvoker);
+        mInputInvokers.Add(actionInput);
 
         mCustomInputInvoker = customInput;
     }
@@ -144,6 +148,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         mInputInvokers.Add(customInput);
         mInputInvokers.Add(statusInput);
         mInputInvokers.Add(activeSlotChanged);
+        mInputInvokers.Add(mToolModeInvoker);
 
         mCustomInputInvoker = customInput;
     }
@@ -162,6 +167,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         mInputFactory.Register<Inputs.SlotContent>("SlotContent");
         mInputFactory.Register<Inputs.Custom>("Custom");
         mInputFactory.Register<Inputs.ToolMode>("ToolMode");
+        mInputFactory.Register<Inputs.ActionInput>("ActionInput");
     }
     private void RegisterSystems()
     {

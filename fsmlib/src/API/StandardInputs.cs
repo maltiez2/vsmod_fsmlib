@@ -70,6 +70,12 @@ public interface IMouseInput : IStandardInput
     EnumMouseButton Key { get; set; }
     bool CheckIfShouldBeHandled(MouseEvent mouseEvent, MouseEventType eventType);
 }
+public interface IActionInput : IStandardInput
+{
+    EnumEntityAction[] Actions { get; }
+    bool OnRelease { get; }
+    bool Modifiers { get; }
+}
 public interface ISlotInput : IStandardInput
 {
     enum SlotEventType

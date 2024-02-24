@@ -283,11 +283,11 @@ public class Requirements : BaseSystem, IItemStackHolder, IRequirementsSystem
     {
         List<ItemSlot> stacks = new();
 
-        bool selected = true;
+        bool selected = false;
         if (mAmmoSelector?.Enabled == true)
         {
             stacks.Add(mAmmoSelector.Process(player));
-            if (stacks[0]?.Itemstack == null || stacks[0].Itemstack.StackSize == 0) selected = false;
+            if (stacks[0]?.Itemstack != null && stacks[0].Itemstack.StackSize > 0) selected = true;
         }
         
         if (!selected)

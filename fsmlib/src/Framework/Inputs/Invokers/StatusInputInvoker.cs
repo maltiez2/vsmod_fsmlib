@@ -59,6 +59,8 @@ public sealed class StatusInputInvokerClient : IInputInvoker
 
     private bool CheckStatus(IStatusInput input)
     {
+        if (mClientApi.World.Player.Entity == null || mClientApi.World.Player.Entity.World == null) return false;
+
         return input.Status switch
         {
             IStatusInput.StatusType.Activity => mClientApi.World.Player.Entity.IsActivityRunning(input.Activity),
@@ -150,7 +152,7 @@ public sealed class StatusInputInvokerServer : IInputInvoker
 
     private bool CheckPlayerStatus(IStatusInput input, IPlayer player)
     {
-        if (player.Entity == null) return false;
+        if (player.Entity == null || player.Entity.World == null) return false;
 
         try
         {
