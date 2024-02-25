@@ -1,5 +1,4 @@
 ﻿using MaltiezFSM.API;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
@@ -84,7 +83,7 @@ public sealed class ActionInputInvoker : IInputInvoker, IActionInputInvoker
                 if (!mActionsStatuses[action] && !mActionsStatuses[mModifiersRemapping[action]]) return false;
             }
         }
-        
+
         foreach (EnumEntityAction action in input.Actions)
         {
             if (!mActionsStatuses[action]) return false;
@@ -97,7 +96,7 @@ public sealed class ActionInputInvoker : IInputInvoker, IActionInputInvoker
     {
         if (input is not IActionInput actionInput) return;
 
-        foreach (var action in actionInput.Actions)
+        foreach (EnumEntityAction action in actionInput.Actions)
         {
             mInputs.TryAdd(action, new());
             mInputs[action].Add(actionInput);
