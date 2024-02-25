@@ -8,7 +8,7 @@ internal static class InputsUtils
 {
     public static bool TestStatus(IStatusModifier input, IPlayer player)
     {
-        if (player.Entity == null || player.Entity.World == null) return false;
+        if (player.Entity == null || player.Entity.World == null) return true;
         
         switch (input.StatusCheckType)
         {
@@ -58,7 +58,7 @@ internal static class InputsUtils
     }
     public static bool TestActivities(IActivityModifier input, IPlayer player)
     {
-        if (player.Entity == null || player.Entity.World == null) return false;
+        if (player.Entity == null || player.Entity.World == null) return true;
 
         switch (input.ActivityCheckType)
         {

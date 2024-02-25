@@ -70,9 +70,6 @@ public sealed class ActionInputInvoker : IInputInvoker, IActionInputInvoker
     private bool TestInput(IActionInput input, bool on)
     {
         if (!input.CheckModifiers(mClientApi.World.Player, mClientApi)) return false;
-        
-        if (!InputsUtils.TestModifiers(input, this, mClientApi)) return false;
-
         if (input.OnRelease == on) return false;
 
         if (input.Modifiers && !mClientApi.Settings.Bool.Get("separateCtrlKeyForMouse"))
@@ -93,7 +90,7 @@ public sealed class ActionInputInvoker : IInputInvoker, IActionInputInvoker
             if (!mActionsStatuses[action]) return false;
         }
 
-        return InputsUtils.TestStatus(input, mClientApi.World.Player);
+        return true;
     }
 
     public void RegisterInput(IInput input, IInputInvoker.InputCallback callback, CollectibleObject collectible)

@@ -101,12 +101,12 @@ internal sealed class StateManager : IStateManager
     }
     private IState ReadStateFromClient(ItemStack stack)
     {
-        if (!stack.TempAttributes.HasAttribute(cStateAttributeNameClient))
+        if (!stack.TempAttributes.HasAttribute(mClientStateAttribute))
         {
             WriteStateToClient(stack, ReadStateFromServer(stack));
         }
 
-        return mDeserialize(stack.TempAttributes.GetAsString(cStateAttributeNameClient, mInitialState));
+        return mDeserialize(stack.TempAttributes.GetAsString(mClientStateAttribute, mInitialState));
     }
     private void WriteStateToClient(ItemStack stack, IState state) => stack.TempAttributes.SetString(mClientStateAttribute, state.Serialize());
     private IState ReadStateFromServer(ItemStack stack) => mDeserialize(stack.Attributes.GetAsString(mServerStateAttribute, mInitialState));
@@ -140,7 +140,7 @@ internal sealed class StateManager : IStateManager
     private TimeSpan ReadTimestamp(ItemStack stack) => TimeSpan.FromMilliseconds(mApi.World.ElapsedMilliseconds - stack.TempAttributes.GetLong(cSyncAttributeName, 0));
 }
 
-internal sealed class State : IState
+internal sealed class State : IState, IEquatable<State>
 {
     private readonly string mState;
     private readonly int mHash;
@@ -153,6 +153,7 @@ internal sealed class State : IState
     public override string ToString() => mState;
     public override bool Equals(object? obj) => (obj as State)?.mHash == mHash;
     public bool Equals(IState? other) => other?.GetHashCode() == mHash;
+    public bool Equals(State? other) => other?.mHash == mHash;
     public override int GetHashCode()
     {
         return mHash;

@@ -1,6 +1,5 @@
 ﻿using HarmonyLib;
 using MaltiezFSM.API;
-using MaltiezFSM.Framework;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -44,7 +43,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
             Framework.ImGuiDebugWindow.Init(clientApiForImGuiDebugWindow);
         }
 
-        FiniteStateMachineBehaviour.TotalInitializingTime = TimeSpan.Zero;
+        Framework.FiniteStateMachineBehaviour.TotalInitializingTime = TimeSpan.Zero;
 
         Framework.Logger.Debug(api, this, "Stared initializing");
 
