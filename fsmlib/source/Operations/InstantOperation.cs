@@ -72,7 +72,7 @@ public class Instant : BaseOperation
     {
         Process(slot, player, mSystems);
 
-        return new(mStates[state], Outcome.StartedAndFinished, Timeout.Ignore);
+        return new(mStates[state], Outcome.StartedAndFinished, IOperation.Timeout.Ignore);
     }
 
     public override string ToString() => $"Instant: {mCode} ({mCollectible.Code})";

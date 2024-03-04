@@ -3,7 +3,6 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
 
-
 namespace MaltiezFSM.API;
 
 public interface IFactoryProduct
@@ -11,7 +10,6 @@ public interface IFactoryProduct
     int Id { get; }
 }
 
-[System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S3246:Generic type parameters should be co/contravariant when possible", Justification = "Static analyzer is dumb sometimes")]
 public interface IFactory<TProductInterface>
 {
     Type TypeOf(string name);
@@ -20,12 +18,6 @@ public interface IFactory<TProductInterface>
     TProductInterface? Instantiate(string code, string name, JsonObject definition, CollectibleObject collectible);
 }
 
-internal interface IFactoryProvider
-{
-    IFactory<IOperation>? GetOperationFactory();
-    IFactory<ISystem>? GetSystemFactory();
-    IFactory<IInput>? GetInputFactory();
-}
 public interface IRegistry
 {
     void RegisterOperation<TProductClass>(string name, ICoreAPI api, Mod mod) where TProductClass : FactoryProduct, IOperation;

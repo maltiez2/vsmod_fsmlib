@@ -1,8 +1,6 @@
 ﻿using AnimationManagerLib;
 using AnimationManagerLib.API;
 using AnimationManagerLib.CollectibleBehaviors;
-using System;
-using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
@@ -132,7 +130,7 @@ public class ProceduralItemAnimation : BaseSystem, IAnimationSystem
     }
     private void PlayAnimation(string code, string category, long entityId)
     {
-        mStartedAnimations[(entityId, category)] = mAnimations[(category, code)].Start(mAnimationManager);
+        mStartedAnimations[(entityId, category)] = mAnimations[(category, code)].Start(mAnimationManager, entityId);
     }
     private void StopAnimation(string category, long entityId)
     {
@@ -147,6 +145,7 @@ internal class ProceduralItemAnimationData
     private AnimationSequence? mFirstPersonSequence;
     private AnimationTarget mThirdPersonTarget;
     private AnimationTarget mFirstPersonTarget;
+    private bool mBothShapes;
 
     public ProceduralItemAnimationData(AnimatableProcedural behavior, IAnimationManagerSystem animationManager, Action<string> logger, JsonObject[] animationsDefinitions, Category category, string sequenceCode, System.Func<string?, string?> constructCode)
     {
@@ -170,22 +169,27 @@ internal class ProceduralItemAnimationData
             string fpCode = $"{constructCode.Invoke(animationCode)}-fp";
             string tpCode = $"{constructCode.Invoke(animationCode)}-tp";
 
+            string codeTp = animationCode;
+            string codeFp = animationCode;
+
+            bool separateFp = requestDefinition["separateFp"].AsBool(false);
+            if (separateFp) codeFp = $"{animationCode}-fp";
+
             if (fpShape != null)
             {
-                ConstructRequest(fpShape, fpCode, animationCode, fpRequests, requestDefinition, animationManager, logger, category);
+                ConstructRequest(fpShape, fpCode, codeTp, fpRequests, requestDefinition, animationManager, logger, category);
             }
 
             if (tpShape != null)
             {
-                ConstructRequest(tpShape, tpCode, animationCode, tpRequests, requestDefinition, animationManager, logger, category);
+                ConstructRequest(tpShape, tpCode, codeFp, tpRequests, requestDefinition, animationManager, logger, category);
             }
         }
 
         if (tpRequests.Count > 0) mThirdPersonSequence = new(tpRequests.ToArray());
         if (fpRequests.Count > 0) mFirstPersonSequence = new(fpRequests.ToArray());
 
-        mThirdPersonTarget = AnimationTarget.HeldItem(bothShapes ? false : null);
-        mFirstPersonTarget = AnimationTarget.HeldItem(bothShapes ? true : null);
+        mBothShapes = bothShapes;
     }
 
     private static void ConstructRequest(Shape shape, string animationName, string animationCode, List<AnimationRequest> requests, JsonObject requestDefinition, IAnimationManagerSystem animationManager, Action<string> logger, Category category)
@@ -204,8 +208,11 @@ internal class ProceduralItemAnimationData
         requests.Add(request);
     }
 
-    public ProceduralItemAnimationId Start(IAnimationManagerSystem animationManager)
+    public ProceduralItemAnimationId Start(IAnimationManagerSystem animationManager, long entityId)
     {
+        mThirdPersonTarget = new AnimationTarget(entityId, AnimationTargetType.HeldItemTp);
+        mFirstPersonTarget = new AnimationTarget(entityId, AnimationTargetType.HeldItemFp);
+
         Guid? tpRun = (mThirdPersonSequence != null) ? animationManager.Run(mThirdPersonTarget, mThirdPersonSequence.Value) : null;
         Guid? fpRun = (mFirstPersonSequence != null) ? animationManager.Run(mFirstPersonTarget, mFirstPersonSequence.Value) : null;
 

@@ -11,11 +11,7 @@ internal sealed class StateManager : IStateManager
     private const string cStateAttributeNameClient = "FSMlib.state.client";
     private const string cStateAttributeNameServer = "FSMlib.state.server";
     private const string cSyncAttributeName = "FSMlib.sync";
-#if DEBUG
-    private TimeSpan mSynchronizationDelay = TimeSpan.FromMilliseconds(90); // 3+ game ticks (+1 from HoldButtonManager delay)
-#else
     private readonly TimeSpan mSynchronizationDelay = TimeSpan.FromMilliseconds(90);
-#endif
     private readonly string mInitialState;
     private readonly ICoreAPI mApi;
     private readonly System.Func<string, IState> mDeserialize;
@@ -30,10 +26,6 @@ internal sealed class StateManager : IStateManager
         mDeserialize = (string value) => new State(value);
         mClientStateAttribute = $"{cStateAttributeNameClient}.{id}";
         mServerStateAttribute = $"{cStateAttributeNameServer}.{id}";
-
-#if DEBUG
-        DebugWindow.IntSlider("fsmlib", "tweaks", "state sync delay", 0, 1000, () => (int)mSynchronizationDelay.TotalMilliseconds, value => mSynchronizationDelay = TimeSpan.FromMilliseconds(value));
-#endif
     }
     public IState DeserializeState(string state) => mDeserialize(state);
     public IState Get(ItemSlot slot) => ReadStateFrom(slot);

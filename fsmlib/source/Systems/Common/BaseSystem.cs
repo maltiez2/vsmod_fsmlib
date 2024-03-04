@@ -14,7 +14,7 @@ public abstract class BaseSystem : FactoryProduct, ISystem
     {
     }
 
-    protected void LogActions(string action, params string[] actions) => Logger.Error(mApi, this, $"[system: {mCode}] Wrong action '{action}'. Available actions: {Utils.PrintList(actions)}");
+    protected void LogActions(string action, params string[] actions) => Logger.Error(mApi, this, $"(system: {mCode}) Wrong action '{action}'. Available actions: {Utils.PrintList(actions)}");
 
     public virtual string[]? GetDescription(ItemSlot slot, IWorldAccessor world)
     {

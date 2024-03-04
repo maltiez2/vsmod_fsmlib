@@ -1,7 +1,5 @@
 ﻿using AnimationManagerLib;
 using AnimationManagerLib.API;
-using System;
-using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
@@ -141,7 +139,6 @@ internal class ProceduralEntityAnimationData
 {
     public List<AnimationRequest> RequestsTp { get; set; } = new();
     public List<AnimationRequest> RequestsFp { get; set; } = new();
-    public List<AnimationRequest> RequestsIfp { get; set; } = new();
 
     public ProceduralEntityAnimationData(IAnimationManagerSystem animationManager, Action<string> logger, JsonObject[] animationsDefinitions, Category category, string animation)
     {
@@ -155,12 +152,13 @@ internal class ProceduralEntityAnimationData
             }
 
             string codeTp = animationCode;
-            string codeFp = $"{animationCode}-fp";
-            string codeIfp = $"{animationCode}-ifp";
+            string codeFp = animationCode;
+
+            bool separateFp = requestDefinition["separateFp"].AsBool(false);
+            if (separateFp) codeFp = $"{animationCode}-fp";
 
             ConstructRequest(codeTp, RequestsTp, requestDefinition, animationManager, logger, category);
             ConstructRequest(codeFp, RequestsFp, requestDefinition, animationManager, logger, category);
-            ConstructRequest(codeIfp, RequestsIfp, requestDefinition, animationManager, logger, category);
         }
     }
 
@@ -181,13 +179,12 @@ internal class ProceduralEntityAnimationData
 
     public ProceduralEntityAnimationId? Start(IAnimationManagerSystem animationManager, long entityId, Action<string> logger)
     {
-        System.Guid tpRun;
-        System.Guid fpRun;
-        System.Guid ifpRun;
+        Guid tpRun;
+        Guid fpRun;
 
         try
         {
-            tpRun = animationManager.Run(AnimationTarget.Entity(entityId, AnimationTargetType.EntityThirdPerson), RequestsTp.ToArray());
+            tpRun = animationManager.Run(new(entityId, AnimationTargetType.EntityThirdPerson), RequestsTp.ToArray());
         }
         catch
         {
@@ -196,51 +193,36 @@ internal class ProceduralEntityAnimationData
 
         try
         {
-            fpRun = animationManager.Run(AnimationTarget.Entity(entityId, AnimationTargetType.EntityFirstPerson), RequestsFp.ToArray());
+            fpRun = animationManager.Run(new(entityId, AnimationTargetType.EntityFirstPerson), RequestsFp.ToArray());
         }
         catch
         {
-            fpRun = animationManager.Run(AnimationTarget.Entity(entityId, AnimationTargetType.EntityFirstPerson), RequestsTp.ToArray());
+            fpRun = animationManager.Run(new(entityId, AnimationTargetType.EntityFirstPerson), RequestsTp.ToArray());
             logger($"Error on running fp animation, using tp version instead.");
             RequestsFp = RequestsTp;
         }
 
-        try
-        {
-            ifpRun = animationManager.Run(AnimationTarget.Entity(entityId, AnimationTargetType.EntityImmersiveFirstPerson), RequestsIfp.ToArray());
-        }
-        catch
-        {
-            ifpRun = animationManager.Run(AnimationTarget.Entity(entityId, AnimationTargetType.EntityImmersiveFirstPerson), RequestsTp.ToArray());
-            logger($"Error on running ifp animation, using tp version instead");
-            RequestsIfp = RequestsTp;
-        }
-
         return new(
             tpRun,
-            fpRun,
-            ifpRun
+            fpRun
         );
     }
 }
 
 internal readonly struct ProceduralEntityAnimationId
 {
-    public System.Guid IdTp { get; }
-    public System.Guid IdFp { get; }
-    public System.Guid IdIfp { get; }
+    public Guid IdTp { get; }
+    public Guid IdFp { get; }
 
-    public ProceduralEntityAnimationId(System.Guid idTp, System.Guid idFp, System.Guid idIfp)
+    public ProceduralEntityAnimationId(Guid idTp, Guid idFp)
     {
         IdTp = idTp;
         IdFp = idFp;
-        IdIfp = idIfp;
     }
 
     public readonly void Stop(IAnimationManagerSystem animationManager)
     {
         animationManager.Stop(IdTp);
         animationManager.Stop(IdFp);
-        animationManager.Stop(IdIfp);
     }
 }

@@ -26,7 +26,7 @@ internal sealed class ImGuiDebugWindow : IDisposable
     {
         mApi = api;
 #if DEBUG        
-        api.ModLoader.GetModSystem<VSImGuiModSystem>().SetUpImGuiWindows += Draw;
+        //api.ModLoader.GetModSystem<ImGuiModSystem>().Draw += Draw;
         InputManagerDebugWindow.Init();
         OperationsDebugWindow.Init();
         SystemsDebugWindow.Init();

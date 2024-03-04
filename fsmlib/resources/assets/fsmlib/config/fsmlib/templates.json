@@ -1,0 +1,27 @@
+{
+  "instant": {
+    "parameters": {
+      "/inputs": "inputs",
+      "/systems": "systems"
+    },
+    "value": {
+      "class": "Instant",
+      "inputs": [],
+      "states": {"initial": "initial", "final": "initial"},
+      "systems": []
+    }
+  },
+  "delayed": {
+    "parameters": {
+      "/inputs/initial/-" : "inputs",
+      "/systems/initial/-": "systems"
+    },
+    "value": {
+      "class": "Delayed",
+      "timeout": 350,
+      "states": {"initial": "initial", "timeout": "initial", "transitional": "initial"},
+      "inputs": {"initial": []},
+      "systems": {"initial": []}
+    }
+  }
+}

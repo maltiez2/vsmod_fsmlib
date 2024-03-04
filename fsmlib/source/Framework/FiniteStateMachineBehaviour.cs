@@ -109,7 +109,7 @@ public class FiniteStateMachineBehaviour : CollectibleBehavior, IToolModeEventPr
         mProperties = null;
     }
 
-    public bool ParseDefinition(
+    protected virtual bool ParseDefinition(
         ICoreAPI api,
         JsonObject behaviourAttributes,
         CollectibleObject collectible,
@@ -174,7 +174,7 @@ public class FiniteStateMachineBehaviour : CollectibleBehavior, IToolModeEventPr
         return true;
     }
 
-    private void AddObject<TObjectInterface>(
+    protected void AddObject<TObjectInterface>(
         ICoreAPI api,
         string objectType,
         string objectCode,
@@ -194,7 +194,7 @@ public class FiniteStateMachineBehaviour : CollectibleBehavior, IToolModeEventPr
         if (objectInstance != null) container.Add(objectCode, objectInstance);
     }
 
-    private void RegisterInputs(ICoreAPI api, Dictionary<string, IOperation> operations, Dictionary<string, IInput> inputs)
+    protected void RegisterInputs(ICoreAPI api, Dictionary<string, IOperation> operations, Dictionary<string, IInput> inputs)
     {
         IInputManager? inputManager = api.ModLoader.GetModSystem<FiniteStateMachineSystem>().GetInputManager();
 
@@ -229,7 +229,7 @@ public class FiniteStateMachineBehaviour : CollectibleBehavior, IToolModeEventPr
         }
         Logger.Verbose(api, this, $"Inputs registered for '{collObj.Code}': {registeredCount}");
     }
-    private void SetSystemsForGui(Dictionary<string, ISystem> systems)
+    protected void SetSystemsForGui(Dictionary<string, ISystem> systems)
     {
         foreach ((_, ISystem system) in systems)
         {

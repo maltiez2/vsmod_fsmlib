@@ -4,6 +4,7 @@ using MaltiezFSM.Framework;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.Util;
 
@@ -122,7 +123,7 @@ public class ItemAnimation : BaseSystem // Based on code from TeacupAngel (https
                 string? codeToStop = parameters["animation"].AsString("");
                 if (!CheckAnimationCode(codeToStop)) return true;
                 RemoveActiveAnimation(slot, codeToStop);
-                if (mClientSide) animationBehavior.StopAnimation(mAnimations[codeToStop].Code, true);
+                if (mClientSide) animationBehavior.StopAnimation(mAnimations[codeToStop].Code, player.Entity, true);
                 break;
             case "clear":
                 animationBehavior.ClearAttachments(player.Entity.EntityId);
@@ -165,22 +166,22 @@ public class ItemAnimation : BaseSystem // Based on code from TeacupAngel (https
             behavior.SetAttachment(player.Entity.EntityId, attachment, stacks.First().Itemstack, Utils.ToTransformFrom(mAttachmentsTransforms[code][attachment]) ?? new());
         }
 
-        behavior.StartAnimation(animation);
+        behavior.StartAnimation(animation, player.Entity);
     }
-    private void StopAllAnimations(AnimatableAttachable behavior)
+    private void StopAllAnimations(AnimatableAttachable behavior, Entity entity)
     {
         if (!mClientSide) return;
 
         foreach ((string code, _) in mAnimations)
         {
-            behavior.StopAnimation(mAnimations[code].Code, true);
+            behavior.StopAnimation(mAnimations[code].Code, entity, true);
         }
     }
     private void RestoreAnimations(ItemSlot slot, IPlayer player, AnimatableAttachable behavior)
     {
         HashSet<string> codes = GetActiveAnimations(slot);
 
-        StopAllAnimations(behavior);
+        StopAllAnimations(behavior, player.Entity);
 
         foreach (string code in codes)
         {

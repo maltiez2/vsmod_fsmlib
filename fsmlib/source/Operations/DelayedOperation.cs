@@ -1,8 +1,5 @@
 ﻿using MaltiezFSM.API;
 using MaltiezFSM.Framework;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using static MaltiezFSM.API.IOperation;
@@ -181,11 +178,11 @@ public class Delayed : BaseOperation
 
         Process(slot, player, transitionResult.SystemsRequests);
 
-        Timeout timeout = transitionResult.Outcome switch
+        IOperation.Timeout timeout = transitionResult.Outcome switch
         {
-            Outcome.Started => Timeout.Start,
-            Outcome.Finished => mTransitionalStates.Contains(transitionResult.State) ? Timeout.Stop : Timeout.Ignore,
-            _ => Timeout.Ignore,
+            Outcome.Started => IOperation.Timeout.Start,
+            Outcome.Finished => mTransitionalStates.Contains(transitionResult.State) ? IOperation.Timeout.Stop : IOperation.Timeout.Ignore,
+            _ => IOperation.Timeout.Ignore,
         };
 
         return new(transitionResult.State, transitionResult.Outcome, timeout, GetTimeout(player, state, input));
