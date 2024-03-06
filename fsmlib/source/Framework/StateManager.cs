@@ -1,56 +1,54 @@
 ﻿using MaltiezFSM.API;
-using System;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
-using VSImGui;
 
 namespace MaltiezFSM.Framework;
 
 internal sealed class StateManager : IStateManager
 {
-    private const string cStateAttributeNameClient = "FSMlib.state.client";
-    private const string cStateAttributeNameServer = "FSMlib.state.server";
-    private const string cSyncAttributeName = "FSMlib.sync";
-    private readonly TimeSpan mSynchronizationDelay = TimeSpan.FromMilliseconds(90);
-    private readonly string mInitialState;
-    private readonly ICoreAPI mApi;
-    private readonly System.Func<string, IState> mDeserialize;
-
-    private readonly string mClientStateAttribute;
-    private readonly string mServerStateAttribute;
-
     public StateManager(ICoreAPI api, JsonObject behaviourAttributes, int id)
     {
-        mApi = api;
-        mInitialState = behaviourAttributes["initialState"].AsString();
-        mDeserialize = (string value) => new State(value);
-        mClientStateAttribute = $"{cStateAttributeNameClient}.{id}";
-        mServerStateAttribute = $"{cStateAttributeNameServer}.{id}";
+        _api = api;
+        _initialState = behaviourAttributes["initialState"].AsString();
+        _deserialize = (string value) => new State(value);
+        _clientStateAttribute = $"{_stateAttributeNameClient}.{id}";
+        _serverStateAttribute = $"{_stateAttributeNameServer}.{id}";
     }
-    public IState DeserializeState(string state) => mDeserialize(state);
+    public IState DeserializeState(string state) => _deserialize(state);
     public IState Get(ItemSlot slot) => ReadStateFrom(slot);
     public void Set(ItemSlot slot, IState state)
     {
         if (state is not State supportedState)
         {
-            Logger.Error(mApi, this, $"Unsupported state class was passed: {state}");
+            Logger.Error(_api, this, $"Unsupported state class was passed: {state}");
             return;
         }
         WriteStateTo(slot, supportedState);
     }
-    public void Reset(ItemSlot slot) => WriteStateTo(slot, mDeserialize(mInitialState));
+    public void Reset(ItemSlot slot) => WriteStateTo(slot, _deserialize(_initialState));
+
+
+    private const string _stateAttributeNameClient = "FSMlib.state.client";
+    private const string _stateAttributeNameServer = "FSMlib.state.server";
+    private const string _syncAttributeName = "FSMlib.sync";
+    private readonly TimeSpan _synchronizationDelay = TimeSpan.FromMilliseconds(90);
+    private readonly string _initialState;
+    private readonly ICoreAPI _api;
+    private readonly System.Func<string, IState> _deserialize;
+    private readonly string _clientStateAttribute;
+    private readonly string _serverStateAttribute;
 
     private IState ReadStateFrom(ItemSlot slot)
     {
         if (slot.Itemstack == null)
         {
-            Logger.Error(mApi, this, $"ItemStack is null");
-            return mDeserialize(mInitialState);
+            Logger.Error(_api, this, $"ItemStack is null");
+            return _deserialize(_initialState);
         }
 
         IState serverState = ReadStateFromServer(slot.Itemstack);
 
-        if (mApi.Side == EnumAppSide.Server)
+        if (_api.Side == EnumAppSide.Server)
         {
             slot.MarkDirty();
             return serverState;
@@ -77,11 +75,11 @@ internal sealed class StateManager : IStateManager
     {
         if (slot.Itemstack == null)
         {
-            Logger.Debug(mApi, this, $"ItemStack is null");
+            Logger.Debug(_api, this, $"ItemStack is null");
             return;
         }
 
-        if (mApi.Side == EnumAppSide.Server)
+        if (_api.Side == EnumAppSide.Server)
         {
             WriteStateToServer(slot.Itemstack, state);
             slot.MarkDirty();
@@ -93,16 +91,16 @@ internal sealed class StateManager : IStateManager
     }
     private IState ReadStateFromClient(ItemStack stack)
     {
-        if (!stack.TempAttributes.HasAttribute(mClientStateAttribute))
+        if (!stack.TempAttributes.HasAttribute(_clientStateAttribute))
         {
             WriteStateToClient(stack, ReadStateFromServer(stack));
         }
 
-        return mDeserialize(stack.TempAttributes.GetAsString(mClientStateAttribute, mInitialState));
+        return _deserialize(stack.TempAttributes.GetAsString(_clientStateAttribute, _initialState));
     }
-    private void WriteStateToClient(ItemStack stack, IState state) => stack.TempAttributes.SetString(mClientStateAttribute, state.Serialize());
-    private IState ReadStateFromServer(ItemStack stack) => mDeserialize(stack.Attributes.GetAsString(mServerStateAttribute, mInitialState));
-    private void WriteStateToServer(ItemStack stack, IState state) => stack.Attributes.SetString(mServerStateAttribute, state.Serialize());
+    private void WriteStateToClient(ItemStack stack, IState state) => stack.TempAttributes.SetString(_clientStateAttribute, state.Serialize());
+    private IState ReadStateFromServer(ItemStack stack) => _deserialize(stack.Attributes.GetAsString(_serverStateAttribute, _initialState));
+    private void WriteStateToServer(ItemStack stack, IState state) => stack.Attributes.SetString(_serverStateAttribute, state.Serialize());
 
     private IState SynchronizeStates(ItemStack stack, IState serverState, IState clientState)
     {
@@ -112,7 +110,7 @@ internal sealed class StateManager : IStateManager
             return clientState;
         }
 
-        if (ReadTimestamp(stack) > mSynchronizationDelay)
+        if (ReadTimestamp(stack) > _synchronizationDelay)
         {
             RemoveTimeStamp(stack);
             WriteStateToClient(stack, serverState);
@@ -126,31 +124,31 @@ internal sealed class StateManager : IStateManager
         if (!CheckTimestamp(stack)) return;
         RemoveTimeStamp(stack);
     }
-    private static void RemoveTimeStamp(ItemStack stack) => stack.TempAttributes.RemoveAttribute(cSyncAttributeName);
-    private static bool CheckTimestamp(ItemStack stack) => stack.TempAttributes.HasAttribute(cSyncAttributeName);
-    private void WriteTimestamp(ItemStack stack) => stack.TempAttributes.SetLong(cSyncAttributeName, mApi.World.ElapsedMilliseconds);
-    private TimeSpan ReadTimestamp(ItemStack stack) => TimeSpan.FromMilliseconds(mApi.World.ElapsedMilliseconds - stack.TempAttributes.GetLong(cSyncAttributeName, 0));
+    private static void RemoveTimeStamp(ItemStack stack) => stack.TempAttributes.RemoveAttribute(_syncAttributeName);
+    private static bool CheckTimestamp(ItemStack stack) => stack.TempAttributes.HasAttribute(_syncAttributeName);
+    private void WriteTimestamp(ItemStack stack) => stack.TempAttributes.SetLong(_syncAttributeName, _api.World.ElapsedMilliseconds);
+    private TimeSpan ReadTimestamp(ItemStack stack) => TimeSpan.FromMilliseconds(_api.World.ElapsedMilliseconds - stack.TempAttributes.GetLong(_syncAttributeName, 0));
 }
 
 internal sealed class State : IState, IEquatable<State>
 {
-    private readonly string mState;
-    private readonly int mHash;
+    private readonly string _state;
+    private readonly int _hash;
 
     public State(string state)
     {
-        mState = state;
-        mHash = mState.GetHashCode();
+        _state = state;
+        _hash = _state.GetHashCode();
     }
-    public override string ToString() => mState;
-    public override bool Equals(object? obj) => (obj as State)?.mHash == mHash;
-    public bool Equals(IState? other) => other?.GetHashCode() == mHash;
-    public bool Equals(State? other) => other?.mHash == mHash;
+    public override string ToString() => _state;
+    public override bool Equals(object? obj) => (obj as State)?._hash == _hash;
+    public bool Equals(IState? other) => other?.GetHashCode() == _hash;
+    public bool Equals(State? other) => other?._hash == _hash;
     public override int GetHashCode()
     {
-        return mHash;
+        return _hash;
     }
-    public string Serialize() => mState;
+    public string Serialize() => _state;
     public static State Deserialize(string state) => new(state);
 
     public static bool operator ==(State first, State second) => first.Equals(second);

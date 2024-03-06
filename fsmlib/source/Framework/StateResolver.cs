@@ -1,4 +1,7 @@
-﻿using Vintagestory.API.Datastructures;
+﻿using Newtonsoft.Json;
+using System.Runtime.Serialization;
+using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.Util;
 
 namespace MaltiezFSM.Framework;
@@ -24,29 +27,15 @@ public interface IStateResolver
     /// <param name="startingStateWildcard">Transition starting state matcher</param>
     /// <param name="finishStateWildcard">Transition finish state matcher</param>
     /// <param name="transitions">Pairs of start-finish states for all valid transitions</param>
-    /// <returns>false if error occurred, error will be logged by resolver</returns>
+    /// <returns>false if error occurred</returns>
     bool ResolveTransitions(string startingStateWildcard, string finishStateWildcard, out Dictionary<string, string> transitions);
 }
 
+[JsonObject(MemberSerialization = MemberSerialization.OptIn)]
 internal sealed class StateResolver : IStateResolver
 {
-    public StateResolver(JsonObject states, Action<string> errorLogger)
-    {
-        _errorLogger = errorLogger;
-        
-        JsonObject[] statesElements = states.AsArray();
-        _stateDimension = statesElements.Length;
-        foreach (JsonObject stateElement in statesElements)
-        {
-            _stateElementsVariants.Add(new());
-            foreach (JsonObject element in statesElements)
-            {
-                _stateElementsVariants[^1].Add(element.AsString());
-            }
-        }
-        
-        ConstructStates();
-    }
+    [JsonProperty("states")]
+    public List<HashSet<string>> States { get; set; } = new();
 
     public IEnumerable<string> ResolveStates(string wildcard)
     {
@@ -96,20 +85,25 @@ internal sealed class StateResolver : IStateResolver
         return true;
     }
 
-    private readonly List<HashSet<string>> _stateElementsVariants = new();
     private readonly HashSet<string> _states = new();
-    private readonly Action<string> _errorLogger; // @TODO log errors
-    private readonly int _stateDimension;
+    private int _stateDimension;
 
+    [OnDeserialized]
+    private void Initialize(StreamingContext context)
+    {
+        _stateDimension = States.Count;
+        ConstructStates();
+    }
+    
     private void ConstructStates(string state = "", int elementIndex = 0)
     {
-        if (_stateElementsVariants.Count <= elementIndex)
+        if (_stateDimension <= elementIndex)
         {
             _states.Add(state);
             return;
         }
 
-        foreach (string elementValue in _stateElementsVariants[elementIndex])
+        foreach (string elementValue in States[elementIndex])
         {
             ConstructStates(state + "-" + elementValue, elementIndex + 1);
         }
