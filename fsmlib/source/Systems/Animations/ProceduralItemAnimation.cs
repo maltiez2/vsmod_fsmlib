@@ -145,14 +145,12 @@ internal class ProceduralItemAnimationData
     private AnimationSequence? mFirstPersonSequence;
     private AnimationTarget mThirdPersonTarget;
     private AnimationTarget mFirstPersonTarget;
-    private bool mBothShapes;
 
     public ProceduralItemAnimationData(AnimatableProcedural behavior, IAnimationManagerSystem animationManager, Action<string> logger, JsonObject[] animationsDefinitions, Category category, string sequenceCode, System.Func<string?, string?> constructCode)
     {
         List<AnimationRequest> tpRequests = new();
         List<AnimationRequest> fpRequests = new();
 
-        bool bothShapes = behavior.FirstPersonShape != null && behavior.ThirdPersonShape != null;
         Shape? fpShape = behavior.FirstPersonShape;
         Shape? tpShape = behavior.ThirdPersonShape;
 
@@ -188,8 +186,6 @@ internal class ProceduralItemAnimationData
 
         if (tpRequests.Count > 0) mThirdPersonSequence = new(tpRequests.ToArray());
         if (fpRequests.Count > 0) mFirstPersonSequence = new(fpRequests.ToArray());
-
-        mBothShapes = bothShapes;
     }
 
     private static void ConstructRequest(Shape shape, string animationName, string animationCode, List<AnimationRequest> requests, JsonObject requestDefinition, IAnimationManagerSystem animationManager, Action<string> logger, Category category)
