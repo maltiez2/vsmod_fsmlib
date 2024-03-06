@@ -1,10 +1,5 @@
-﻿using MaltiezFSM.Framework;
-using System;
-using System.Collections.Generic;
-using Vintagestory.API.Common;
+﻿using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
-
-
 
 namespace MaltiezFSM.API;
 
@@ -45,7 +40,6 @@ public interface IOperation : IFactoryProduct, IDisposable
     }
 
     Outcome Verify(ItemSlot slot, IPlayer player, IState state, IInput input);
-
     Result Perform(ItemSlot slot, IPlayer player, IState state, IInput input);
 
     struct Transition
