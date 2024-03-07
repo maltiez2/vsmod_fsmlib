@@ -4,7 +4,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.Util;
 
-namespace MaltiezFSM.Framework;
+namespace MaltiezFSM.NewFramework;
 
 /// <summary>
 /// Manages vector states consistency. Resolves states by wildcards matchers.<br/>
