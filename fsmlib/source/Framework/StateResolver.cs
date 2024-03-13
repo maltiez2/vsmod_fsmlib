@@ -62,6 +62,12 @@ internal sealed class StateResolver : IStateResolver
         return true;
     }
     
+    public void Initialize()
+    {
+        _stateDimension = States.Count;
+        ConstructStates();
+    }
+
     public static bool MergeTransitions(out Dictionary<string, string> merged, params Dictionary<string, string>[] transitions)
     {
         merged = new();

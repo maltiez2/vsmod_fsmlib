@@ -14,6 +14,14 @@ internal sealed class StateManager : IStateManager
         _clientStateAttribute = $"{_stateAttributeNameClient}.{id}";
         _serverStateAttribute = $"{_stateAttributeNameServer}.{id}";
     }
+    public StateManager(ICoreAPI api, string initialState, int id)
+    {
+        _api = api;
+        _initialState = initialState;
+        _deserialize = (string value) => new State(value);
+        _clientStateAttribute = $"{_stateAttributeNameClient}.{id}";
+        _serverStateAttribute = $"{_stateAttributeNameServer}.{id}";
+    }
     public IState DeserializeState(string state) => _deserialize(state);
     public IState Get(ItemSlot slot) => ReadStateFrom(slot);
     public void Set(ItemSlot slot, IState state)
