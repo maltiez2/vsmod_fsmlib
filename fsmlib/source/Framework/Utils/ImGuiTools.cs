@@ -1,15 +1,11 @@
-﻿using MaltiezFSM.API;
-using System;
+﻿using ImGuiNET;
+using MaltiezFSM.API;
+using System.Diagnostics;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using VSImGui;
-using ImGuiNET;
-using System.Linq;
-using System.Diagnostics;
 using Vintagestory.API.Datastructures;
-using static MaltiezFSM.API.IOperation;
-using Vintagestory.Client;
-using Vintagestory.Server;
+using VSImGui;
+using VSImGui.API;
 
 namespace MaltiezFSM.Framework;
 
@@ -26,7 +22,7 @@ internal sealed class ImGuiDebugWindow : IDisposable
     {
         mApi = api;
 #if DEBUG        
-        //api.ModLoader.GetModSystem<ImGuiModSystem>().Draw += Draw;
+        api.ModLoader.GetModSystem<ImGuiModSystem>().Draw += Draw;
         InputManagerDebugWindow.Init();
         OperationsDebugWindow.Init();
         SystemsDebugWindow.Init();
@@ -46,7 +42,7 @@ internal sealed class ImGuiDebugWindow : IDisposable
         }
     }
 
-    private void Draw()
+    private CallbackGUIStatus Draw(float dt)
     {
         ImGui.Begin("FSM lib - debug window");
 
@@ -74,6 +70,8 @@ internal sealed class ImGuiDebugWindow : IDisposable
         DrawWindows?.Invoke();
 
         ImGui.End();
+
+        return CallbackGUIStatus.DontGrabMouse;
 #endif
     }
 
@@ -353,7 +351,7 @@ internal sealed class OperationsDebugWindowImpl : IDisposable
             {
                 // just move on
             }
-            
+
             ImGui.EndChild();
         }
         catch

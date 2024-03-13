@@ -102,8 +102,8 @@ public class ParticleEffect
         Velocity = new Vec3f(velocity[0].AsFloat(), velocity[1].AsFloat(), velocity[2].AsFloat());
 
 #if DEBUG
-        DebugWindow.Float3Drag($"fsmlib", "particleEffects", $"{Code} - Position", () => Position, value => Position.Set(value.Array));
-        DebugWindow.Float3Drag($"fsmlib", "particleEffects", $"{Code} - Velocity", () => Velocity, value => Velocity.Set(value.Array));
+        //DebugWindow.Float3Drag($"fsmlib", "particleEffects", $"{Code} - Position", () => Position, value => Position.Set(value.Array));
+        //DebugWindow.Float3Drag($"fsmlib", "particleEffects", $"{Code} - Velocity", () => Velocity, value => Velocity.Set(value.Array));
 #endif
     }
 

@@ -38,11 +38,6 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
 
         mApi = api;
 
-        if (api is ICoreClientAPI clientApiForImGuiDebugWindow)
-        {
-            Framework.ImGuiDebugWindow.Init(clientApiForImGuiDebugWindow);
-        }
-
         Framework.FiniteStateMachineBehaviour.TotalInitializingTime = TimeSpan.Zero;
 
         Framework.Logger.Debug(api, this, "Stared initializing");
@@ -84,6 +79,11 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
     {
         mParticleEffectsManager = new(api);
         mSoundEffectsManager = new(api);
+        
+        if (api is ICoreClientAPI clientApiForImGuiDebugWindow)
+        {
+            Framework.ImGuiDebugWindow.Init(clientApiForImGuiDebugWindow);
+        }
     }
 
     private void RegisterInputInvokers(ICoreClientAPI api)

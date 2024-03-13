@@ -314,7 +314,8 @@ internal sealed class RandomizedSound : ISound
         {
             ImGui.Text("Asset:");
             ImGui.Indent();
-            mLocations[mSelectedLocation] = VSImGui.AssetLocationEditor.Edit($"Location##{id}", mLocations[mSelectedLocation], mDefaultLocation);
+            AssetLocation location = mLocations[mSelectedLocation];
+            VSImGui.AssetLocationEditor.Edit($"Location##{id}", ref location, mDefaultLocation);
             ImGui.Unindent();
         }
 #endif
