@@ -1,6 +1,5 @@
 ﻿using MaltiezFSM.API;
 using MaltiezFSM.Inputs;
-using System;
 using System.Reflection;
 using Vintagestory.API.Common;
 
@@ -15,13 +14,16 @@ public interface IFiniteStateMachine
     event Action<ItemSlot, IState>? StateChanged;
 
     bool SetState(ItemSlot slot, IState state);
+    bool SetState(ItemSlot slot, string state);
     IState GetState(ItemSlot slot);
     IState DeserializeState(string state);
     IEnumerable<IState> ResolverState(string wildcard);
 }
-public interface IFiniteStateMachineWithInit
+public interface IFiniteStateMachineAttributesBased : IFiniteStateMachine
 {
     bool Init(object owner, CollectibleObject collectible);
+    bool SetState(ItemSlot slot, int elementIndex, string value);
+    bool SetState(ItemSlot slot, params (int elementIndex, string value)[] elements);
 }
 
 public class FiniteStateMachineSimplified : IFiniteStateMachine
@@ -31,10 +33,7 @@ public class FiniteStateMachineSimplified : IFiniteStateMachine
 
     public event Action<ItemSlot, IState>? StateChanged;
 
-    public FiniteStateMachineSimplified(
-        IStateManager stateManager,
-        IStateResolver stateResolver
-    )
+    public FiniteStateMachineSimplified(IStateManager stateManager, IStateResolver stateResolver)
     {
         StateManager = stateManager;
         StateResolver = stateResolver;
@@ -70,6 +69,28 @@ public class FiniteStateMachineSimplified : IFiniteStateMachine
         StateChanged?.Invoke(slot, state);
         return true;
     }
+    public bool SetState(ItemSlot slot, string state)
+    {
+        if (!state.Contains('*'))
+        {
+            return SetState(slot, StateManager.DeserializeState(state));
+        }
+        
+        IState current = StateManager.Get(slot);
+        string[] currentSplitted = current.Serialize().Split('-');
+        string[] stateSplitted = state.Split('-');
+        List<string> newStateSplitted = new();
+        for (int index = 0; index < currentSplitted.Length; index++)
+        {
+            newStateSplitted.Add(stateSplitted[index] == "*" ? currentSplitted[index] : stateSplitted[index]);
+        }
+        string newStateSerialized = newStateSplitted.Aggregate((first, second) => $"{first}-{second}");
+        IState newState = StateManager.DeserializeState(newStateSerialized);
+        if (current ==  newState) return false;
+
+        StateManager.Set(slot, newState);
+        return true;
+    }
     public IState GetState(ItemSlot slot)
     {
         return StateManager.Get(slot);
@@ -87,30 +108,60 @@ public class FiniteStateMachineSimplified : IFiniteStateMachine
     protected readonly IStateResolver StateResolver;
 }
 
-public class FiniteStateMachineWithInit : FiniteStateMachineSimplified, IFiniteStateMachineWithInit
+public sealed class FiniteStateMachineAttributesBased : FiniteStateMachineSimplified, IFiniteStateMachineAttributesBased
 {
-    public FiniteStateMachineWithInit(ICoreAPI api, List<HashSet<string>> stateElements, string initialState) : base(GetStateManager(api, initialState), GetStateResolver(stateElements))
+    public FiniteStateMachineAttributesBased(ICoreAPI api, List<HashSet<string>> stateElements, string initialState, int id = 0) : base(GetStateManager(api, initialState, id, stateElements), GetStateResolver(stateElements))
     {
         _api = api;
+        StateDimension = stateElements.Count;
     }
+
+    public int StateDimension { get; }
 
     public bool Init(object owner, CollectibleObject collectible)
     {
-        Dictionary<string, IInput> inputs = CollectInputs(owner);
-        Dictionary<InputHandlerDelegate, InputHandlerAttribute> handlers = CollectHandlers(owner);
-
-        RegisterInputs(inputs, collectible);
-
-        foreach ((InputHandlerDelegate handler, InputHandlerAttribute attribute) in handlers)
+        try
         {
-            AddHandler(handler, attribute, inputs);
+            Dictionary<string, IInput> inputs = CollectInputs(owner);
+            Dictionary<InputHandlerDelegate, InputHandlerAttribute> handlers = CollectHandlers(owner);
+
+            RegisterInputs(inputs, collectible);
+
+            foreach ((InputHandlerDelegate handler, InputHandlerAttribute attribute) in handlers)
+            {
+                AddHandler(handler, attribute, inputs);
+            }
+        }
+        catch (Exception exception)
+        {
+            Logger.Error(_api, this, $"Error while initializing FSM for class '{Logger.GetCallerTypeName(owner)}':\n{exception.Message}");
+            return false;
         }
 
         return true;
     }
 
-    private ICoreAPI _api;
-    private Dictionary<string, IInput> CollectInputs(object owner)
+    public bool SetState(ItemSlot slot, int elementIndex, string value)
+    {
+        if (elementIndex >= StateDimension) throw new ArgumentException($"Tried to set state element with index '{elementIndex}' greater or equal to state dimension '{StateDimension}'.", nameof(elementIndex));
+        IState current = StateManager.Get(slot);
+        return SetState(slot, Substitute(current, elementIndex, value));
+    }
+    public bool SetState(ItemSlot slot, params (int elementIndex, string value)[] elements)
+    {
+        IState state = StateManager.Get(slot);
+        foreach ((int elementIndex, string value) in elements)
+        {
+            if (elementIndex >= StateDimension) throw new ArgumentException($"Tried to set value '{value}' to state element with index '{elementIndex}' greater or equal to state dimension '{StateDimension}'.");
+
+            state = Substitute(state, elementIndex, value);
+        }
+        return SetState(slot, state);
+    }
+
+    private readonly ICoreAPI _api;
+
+    private static Dictionary<string, IInput> CollectInputs(object owner)
     {
         IEnumerable<PropertyInfo> properties = owner.GetType().GetProperties().Where(property => property.GetCustomAttributes(typeof(InputAttribute), true).Any());
 
@@ -129,7 +180,7 @@ public class FiniteStateMachineWithInit : FiniteStateMachineSimplified, IFiniteS
 
         return inputs;
     }
-    private Dictionary<InputHandlerDelegate, InputHandlerAttribute> CollectHandlers(object owner)
+    private static Dictionary<InputHandlerDelegate, InputHandlerAttribute> CollectHandlers(object owner)
     {
         IEnumerable<MethodInfo> methods = owner.GetType().GetMethods().Where(method => method.GetCustomAttributes(typeof(InputHandlerAttribute), true).Any());
 
@@ -197,12 +248,30 @@ public class FiniteStateMachineWithInit : FiniteStateMachineSimplified, IFiniteS
         }
         return states;
     }
-
-
-    private static int _nextId = 0;
-    private static IStateManager GetStateManager(ICoreAPI api, string initialState)
+    private IState Substitute(IState state, int element, string value)
     {
-        StateManager manager = new(api, initialState, _nextId++);
+        return StateDimension switch
+        {
+            1 => StateManager.DeserializeState(value),
+            2 => VectorState2.Substitute(state as VectorState2, element, value),
+            3 => VectorState3.Substitute(state as VectorState3, element, value),
+            4 => VectorState4.Substitute(state as VectorState4, element, value),
+            _ => VectorState.Substitute(state as VectorState, element, value)
+        };
+    }
+
+    private static IStateManager GetStateManager(ICoreAPI api, string initialState, int id, List<HashSet<string>> stateElements)
+    {
+        System.Func<string, IState> deserializer = stateElements.Count switch
+        {
+            1 => State.Deserialize,
+            2 => VectorState2.Deserialize,
+            3 => VectorState3.Deserialize,
+            4 => VectorState4.Deserialize,
+            _ => VectorState.Deserialize
+        };
+
+        StateManager manager = new(api, initialState, id, deserializer);
         return manager;
     }
     private static IStateResolver GetStateResolver(List<HashSet<string>> stateElements)
@@ -235,7 +304,7 @@ public class InputHandlerAttribute : Attribute
     }
 }
 
-[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
+[AttributeUsage(AttributeTargets.Property)]
 public class InputAttribute : Attribute
 {
     public string Code { get; }
@@ -256,7 +325,7 @@ public class TestClass
     public BeforeSlotChanged Selected { get; set; }
 
 
-    public TestClass(IFiniteStateMachineWithInit fsm, CollectibleObject collectible)
+    public TestClass(IFiniteStateMachineAttributesBased fsm, CollectibleObject collectible)
     {
         _fsm = fsm;
         _fsm.Init(this, collectible);
@@ -274,5 +343,5 @@ public class TestClass
         return true;
     }
 
-    private IFiniteStateMachineWithInit _fsm;
+    private IFiniteStateMachineAttributesBased _fsm;
 }

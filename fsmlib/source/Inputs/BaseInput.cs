@@ -1,8 +1,5 @@
 ﻿using MaltiezFSM.API;
 using MaltiezFSM.Framework;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -41,9 +38,9 @@ public class BaseInput : FactoryProduct, IStandardInput
 
         mHandled = definition["handle"].AsBool(true);
         mSlotType = (SlotType)Enum.Parse(typeof(SlotType), definition["slot"].AsString("MainHand"));
-        
+
         ModifierType = (IKeyModifier.KeyModifierType)Enum.Parse(typeof(IKeyModifier.KeyModifierType), definition["modifierType"].AsString("Present"));
-        
+
         List<JsonObject> modifierKeys = ParseField(definition, "modifierKeys");
         if (modifierKeys.Count > 0)
         {
@@ -53,7 +50,7 @@ public class BaseInput : FactoryProduct, IStandardInput
         {
             ModifierKey = 0;
         }
-        
+
         mCheckModifiers = modifierKeys.Any();
 
         List<JsonObject> statuses = ParseField(definition, "statuses");

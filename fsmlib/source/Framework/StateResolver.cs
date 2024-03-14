@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using MaltiezFSM.API;
+using Newtonsoft.Json;
 using System.Runtime.Serialization;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -61,7 +62,7 @@ internal sealed class StateResolver : IStateResolver
 
         return true;
     }
-    
+
     public void Initialize()
     {
         _stateDimension = States.Count;

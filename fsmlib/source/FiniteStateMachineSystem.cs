@@ -1,5 +1,6 @@
 ﻿using HarmonyLib;
 using MaltiezFSM.API;
+using MaltiezFSM.Framework;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -319,6 +320,10 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         Framework.ImGuiDebugWindow.DisposeInstance();
         Unpatch();
         if (mApi?.Side == EnumAppSide.Server) UnpatchServer();
+        
+        VectorState2._statesCache.Clear();
+        VectorState3._statesCache.Clear();
+        VectorState4._statesCache.Clear();
 
         base.Dispose();
     }
