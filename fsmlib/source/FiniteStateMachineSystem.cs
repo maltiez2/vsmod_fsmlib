@@ -1,10 +1,6 @@
 ﻿using HarmonyLib;
 using MaltiezFSM.API;
-using MaltiezFSM.Framework;
 using Newtonsoft.Json.Linq;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -26,6 +22,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
     private ICustomInputInvoker? mCustomInputInvoker;
     private IAttributeReferencesManager? mAttributeReferencesManager;
     private IActionInputInvoker? mActionInvoker;
+    private Framework.UniqueIdGeneratorForFactory? mInputsIdGenerator;
     private Framework.ToolModeInputInvoker? mToolModeInvoker;
     private Systems.ParticleEffectsManager? mParticleEffectsManager;
     private Systems.SoundEffectsManager? mSoundEffectsManager;
@@ -56,9 +53,10 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
 
         mAttributeReferencesManager = new Framework.AttributeReferencesManager(api);
 
+        mInputsIdGenerator = new Framework.UniqueIdGeneratorForFactory(3);
         mOperationFactory = new Framework.Factory<IOperation>(api, new Framework.UniqueIdGeneratorForFactory(1));
         mSystemFactory = new Framework.Factory<ISystem>(api, new Framework.UniqueIdGeneratorForFactory(2));
-        mInputFactory = new Framework.Factory<IInput>(api, new Framework.UniqueIdGeneratorForFactory(3));
+        mInputFactory = new Framework.Factory<IInput>(api, mInputsIdGenerator);
         mInputManager = new Framework.InputManager(api);
 
         RegisterSystems();
@@ -80,7 +78,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
     {
         mParticleEffectsManager = new(api);
         mSoundEffectsManager = new(api);
-        
+
         if (api is ICoreClientAPI clientApiForImGuiDebugWindow)
         {
             Framework.ImGuiDebugWindow.Init(clientApiForImGuiDebugWindow);
@@ -320,16 +318,17 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         Framework.ImGuiDebugWindow.DisposeInstance();
         Unpatch();
         if (mApi?.Side == EnumAppSide.Server) UnpatchServer();
-        
-        VectorState2._statesCache.Clear();
-        VectorState3._statesCache.Clear();
-        VectorState4._statesCache.Clear();
+
+        Framework.VectorState2._statesCache.Clear();
+        Framework.VectorState3._statesCache.Clear();
+        Framework.VectorState4._statesCache.Clear();
 
         base.Dispose();
     }
 
     #region Registering in factories
     public ICustomInputInvoker? CustomInputInvoker => mCustomInputInvoker;
+    public int GenerateUniqueInputId() => mInputsIdGenerator?.GenerateInstanceId() ?? 0;
     public void RegisterOperation<TProductClass>(string name, ICoreAPI api, Mod mod) where TProductClass : FactoryProduct, IOperation
     {
         if (!CheckRegisterArguments<TProductClass>(api, mod, "operation")) return;
@@ -353,14 +352,14 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         where TInputInterface : IInput
     {
         if (!CheckRegisterArguments<TProductClass>(api, mod, "input invoker")) return;
-        
+
         bool invokerRegistered = mInputManager?.RegisterInvoker(invoker, typeof(TInputInterface)) ?? false;
         if (invokerRegistered)
         {
             Framework.Logger.Verbose(api, this, $"({Mod}) Registered input invoker: '{Framework.Utils.GetTypeName(invoker.GetType())}' for '{Framework.Utils.GetTypeName(typeof(TInputInterface))}' inputs.");
         }
-        
-        bool registered =  mInputFactory?.Register<TProductClass>($"{mod.Info.ModID}:{name}") ?? false;
+
+        bool registered = mInputFactory?.Register<TProductClass>($"{mod.Info.ModID}:{name}") ?? false;
         if (mInputFactory != null) LogRegistering<TProductClass, IInput>(registered, name, api, mod, "input", mInputFactory);
     }
 
@@ -368,7 +367,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
     private bool CheckRegisterArguments<TProductClass>(ICoreAPI api, Mod mod, string productType)
     {
         if (api == null) throw new ArgumentNullException(nameof(api), $"You should supply not null 'ICoreAPI' on registering objects in FSM lib");
-        
+
         if (mod == null || mod == Mod)
         {
             Framework.Logger.Error(api, this, $"Error on registering {productType}: you should pass your Mod class into this method.");
@@ -401,7 +400,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
     private void LogRegistering<TProductClass, TProductType>(bool registered, string name, ICoreAPI api, Mod mod, string productType, IFactory<TProductType> factory)
     {
         string productName = $"{mod.Info.ModID}:{name}";
-        
+
         if (registered)
         {
             Framework.Logger.Verbose(api, this, $"({Mod}) Registered {productType}: '{Framework.Utils.GetTypeName(typeof(TProductClass))}' as '{productName}'.");

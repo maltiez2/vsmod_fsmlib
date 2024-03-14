@@ -1,14 +1,22 @@
 ﻿using MaltiezFSM.API;
-using System;
-using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using static MaltiezFSM.API.IKeyInput;
 
-
-
 namespace MaltiezFSM.Inputs;
+
+public struct KeyboardKeyInputProperties
+{
+    public string? HotKey { get; set; } = null;
+    public string? Name { get; set; } = null;
+    public KeyEventType EventType { get; set; } = KeyEventType.KeyDown;
+    public KeyPressModifiers? Modifiers { get; set; } = null;
+
+    public KeyboardKeyInputProperties()
+    {
+    }
+}
 
 public sealed class KeyboardKey : BaseInput, IKeyInput
 {
@@ -37,6 +45,15 @@ public sealed class KeyboardKey : BaseInput, IKeyInput
             definition.KeyExists("ctrl") ? definition["ctrl"].AsBool(false) : null,
             definition.KeyExists("shift") ? definition["shift"].AsBool(false) : null
         );
+    }
+
+    public KeyboardKey(ICoreAPI api, string code, CollectibleObject collectible, GlKeys key, KeyboardKeyInputProperties? properties = null, BaseInputProperties? baseProperties = null) : base(api, code, collectible, baseProperties)
+    {
+        HotKey = properties?.HotKey ?? "";
+        Name = properties?.Name ?? code;
+        Key = key;
+        EventType = properties?.EventType ?? KeyEventType.KeyDown;
+        Modifiers = properties?.Modifiers ?? new(null, null, null);
     }
 
     public bool CheckIfShouldBeHandled(KeyEvent keyEvent, KeyEventType eventType)

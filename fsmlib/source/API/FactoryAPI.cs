@@ -20,6 +20,7 @@ public interface IFactory<TProductInterface>
 
 public interface IRegistry
 {
+    int GenerateUniqueInputId();
     void RegisterOperation<TProductClass>(string name, ICoreAPI api, Mod mod) where TProductClass : FactoryProduct, IOperation;
     void RegisterSystem<TProductClass>(string name, ICoreAPI api, Mod mod) where TProductClass : FactoryProduct, ISystem;
     void RegisterInput<TProductClass>(string name, ICoreAPI api, Mod mod) where TProductClass : FactoryProduct, IStandardInput;

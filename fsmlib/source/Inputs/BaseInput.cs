@@ -7,6 +7,26 @@ using Vintagestory.API.Datastructures;
 
 namespace MaltiezFSM.Inputs;
 
+public struct BaseInputProperties
+{
+    public bool Handle { get; set; } = true;
+    public SlotType Slot { get; set; } = SlotType.MainHand;
+    public EnumModifierKey KeyModifiers { get; set; } = 0;
+    public IStatusModifier.StatusType[]? Statuses { get; set; } = null;
+    public string[]? Activities { get; set; } = null;
+
+    public IKeyModifier.KeyModifierType KeyModifiersCheckType { get; set; } = IKeyModifier.KeyModifierType.Present;
+    public IStandardInput.MultipleCheckType StatusesCheckType { get; set; } = IStandardInput.MultipleCheckType.AtLeastOne;
+    public IStandardInput.MultipleCheckType ActivitiesCheckType { get; set; } = IStandardInput.MultipleCheckType.AtLeastOne;
+
+    public BaseInputProperties()
+    {
+
+    }
+
+    public static BaseInputProperties Default() => new();
+}
+
 public class BaseInput : FactoryProduct, IStandardInput
 {
     public int Index { get; set; }
@@ -64,6 +84,28 @@ public class BaseInput : FactoryProduct, IStandardInput
         StatusCheckType = (IStandardInput.MultipleCheckType)Enum.Parse(typeof(IStandardInput.MultipleCheckType), definition["statusType"].AsString("AtLeastOne"));
         ActivityCheckType = (IStandardInput.MultipleCheckType)Enum.Parse(typeof(IStandardInput.MultipleCheckType), definition["activityType"].AsString("AtLeastOne"));
     }
+    public BaseInput(
+        ICoreAPI api,
+        string code,
+        CollectibleObject collectible,
+        BaseInputProperties? properties = null
+        ) : base(GetId(api), code, null, collectible, api)
+    {
+        BaseInputProperties propertiesOrDefaults = properties ?? BaseInputProperties.Default();
+
+        Collectible = collectible;
+        mStatusInvoker = api.ModLoader.GetModSystem<FiniteStateMachineSystem>(true)?.GetActionInvoker();
+        mHandled = propertiesOrDefaults.Handle;
+        mSlotType = propertiesOrDefaults.Slot;
+        ModifierType = propertiesOrDefaults.KeyModifiersCheckType;
+        ModifierKey = propertiesOrDefaults.KeyModifiers;
+        StatusCheckType = propertiesOrDefaults.StatusesCheckType;
+        Statuses = propertiesOrDefaults.Statuses ?? Array.Empty<IStatusModifier.StatusType>();
+        mCheckStatuses = Statuses.Any();
+        ActivityCheckType = propertiesOrDefaults.ActivitiesCheckType;
+        Activities = propertiesOrDefaults.Activities ?? Array.Empty<string>();
+        mCheckActivities = Activities.Any();
+    }
 
     public bool CheckModifiers(IPlayer? player, ICoreClientAPI? api)
     {
@@ -72,4 +114,6 @@ public class BaseInput : FactoryProduct, IStandardInput
         if (mCheckActivities && player != null && !InputsUtils.TestActivities(this, player)) return false;
         return true;
     }
+
+    private static int GetId(ICoreAPI api) => api.ModLoader.GetModSystem<FiniteStateMachineSystem>(true).GenerateUniqueInputId();
 }

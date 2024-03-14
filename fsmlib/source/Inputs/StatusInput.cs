@@ -13,6 +13,11 @@ public class StatusInput : BaseInput, IStatusInput
         Status = (IStatusInput.StatusType)Enum.Parse(typeof(IStatusInput.StatusType), definition["status"].AsString());
         InvertStatus = definition["invert"].AsBool(false);
     }
+    public StatusInput(ICoreAPI api, string code, CollectibleObject collectible, IStatusInput.StatusType status, bool invert = false, BaseInputProperties? baseProperties = null) : base(api, code, collectible, baseProperties)
+    {
+        Status = status;
+        InvertStatus = invert;
+    }
 
     public bool InvertStatus { get; private set; }
     public IStatusInput.StatusType Status { get; private set; }

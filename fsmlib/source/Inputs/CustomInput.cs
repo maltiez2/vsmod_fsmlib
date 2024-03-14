@@ -10,6 +10,10 @@ public class Custom : BaseInput, ICustomInput
     {
         Code = code;
     }
+    public Custom(ICoreAPI api, string code, CollectibleObject collectible, BaseInputProperties? baseProperties = null) : base(api, code, collectible, baseProperties)
+    {
+        Code = code;
+    }
 
     public string Code { get; private set; }
 

@@ -42,7 +42,7 @@ public class FactoryProduct : IFactoryProduct
     /// <param name="definition">parameters from JSON</param>
     /// <param name="collectible">collectible this object is associated with</param>
     /// <param name="api">just api</param>
-    public FactoryProduct(int id, string code, JsonObject definition, CollectibleObject collectible, ICoreAPI api)
+    public FactoryProduct(int id, string code, JsonObject? definition, CollectibleObject collectible, ICoreAPI api)
     {
         mId = id;
         mCode = code;

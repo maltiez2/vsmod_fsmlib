@@ -170,12 +170,14 @@ public sealed class FiniteStateMachineAttributesBased : FiniteStateMachineSimpli
         {
             if (property.GetCustomAttributes(typeof(InputAttribute), true)[0] is not InputAttribute attribute) continue;
 
+            string code = property.Name;
+
             if (property.GetValue(owner) is not IInput input)
             {
-                throw new InvalidOperationException($"Input with code '{attribute.Code}' specified via property should implement 'IInput' interface.");
+                throw new InvalidOperationException($"Input with code '{code}' specified via property should implement 'IInput' interface.");
             }
 
-            inputs.Add(attribute.Code, input);
+            inputs.Add(code, input);
         }
 
         return inputs;
@@ -285,7 +287,6 @@ public sealed class FiniteStateMachineAttributesBased : FiniteStateMachineSimpli
     }
 }
 
-
 [AttributeUsage(AttributeTargets.Method)]
 public class InputHandlerAttribute : Attribute
 {
@@ -307,41 +308,105 @@ public class InputHandlerAttribute : Attribute
 [AttributeUsage(AttributeTargets.Property)]
 public class InputAttribute : Attribute
 {
-    public string Code { get; }
-
-    public InputAttribute(string code)
+    public InputAttribute()
     {
-        Code = code;
     }
 }
 
-public class TestClass
+
+
+public class BaseItemInteractions
 {
-    [Input("RMB")]
-    public MouseKey Interact { get; set; }
-    [Input("LMB")]
-    public MouseKey Attack { get; set; }
-    [Input("SlotSelected")]
-    public BeforeSlotChanged Selected { get; set; }
-
-
-    public TestClass(IFiniteStateMachineAttributesBased fsm, CollectibleObject collectible)
+    public BaseItemInteractions(ICoreAPI api, CollectibleObject collectible)
     {
-        _fsm = fsm;
-        _fsm.Init(this, collectible);
+        StartAttack = new(api, "attack", collectible, EnumMouseButton.Left, new() { EventType = IMouseInput.MouseEventType.MouseDown });
+        CancelAttack = new(api, "attack", collectible, EnumMouseButton.Left, new() { EventType = IMouseInput.MouseEventType.MouseUp });
+        StartInteract = new(api, "attack", collectible, EnumMouseButton.Right, new() { EventType = IMouseInput.MouseEventType.MouseDown });
+        CancelInteract = new(api, "attack", collectible, EnumMouseButton.Right, new() { EventType = IMouseInput.MouseEventType.MouseUp });
+        ItemDropped = new(api, "dropped", collectible, ISlotContentInput.SlotEventType.AllTaken);
+        SlotDeselected = new(api, "deselected", collectible);
+
+        Fsm = new FiniteStateMachineAttributesBased(api, new() { new() { "idle", "interacting", "attacking" } }, "idle");
+        Fsm.Init(this, collectible);
     }
 
-    [InputHandler(state: "test-state-*", "RMB", "LMB")]
-    public bool Handler1(ItemSlot slot, IPlayer? player, IInput input, IState state)
+    protected IFiniteStateMachineAttributesBased Fsm;
+
+    [Input]
+    protected MouseKey StartAttack { get; set; }
+    [Input]
+    protected MouseKey CancelAttack { get; set; }
+    [Input]
+    protected MouseKey StartInteract { get; set; }
+    [Input]
+    protected MouseKey CancelInteract { get; set; }
+
+    [Input]
+    protected SlotContent ItemDropped { get; set; }
+    [Input]
+    protected BeforeSlotChanged SlotDeselected { get; set; }
+
+    [InputHandler(state: "idle", "Attack")]
+    protected bool OnAttack(ItemSlot slot, IPlayer? player, IInput input, IState state)
     {
+        if (OnAttackStart(slot, player))
+        {
+            Fsm.SetState(slot, "attacking");
+            return true;
+        }
+
+        return false;
+    }
+    protected virtual bool OnAttackStart(ItemSlot slot, IPlayer? player)
+    {
+        return false;
+    }
+
+    [InputHandler(state: "attacking", "CancelAttack")]
+    protected bool OnAttackCancel(ItemSlot slot, IPlayer? player, IInput input, IState state)
+    {
+        if (OnAttackCancel(slot, player))
+        {
+            Fsm.SetState(slot, "idle");
+            return false;
+        }
+
         return true;
     }
-
-    [InputHandler(state: "*", "SlotSelected")]
-    public bool Handler2(ItemSlot slot, IPlayer? player, IInput input, IState state)
+    protected virtual bool OnAttackCancel(ItemSlot slot, IPlayer? player)
     {
-        return true;
+        return false;
     }
 
-    private IFiniteStateMachineAttributesBased _fsm;
+    [InputHandler(state: "idle", "StartInteract")]
+    protected bool OnInteractStart(ItemSlot slot, IPlayer? player, IInput input, IState state)
+    {
+        if (OnInteractStart(slot, player))
+        {
+            Fsm.SetState(slot, "interacting");
+            return true;
+        }
+        
+        return false;
+    }
+    protected virtual bool OnInteractStart(ItemSlot slot, IPlayer? player)
+    {
+        return false;
+    }
+
+    [InputHandler(state: "interacting", "CancelInteract", "ItemDropped", "SlotDeselected")]
+    protected bool OnInteractCancel(ItemSlot slot, IPlayer? player, IInput input, IState state)
+    {
+        if (OnInteractCancel(slot, player))
+        {
+            Fsm.SetState(slot, "idle");
+            return false;
+        }
+
+        return true;
+    }
+    protected virtual bool OnInteractCancel(ItemSlot slot, IPlayer? player)
+    {
+        return false;
+    }
 }

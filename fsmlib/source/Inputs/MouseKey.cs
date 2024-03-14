@@ -1,14 +1,21 @@
 ﻿using MaltiezFSM.API;
-using System;
-using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using static MaltiezFSM.API.IMouseInput;
 
-
-
 namespace MaltiezFSM.Inputs;
+
+public struct MouseInputProperties
+{
+    public string? Name { get; set; } = null;
+    public MouseEventType EventType { get; set; } = MouseEventType.MouseDown;
+    public KeyPressModifiers? Modifiers { get; set; } = null;
+
+    public MouseInputProperties()
+    {
+    }
+}
 
 public sealed class MouseKey : BaseInput, IMouseInput
 {
@@ -34,6 +41,13 @@ public sealed class MouseKey : BaseInput, IMouseInput
             definition.KeyExists("ctrl") ? definition["ctrl"].AsBool(false) : null,
             definition.KeyExists("shift") ? definition["shift"].AsBool(false) : null
         );
+    }
+    public MouseKey(ICoreAPI api, string code, CollectibleObject collectible, EnumMouseButton key, MouseInputProperties? properties = null, BaseInputProperties? baseProperties = null) : base(api, code, collectible, baseProperties)
+    {
+        Name = properties?.Name ?? code;
+        Key = key;
+        EventType = properties?.EventType ?? MouseEventType.MouseDown;
+        Modifiers = properties?.Modifiers ?? new(null, null, null);
     }
 
     public bool CheckIfShouldBeHandled(MouseEvent mouseEvent, MouseEventType eventType)
