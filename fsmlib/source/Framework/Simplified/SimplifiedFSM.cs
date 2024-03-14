@@ -319,10 +319,10 @@ public class BaseItemInteractions
 {
     public BaseItemInteractions(ICoreAPI api, CollectibleObject collectible)
     {
-        StartAttack = new(api, "attack", collectible, EnumMouseButton.Left, new() { EventType = IMouseInput.MouseEventType.MouseDown });
-        CancelAttack = new(api, "attack", collectible, EnumMouseButton.Left, new() { EventType = IMouseInput.MouseEventType.MouseUp });
-        StartInteract = new(api, "attack", collectible, EnumMouseButton.Right, new() { EventType = IMouseInput.MouseEventType.MouseDown });
-        CancelInteract = new(api, "attack", collectible, EnumMouseButton.Right, new() { EventType = IMouseInput.MouseEventType.MouseUp });
+        StartAttack = new(api, "attackStart", collectible, EnumMouseButton.Left, new() { EventType = IMouseInput.MouseEventType.MouseDown });
+        CancelAttack = new(api, "attackCancel", collectible, EnumMouseButton.Left, new() { EventType = IMouseInput.MouseEventType.MouseUp });
+        StartInteract = new(api, "interactStart", collectible, EnumMouseButton.Right, new() { EventType = IMouseInput.MouseEventType.MouseDown });
+        CancelInteract = new(api, "interactCancel", collectible, EnumMouseButton.Right, new() { EventType = IMouseInput.MouseEventType.MouseUp });
         ItemDropped = new(api, "dropped", collectible, ISlotContentInput.SlotEventType.AllTaken);
         SlotDeselected = new(api, "deselected", collectible);
 
