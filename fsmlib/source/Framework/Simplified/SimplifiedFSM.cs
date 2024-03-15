@@ -1,30 +1,9 @@
 ﻿using MaltiezFSM.API;
-using MaltiezFSM.Inputs;
 using System.Reflection;
 using Vintagestory.API.Common;
+using Vintagestory.API.Util;
 
-namespace MaltiezFSM.Framework;
-
-public delegate bool InputHandlerDelegate(ItemSlot slot, IPlayer? player, IInput input, IState state);
-
-public interface IFiniteStateMachine
-{
-    Dictionary<IState, Dictionary<IInput, InputHandlerDelegate>> Handlers { get; set; }
-
-    event Action<ItemSlot, IState>? StateChanged;
-
-    bool SetState(ItemSlot slot, IState state);
-    bool SetState(ItemSlot slot, string state);
-    IState GetState(ItemSlot slot);
-    IState DeserializeState(string state);
-    IEnumerable<IState> ResolverState(string wildcard);
-}
-public interface IFiniteStateMachineAttributesBased : IFiniteStateMachine
-{
-    bool Init(object owner, CollectibleObject collectible);
-    bool SetState(ItemSlot slot, int elementIndex, string value);
-    bool SetState(ItemSlot slot, params (int elementIndex, string value)[] elements);
-}
+namespace MaltiezFSM.Framework.Simplified;
 
 public class FiniteStateMachineSimplified : IFiniteStateMachine
 {
@@ -75,7 +54,7 @@ public class FiniteStateMachineSimplified : IFiniteStateMachine
         {
             return SetState(slot, StateManager.DeserializeState(state));
         }
-        
+
         IState current = StateManager.Get(slot);
         string[] currentSplitted = current.Serialize().Split('-');
         string[] stateSplitted = state.Split('-');
@@ -86,7 +65,7 @@ public class FiniteStateMachineSimplified : IFiniteStateMachine
         }
         string newStateSerialized = newStateSplitted.Aggregate((first, second) => $"{first}-{second}");
         IState newState = StateManager.DeserializeState(newStateSerialized);
-        if (current ==  newState) return false;
+        if (current == newState) return false;
 
         StateManager.Set(slot, newState);
         return true;
@@ -158,6 +137,13 @@ public sealed class FiniteStateMachineAttributesBased : FiniteStateMachineSimpli
         }
         return SetState(slot, state);
     }
+    public bool CheckState(ItemSlot slot, int elementIndex, string wildcard)
+    {
+        if (elementIndex >= StateDimension) throw new ArgumentException($"Tried to set state element with index '{elementIndex}' greater or equal to state dimension '{StateDimension}'.", nameof(elementIndex));
+
+        return WildcardUtil.Match(wildcard, StateManager.Get(slot).Serialize().Split('-')[elementIndex]);
+    }
+
 
     private readonly ICoreAPI _api;
 
@@ -310,103 +296,5 @@ public class InputAttribute : Attribute
 {
     public InputAttribute()
     {
-    }
-}
-
-
-
-public class BaseItemInteractions
-{
-    public BaseItemInteractions(ICoreAPI api, CollectibleObject collectible)
-    {
-        StartAttack = new(api, "attackStart", collectible, EnumMouseButton.Left, new() { EventType = IMouseInput.MouseEventType.MouseDown });
-        CancelAttack = new(api, "attackCancel", collectible, EnumMouseButton.Left, new() { EventType = IMouseInput.MouseEventType.MouseUp });
-        StartInteract = new(api, "interactStart", collectible, EnumMouseButton.Right, new() { EventType = IMouseInput.MouseEventType.MouseDown });
-        CancelInteract = new(api, "interactCancel", collectible, EnumMouseButton.Right, new() { EventType = IMouseInput.MouseEventType.MouseUp });
-        ItemDropped = new(api, "dropped", collectible, ISlotContentInput.SlotEventType.AllTaken);
-        SlotDeselected = new(api, "deselected", collectible);
-
-        Fsm = new FiniteStateMachineAttributesBased(api, new() { new() { "idle", "interacting", "attacking" } }, "idle");
-        Fsm.Init(this, collectible);
-    }
-
-    protected IFiniteStateMachineAttributesBased Fsm;
-
-    [Input]
-    protected MouseKey StartAttack { get; set; }
-    [Input]
-    protected MouseKey CancelAttack { get; set; }
-    [Input]
-    protected MouseKey StartInteract { get; set; }
-    [Input]
-    protected MouseKey CancelInteract { get; set; }
-
-    [Input]
-    protected SlotContent ItemDropped { get; set; }
-    [Input]
-    protected BeforeSlotChanged SlotDeselected { get; set; }
-
-    [InputHandler(state: "idle", "Attack")]
-    protected bool OnAttack(ItemSlot slot, IPlayer? player, IInput input, IState state)
-    {
-        if (OnAttackStart(slot, player))
-        {
-            Fsm.SetState(slot, "attacking");
-            return true;
-        }
-
-        return false;
-    }
-    protected virtual bool OnAttackStart(ItemSlot slot, IPlayer? player)
-    {
-        return false;
-    }
-
-    [InputHandler(state: "attacking", "CancelAttack")]
-    protected bool OnAttackCancel(ItemSlot slot, IPlayer? player, IInput input, IState state)
-    {
-        if (OnAttackCancel(slot, player))
-        {
-            Fsm.SetState(slot, "idle");
-            return false;
-        }
-
-        return true;
-    }
-    protected virtual bool OnAttackCancel(ItemSlot slot, IPlayer? player)
-    {
-        return false;
-    }
-
-    [InputHandler(state: "idle", "StartInteract")]
-    protected bool OnInteractStart(ItemSlot slot, IPlayer? player, IInput input, IState state)
-    {
-        if (OnInteractStart(slot, player))
-        {
-            Fsm.SetState(slot, "interacting");
-            return true;
-        }
-        
-        return false;
-    }
-    protected virtual bool OnInteractStart(ItemSlot slot, IPlayer? player)
-    {
-        return false;
-    }
-
-    [InputHandler(state: "interacting", "CancelInteract", "ItemDropped", "SlotDeselected")]
-    protected bool OnInteractCancel(ItemSlot slot, IPlayer? player, IInput input, IState state)
-    {
-        if (OnInteractCancel(slot, player))
-        {
-            Fsm.SetState(slot, "idle");
-            return false;
-        }
-
-        return true;
-    }
-    protected virtual bool OnInteractCancel(ItemSlot slot, IPlayer? player)
-    {
-        return false;
     }
 }
