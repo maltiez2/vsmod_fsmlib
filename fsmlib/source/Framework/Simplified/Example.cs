@@ -22,18 +22,18 @@ public class BaseItemInteractions
     protected IFiniteStateMachineAttributesBased Fsm;
 
     [Input]
-    protected MouseKey StartAttack { get; set; }
+    protected MouseKey StartAttack { get; }
     [Input]
-    protected MouseKey CancelAttack { get; set; }
+    protected MouseKey CancelAttack { get; }
     [Input]
-    protected MouseKey StartInteract { get; set; }
+    protected MouseKey StartInteract { get; }
     [Input]
-    protected MouseKey CancelInteract { get; set; }
+    protected MouseKey CancelInteract { get; }
 
     [Input]
-    protected SlotContent ItemDropped { get; set; }
+    protected SlotContent ItemDropped { get; }
     [Input]
-    protected BeforeSlotChanged SlotDeselected { get; set; }
+    protected BeforeSlotChanged SlotDeselected { get; }
 
     [InputHandler(state: "idle", "Attack")]
     protected bool OnAttack(ItemSlot slot, IPlayer? player, IInput input, IState state)
