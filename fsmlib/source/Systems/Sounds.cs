@@ -29,7 +29,8 @@ public class Sounds : BaseSystem, ISoundSystem
     {
         if (!base.Process(slot, player, parameters)) return false;
 
-        if (mApi.Side != EnumAppSide.Server) return true;
+        EnumAppSide side = parameters["clientSide"].AsBool(false) ? EnumAppSide.Client : EnumAppSide.Server;
+        if (mApi.Side != side) return true;
 
         string? soundCode = parameters["sound"].AsString();
         string action = parameters["action"].AsString("play");
@@ -83,8 +84,6 @@ public class Sounds : BaseSystem, ISoundSystem
     }
     public void PlaySound(string soundCode, ISound? sound, Entity target)
     {
-        if (mApi.Side != EnumAppSide.Server) return;
-
         ISoundSequenceTimer? timer = sound?.Play(mApi.World, target);
 
         if (mTimers.ContainsKey((target.EntityId, soundCode)))
@@ -99,8 +98,6 @@ public class Sounds : BaseSystem, ISoundSystem
     }
     public void StopSound(string soundCode, Entity target)
     {
-        if (mApi.Side != EnumAppSide.Server) return;
-
         if (mTimers.ContainsKey((target.EntityId, soundCode)))
         {
             mTimers[(target.EntityId, soundCode)]?.Stop();

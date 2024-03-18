@@ -3,7 +3,7 @@
   <PropertyGroup>
     <ModName>FSMlib</ModName>
     <GameVersion>1.19.4</GameVersion>
-    <ModVersion>0.3.0</ModVersion>
+    <ModVersion>0.3.1</ModVersion>
     <ModId>fsmlib</ModId>
     <Description>Finite State Machine library as framework for implementing items with complex behaviour</Description>
     <Side>Universal</Side>

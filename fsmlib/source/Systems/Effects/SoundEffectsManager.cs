@@ -238,6 +238,7 @@ internal sealed class SingleSound : ISound
 
     public ISoundSequenceTimer? Play(IWorldAccessor world, Entity target)
     {
+        world.Api.Logger.Warning($"Play sound: {mLocation}");
         world.PlaySoundAt(mLocation, target, null, mRandomizePitch, mRange, mVolume);
         return null;
     }
