@@ -1,6 +1,4 @@
 ﻿using MaltiezFSM.Framework;
-using System;
-using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -17,8 +15,10 @@ public class AdvancedProjectileBehavior : CollectibleBehavior
 {
     public List<ProjectileDamageType> DamageTypes { get; set; } = new();
     public int AdditionalDurabilityCost { get; set; } = 0;
+    public AssetLocation ImpactSound { get; set; } = new("game:sounds/arrow-impact");
+    public AssetLocation HitSound { get; set; } = new("game:sounds/player/projectilehit");
 
-    private JsonObject? mProperties;
+    private JsonObject? _properties;
 
     public AdvancedProjectileBehavior(CollectibleObject collObj) : base(collObj)
     {
@@ -26,20 +26,22 @@ public class AdvancedProjectileBehavior : CollectibleBehavior
 
     public override void OnLoaded(ICoreAPI api)
     {
-        if (mProperties == null) return;
+        if (_properties == null) return;
 
-        foreach (JsonObject damageType in mProperties["damageTypes"].AsArray())
+        foreach (JsonObject damageType in _properties["damageTypes"].AsArray())
         {
             DamageTypes.Add(new(damageType, api));
         }
-        AdditionalDurabilityCost = mProperties["additionalDurabilityCost"].AsInt(0);
+        AdditionalDurabilityCost = _properties["additionalDurabilityCost"].AsInt(0);
+        if (_properties.KeyExists("impactSound")) ImpactSound = new(_properties["impactSound"].AsString());
+        if (_properties.KeyExists("hitSound")) HitSound = new(_properties["hitSound"].AsString());
     }
 
     public override void Initialize(JsonObject properties)
     {
         base.Initialize(properties);
 
-        mProperties = properties;
+        _properties = properties;
     }
 
     public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
@@ -68,7 +70,7 @@ public class AdvancedEntityProjectile : EntityProjectile
     public float? DamageMultiplier { get; set; }
     public float SpeedBeforeCollision { get; set; } = 0;
 
-    private const float cSpeedThreshold = 0.1f;
+    private const float _speedThreshold = 0.1f;
 
     public override void OnGameTick(float dt)
     {
@@ -76,7 +78,7 @@ public class AdvancedEntityProjectile : EntityProjectile
 
         float speed = (float)ServerPos.Motion.Length();
 
-        if (speed > cSpeedThreshold) SpeedBeforeCollision = speed;
+        if (speed > _speedThreshold) SpeedBeforeCollision = speed;
     }
 
     public static bool ImpactOnEntityPatch(EntityProjectile __instance, Entity entity)
@@ -152,29 +154,29 @@ public class AdvancedEntityProjectile : EntityProjectile
 
 public sealed class ProjectileDamageType
 {
-    private readonly float mDamage;
-    private readonly float mKnockback;
-    private readonly string mSound;
-    private readonly int mTier;
-    private readonly EnumDamageType mDamageType;
-    private readonly StatsModifier? mDamageModifier;
-    private readonly StatsModifier? mKnockbackModifier;
-    private readonly ValueModifier? mDamageSpeedModifier;
+    private readonly float _damage;
+    private readonly float _knockback;
+    private readonly string _sound;
+    private readonly int _tier;
+    private readonly EnumDamageType _damageType;
+    private readonly StatsModifier? _damageModifier;
+    private readonly StatsModifier? _knockbackModifier;
+    private readonly ValueModifier? _damageSpeedModifier;
 
     private ISoundSystem? mSoundSystem;
 
     public ProjectileDamageType(JsonObject definition, ICoreAPI api)
     {
-        mTier = definition["tier"].AsInt(0);
-        mSound = definition["sound"].AsString();
-        mDamage = definition["damage"].AsFloat();
-        mKnockback = definition["knockback"].AsFloat(0);
+        _tier = definition["tier"].AsInt(0);
+        _sound = definition["sound"].AsString();
+        _damage = definition["damage"].AsFloat();
+        _knockback = definition["knockback"].AsFloat(0);
 
-        mDamageType = (EnumDamageType)Enum.Parse(typeof(EnumDamageType), definition["type"].AsString("PiercingAttack"));
+        _damageType = (EnumDamageType)Enum.Parse(typeof(EnumDamageType), definition["type"].AsString("PiercingAttack"));
 
-        if (definition.KeyExists("damage_stats")) mDamageModifier = new(api, definition["damage_stats"].AsString());
-        if (definition.KeyExists("knockback_stats")) mKnockbackModifier = new(api, definition["knockback_stats"].AsString());
-        if (definition.KeyExists("speed_affect")) mDamageSpeedModifier = new(api, definition["speed_affect"].AsString());
+        if (definition.KeyExists("damage_stats")) _damageModifier = new(api, definition["damage_stats"].AsString());
+        if (definition.KeyExists("knockback_stats")) _knockbackModifier = new(api, definition["knockback_stats"].AsString());
+        if (definition.KeyExists("speed_affect")) _damageSpeedModifier = new(api, definition["speed_affect"].AsString());
     }
 
     public void SetSoundSystem(ISoundSystem system) => mSoundSystem = system;
@@ -186,8 +188,8 @@ public sealed class ProjectileDamageType
             Source = attacker is EntityPlayer ? EnumDamageSource.Player : EnumDamageSource.Entity,
             SourceEntity = null,
             CauseEntity = attacker.Entity,
-            Type = mDamageType,
-            DamageTier = mTier
+            Type = _damageType,
+            DamageTier = _tier
         }, GetDamage(attacker, speed) * damageMultiplier);
 
         if (damageReceived)
@@ -195,7 +197,7 @@ public sealed class ProjectileDamageType
             Vec3f knockback = (target.Pos.XYZFloat - attacker.Entity.Pos.XYZFloat).Normalize() * GetKnockback(attacker) / 10f * target.Properties.KnockbackResistance;
             target.SidedPos.Motion.Add(knockback);
 
-            if (mSound != null) mSoundSystem?.PlaySound(mSound, target);
+            if (_sound != null) mSoundSystem?.PlaySound(_sound, target);
         }
 
         return damageReceived;
@@ -203,17 +205,17 @@ public sealed class ProjectileDamageType
 
     private float GetDamage(IPlayer attacker, float speed)
     {
-        float damage = mDamage;
+        float damage = _damage;
 
-        if (mDamageModifier != null) damage = mDamageModifier.Calc(attacker, damage);
-        if (mDamageSpeedModifier != null) damage = mDamageSpeedModifier.Calc(mDamage, name => name == "speed" ? speed : 0);
+        if (_damageModifier != null) damage = _damageModifier.Calc(attacker, damage);
+        if (_damageSpeedModifier != null) damage = _damageSpeedModifier.Calc(_damage, name => name == "speed" ? speed : 0);
 
         return damage;
     }
     private float GetKnockback(IPlayer attacker)
     {
-        if (mKnockbackModifier == null) return mKnockback;
-        return mKnockbackModifier.Calc(attacker, mKnockback);
+        if (_knockbackModifier == null) return _knockback;
+        return _knockbackModifier.Calc(attacker, _knockback);
     }
 
     public void GetHeldItemInfo(StringBuilder dsc, IWorldAccessor world)
@@ -221,12 +223,12 @@ public sealed class ProjectileDamageType
         dsc.AppendLine($"  {GetDamageTypeName()}");
         dsc.AppendLine($"    {GetDamageEntry(world)}");
         dsc.AppendLine($"    {GetTierEntry()}");
-        if (mKnockback > 0) dsc.AppendLine($"    {GetKnockbackEntry(world)}");
+        if (_knockback > 0) dsc.AppendLine($"    {GetKnockbackEntry(world)}");
     }
 
     private string GetDamageTypeName()
     {
-        return Lang.Get($"fsmlib:damage-type-{mDamageType.ToString().ToLower()}");
+        return Lang.Get($"fsmlib:damage-type-{_damageType.ToString().ToLower()}");
     }
     private string GetKnockbackEntry(IWorldAccessor world)
     {
@@ -236,13 +238,13 @@ public sealed class ProjectileDamageType
     }
     private string GetTierEntry()
     {
-        return Lang.Get("fsmlib:damage-tier", mTier);
+        return Lang.Get("fsmlib:damage-tier", _tier);
     }
     private string GetDamageEntry(IWorldAccessor world)
     {
         if (world is not IClientWorldAccessor clientWorld) return "";
-        float damage = mDamage;
-        if (mDamageModifier != null) damage = mDamageModifier.Calc(clientWorld.Player, damage);
+        float damage = _damage;
+        if (_damageModifier != null) damage = _damageModifier.Calc(clientWorld.Player, damage);
         return Lang.Get("fsmlib:damage-damage", damage);
     }
 }

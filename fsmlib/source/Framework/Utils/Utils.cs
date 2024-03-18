@@ -272,6 +272,12 @@ public static class Utils
             Pitch = MathF.Asin(pitchSin);
         }
 
+        public DirectionOffset(float pitch, float yaw)
+        {
+            Yaw = yaw;
+            Pitch = pitch;
+        }
+
         public override string ToString() => $"Pitch: {Pitch}, Yaw: {Yaw}";
     }
     public class DirectionConstrain

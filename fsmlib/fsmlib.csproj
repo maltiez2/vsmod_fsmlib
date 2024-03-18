@@ -153,9 +153,6 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="source\Framework\Simplified\Systems\" />
-  </ItemGroup>
 
   <!-- Creates/updates modinfo.json file in build directory -->
   <Target Name="ModInfo" AfterTargets="CleanReferenceCopyLocalPaths">
