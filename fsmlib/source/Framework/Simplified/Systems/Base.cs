@@ -4,13 +4,14 @@ namespace MaltiezFSM.Framework.Simplified.Systems;
 
 public abstract class BaseSystem
 {
-    protected BaseSystem(ICoreAPI api)
+    protected BaseSystem(ICoreAPI api, string debugName = "")
     {
         Api = api;
+        DebugName = debugName;
     }
 
     protected readonly ICoreAPI Api;
-    protected virtual string SystemCode { get; } = "system";
+    protected readonly string DebugName;
 
     /// <summary>
     /// Wrapper around logger method with api and this already passed to its arguments, and also prepends collectible code and mCode.
@@ -49,5 +50,5 @@ public abstract class BaseSystem
     /// </summary>
     /// <param name="message"></param>
     /// <returns></returns>
-    protected string LogFormat(string message) => $"{message}";
+    protected string LogFormat(string message) => DebugName != "" ? $"({DebugName}) {message}" : message;
 }

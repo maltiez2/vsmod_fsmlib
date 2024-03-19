@@ -7,11 +7,11 @@ namespace MaltiezFSM.Framework.Simplified.Systems;
 
 public class Projectiles : BaseSystem
 {
-    public Projectiles(ICoreAPI api) : base(api)
+    public Projectiles(ICoreAPI api, string debugName = "") : base(api, debugName)
     {
     }
 
-    public delegate Utils.DirectionOffset DispersionDelegate(IPlayer player);
+    public delegate DirectionOffset DispersionDelegate(IPlayer player);
 
     public StatsModifier? DamageModifier { get; set; }
     public StatsModifier? SpeedModifier { get; set; }
@@ -26,11 +26,11 @@ public class Projectiles : BaseSystem
     /// <param name="damageMultiplier">Multiplies projectile damage</param>
     /// <param name="offset">Additional offset to projectile direction that is same for all projectiles from provided items collection.</param>
     /// <returns>Total additional durability damage</returns>
-    public int Spawn(List<ItemStack> projectiles, IPlayer player, float speed = 1.0f, float damageMultiplier = 1.0f, Utils.DirectionOffset? offset = null)
+    public int Spawn(List<ItemStack> projectiles, IPlayer player, float speed = 1.0f, float damageMultiplier = 1.0f, DirectionOffset? offset = null)
     {
         try
         {
-            return SpawnProjectiles(projectiles, player, speed, damageMultiplier, offset ?? new(0f, 0f));
+            return SpawnProjectiles(projectiles, player, speed, damageMultiplier, offset ?? DirectionOffset.Zero);
         }
         catch (Exception exception)
         {
@@ -39,7 +39,7 @@ public class Projectiles : BaseSystem
         }
     }
 
-    private int SpawnProjectiles(List<ItemStack> ammoStacks, IPlayer player, float speed, float damageMultiplier, Utils.DirectionOffset offset)
+    private int SpawnProjectiles(List<ItemStack> ammoStacks, IPlayer player, float speed, float damageMultiplier, DirectionOffset offset)
     {
         damageMultiplier = DamageModifier != null ? DamageModifier.Calc(player, damageMultiplier) : damageMultiplier;
         speed = SpeedModifier != null ? SpeedModifier.Calc(player, speed) : speed;
@@ -50,9 +50,7 @@ public class Projectiles : BaseSystem
             for (int count = 0; count < ammo.StackSize; count++)
             {
                 Vec3d projectilePosition = ProjectilePosition(player, new Vec3f(0.0f, 0.0f, 0.0f));
-                Utils.DirectionOffset dispersion = OffsetGetter?.Invoke(player) ?? new(0, 0);
-                dispersion.Pitch += offset.Pitch;
-                dispersion.Yaw += offset.Yaw;
+                DirectionOffset dispersion = offset + OffsetGetter?.Invoke(player) ?? DirectionOffset.Zero;
                 Vec3d projectileVelocity = ProjectileVelocity(player, dispersion, speed);
                 durabilityDamage += SpawnProjectile(ammo, player, projectilePosition, projectileVelocity, damageMultiplier);
             }
@@ -65,10 +63,10 @@ public class Projectiles : BaseSystem
         Vec3f worldPosition = Utils.FromCameraReferenceFrame(player.Entity, muzzlePosition);
         return player.Entity.SidedPos.AheadCopy(0).XYZ.Add(worldPosition.X, player.Entity.LocalEyePos.Y + worldPosition.Y, worldPosition.Z);
     }
-    private static Vec3d ProjectileVelocity(IPlayer player, Utils.DirectionOffset dispersion, float speed)
+    private static Vec3d ProjectileVelocity(IPlayer player, DirectionOffset dispersion, float speed)
     {
         Vec3d pos = player.Entity.ServerPos.XYZ.Add(0, player.Entity.LocalEyePos.Y, 0);
-        Vec3d aheadPos = pos.AheadCopy(1, player.Entity.SidedPos.Pitch + dispersion.Pitch, player.Entity.SidedPos.Yaw + dispersion.Yaw);
+        Vec3d aheadPos = pos.AheadCopy(1, player.Entity.SidedPos.Pitch + dispersion.Pitch.Radians, player.Entity.SidedPos.Yaw + dispersion.Yaw.Radians);
         return (aheadPos - pos).Normalize() * speed;
     }
     private int SpawnProjectile(ItemStack projectileStack, IPlayer player, Vec3d position, Vec3d velocity, float damageMultiplier)
