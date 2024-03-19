@@ -35,9 +35,11 @@ public class BaseItemInteractions
     [Input]
     protected BeforeSlotChanged SlotDeselected { get; }
 
-    [InputHandler(state: "idle", "Attack")]
+    [InputHandler(state: "idle", "StartAttack")]
     protected bool OnAttack(ItemSlot slot, IPlayer? player, IInput input, IState state)
     {
+        Console.WriteLine("OnAttack");
+        
         if (OnAttackStart(slot, player))
         {
             Fsm.SetState(slot, "attacking");
@@ -64,7 +66,7 @@ public class BaseItemInteractions
     }
     protected virtual bool OnAttackCancel(ItemSlot slot, IPlayer? player)
     {
-        return false;
+        return true;
     }
 
     [InputHandler(state: "idle", "StartInteract")]
@@ -96,6 +98,6 @@ public class BaseItemInteractions
     }
     protected virtual bool OnInteractCancel(ItemSlot slot, IPlayer? player)
     {
-        return false;
+        return true;
     }
 }

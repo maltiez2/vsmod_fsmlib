@@ -149,7 +149,7 @@ public sealed class FiniteStateMachineAttributesBased : FiniteStateMachineSimpli
 
     private static Dictionary<string, IInput> CollectInputs(object owner)
     {
-        IEnumerable<PropertyInfo> properties = owner.GetType().GetProperties().Where(property => property.GetCustomAttributes(typeof(InputAttribute), true).Any());
+        IEnumerable<PropertyInfo> properties = owner.GetType().GetProperties(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public).Where(property => property.GetCustomAttributes(typeof(InputAttribute), true).Any());
 
         Dictionary<string, IInput> inputs = new();
         foreach (PropertyInfo property in properties)
@@ -170,7 +170,7 @@ public sealed class FiniteStateMachineAttributesBased : FiniteStateMachineSimpli
     }
     private static Dictionary<InputHandlerDelegate, InputHandlerAttribute> CollectHandlers(object owner)
     {
-        IEnumerable<MethodInfo> methods = owner.GetType().GetMethods().Where(method => method.GetCustomAttributes(typeof(InputHandlerAttribute), true).Any());
+        IEnumerable<MethodInfo> methods = owner.GetType().GetMethods(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public).Where(method => method.GetCustomAttributes(typeof(InputHandlerAttribute), true).Any());
 
         Dictionary<InputHandlerDelegate, InputHandlerAttribute> handlers = new();
         foreach (MethodInfo method in methods)

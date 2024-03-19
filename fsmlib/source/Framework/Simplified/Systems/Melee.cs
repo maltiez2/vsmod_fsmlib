@@ -124,6 +124,14 @@ public sealed class MeleeAttack
 
         return Result.None;
     }
+    public void RenderDebugColliders(IPlayer player, ItemSlot slot, bool rightHand = true)
+    {
+        LineSegmentCollider.Transform(DamageTypes, player.Entity, slot, _api, rightHand);
+        foreach (LineSegmentCollider collider in DamageTypes.Select(item => item.InWorldCollider))
+        {
+            collider.RenderAsLine(_api, player.Entity);
+        }
+    }
 
     private readonly ICoreClientAPI _api;
     private readonly Dictionary<long, float> _currentTime = new();
@@ -202,6 +210,7 @@ public readonly struct HitWindow
 public sealed class MeleeAttackDamageType
 {
     public LineSegmentCollider Collider { get; }
+    public LineSegmentCollider InWorldCollider => _inWorldCollider;
     public AssetLocation? Sound { get; }
 
     public MeleeAttackDamageType(

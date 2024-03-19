@@ -110,9 +110,19 @@ internal sealed class StateResolver : IStateResolver
             return;
         }
 
-        foreach (string elementValue in States[elementIndex])
+        if (state == "")
         {
-            ConstructStates(state + "-" + elementValue, elementIndex + 1);
+            foreach (string elementValue in States[elementIndex])
+            {
+                ConstructStates(elementValue, elementIndex + 1);
+            }
+        }
+        else
+        {
+            foreach (string elementValue in States[elementIndex])
+            {
+                ConstructStates(state + "-" + elementValue, elementIndex + 1);
+            }
         }
     }
     private bool ConstructFinishStateMatcher(IEnumerable<string> finishStates, out List<string> finishStateMatcher)
