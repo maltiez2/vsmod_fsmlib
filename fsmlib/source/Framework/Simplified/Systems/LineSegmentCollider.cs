@@ -128,6 +128,19 @@ public readonly struct LineSegmentCollider
 
         return segments.Select(segment => TransformSegment(segment, modelMatrix, playerPos));
     }
+    public static bool Transform(IEnumerable<MeleeAttackDamageType> segments, EntityPlayer entity, ItemSlot itemSlot, ICoreClientAPI api, bool right = true)
+    {
+        EntityPos playerPos = entity.Pos;
+        Matrixf? modelMatrix = GetHeldItemModelMatrix(entity, itemSlot, api, right);
+        if (modelMatrix is null) return false;
+
+        foreach (MeleeAttackDamageType damageType in segments)
+        {
+            damageType._inWorldCollider = TransformSegment(damageType.Collider, modelMatrix, playerPos);
+        }
+
+        return true;
+    }
 
     private static readonly Vec4f _inputBuffer = new(0, 0, 0, 1);
     private static readonly Vec4f _outputBuffer = new(0, 0, 0, 1);
