@@ -59,12 +59,12 @@ public readonly struct LineSegmentCollider
     }
     public Vector3? IntersectCylinder(CylinderCollisionBox box)
     {
-        Vector3 distance = new(Position.X - box.CenterX, Position.Y - box.CenterY, 0);
+        Vector3 distance = new(Position.X - box.CenterX, Position.Z - box.CenterZ, 0);
 
         // Compute coefficients of the quadratic equation
-        float a = (Direction.X * Direction.X) / (box.RadiusX * box.RadiusX) + (Direction.Y * Direction.Y) / (box.RadiusY * box.RadiusY);
-        float b = 2 * ((distance.X * Direction.X) / (box.RadiusX * box.RadiusX) + (distance.Y * Direction.Y) / (box.RadiusY * box.RadiusY));
-        float c = (distance.X * distance.X) / (box.RadiusX * box.RadiusX) + (distance.Y * distance.Y) / (box.RadiusY * box.RadiusY) - 1;
+        float a = (Direction.X * Direction.X) / (box.RadiusX * box.RadiusX) + (Direction.Z * Direction.Z) / (box.RadiusZ * box.RadiusZ);
+        float b = 2 * ((distance.X * Direction.X) / (box.RadiusX * box.RadiusX) + (distance.Z * Direction.Z) / (box.RadiusZ * box.RadiusZ));
+        float c = (distance.X * distance.X) / (box.RadiusX * box.RadiusX) + (distance.Z * distance.Z) / (box.RadiusZ * box.RadiusZ) - 1;
         float discriminant = b * b - 4 * a * c;
 
         if (discriminant < 0 || a == 0) return null;
@@ -72,13 +72,13 @@ public readonly struct LineSegmentCollider
         float intersectionPointPositionInSegment1 = (-b + MathF.Sqrt(discriminant)) / (2 * a);
         float intersectionPointPositionInSegment2 = (-b - MathF.Sqrt(discriminant)) / (2 * a);
 
-        float intersectionPointZ1 = Position.Z + intersectionPointPositionInSegment1 * Direction.Z;
-        float intersectionPointZ2 = Position.Z + intersectionPointPositionInSegment2 * Direction.Z;
+        float intersectionPointY1 = Position.Y + intersectionPointPositionInSegment1 * Direction.Y;
+        float intersectionPointY2 = Position.Y + intersectionPointPositionInSegment2 * Direction.Y;
 
-        float minZ = Math.Min(intersectionPointZ1, intersectionPointZ2);
-        float maxZ = Math.Max(intersectionPointZ1, intersectionPointZ2);
+        float minY = Math.Min(intersectionPointY1, intersectionPointY2);
+        float maxY = Math.Max(intersectionPointY1, intersectionPointY2);
 
-        if (!(minZ <= box.BottomZ && maxZ >= box.TopZ)) return null;
+        if (minY > box.TopY || maxY < box.BottomY) return null;
 
         float closestIntersectionPoint = MathF.Min(intersectionPointPositionInSegment1, intersectionPointPositionInSegment2);
 
@@ -236,7 +236,15 @@ public readonly struct LineSegmentCollider
             Cuboidf? collBox = collisionBoxes[i];
             if (collBox == null) continue;
 
-            Vector3? intersection = IntersectCuboid(collBox);
+            Cuboidf collBoxInWorld = collBox.Clone();
+            collBoxInWorld.X1 += x;
+            collBoxInWorld.Y1 += y;
+            collBoxInWorld.Z1 += z;
+            collBoxInWorld.X2 += x;
+            collBoxInWorld.Y2 += y;
+            collBoxInWorld.Z2 += z;
+
+            Vector3? intersection = IntersectCuboid(collBoxInWorld);
 
             if (intersection == null) continue;
 
@@ -250,19 +258,19 @@ public readonly struct LineSegmentCollider
 public readonly struct CylinderCollisionBox
 {
     public readonly float RadiusX;
-    public readonly float RadiusY;
-    public readonly float TopZ;
-    public readonly float BottomZ;
+    public readonly float RadiusZ;
+    public readonly float TopY;
+    public readonly float BottomY;
     public readonly float CenterX;
-    public readonly float CenterY;
+    public readonly float CenterZ;
 
     public CylinderCollisionBox(Cuboidf collisionBox)
     {
-        RadiusX = collisionBox.MaxX - collisionBox.MinX;
-        RadiusY = collisionBox.MaxY - collisionBox.MinY;
-        TopZ = collisionBox.MaxX;
-        BottomZ = collisionBox.MinZ;
+        RadiusX = (collisionBox.MaxX - collisionBox.MinX) / 2;
+        RadiusZ = (collisionBox.MaxZ - collisionBox.MinZ) / 2;
+        TopY = collisionBox.MaxY;
+        BottomY = collisionBox.MinY;
         CenterX = (collisionBox.MaxX + collisionBox.MinX) / 2;
-        CenterY = (collisionBox.MaxY + collisionBox.MinY) / 2;
+        CenterZ = (collisionBox.MaxZ + collisionBox.MinZ) / 2;
     }
 }

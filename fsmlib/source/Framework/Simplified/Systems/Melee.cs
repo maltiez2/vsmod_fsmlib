@@ -1,4 +1,5 @@
 ﻿using ProtoBuf;
+using System.Collections.Immutable;
 using System.Numerics;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -13,6 +14,8 @@ public sealed class MeleeClient : BaseSystem
     public MeleeClient(ICoreClientAPI api, string networkId, string debugName = "") : base(api, debugName)
     {
         _api = api;
+        _channel = api.Network.RegisterChannel(networkId)
+            .RegisterMessageType<MeleeAttackPacket>();
     }
 
     public long Start(IPlayer player, MeleeAttack attack, ItemSlot slot, System.Func<MeleeAttack.Result, bool> callback, bool rightHand = true)
@@ -27,28 +30,38 @@ public sealed class MeleeClient : BaseSystem
 
     public void Stop(long id)
     {
-        if (_timers.ContainsKey(id)) _api.World.UnregisterCallback(_timers[id]);
+        if (_timers.ContainsKey(id))
+        {
+            _api.World.UnregisterGameTickListener(_timers[id]);
+            _timers.Remove(id);
+        }
     }
 
 
     private long _nextId = 0;
     private readonly ICoreClientAPI _api;
     private readonly Dictionary<long, long> _timers = new();
+    private readonly IClientNetworkChannel _channel;
 
-    private void Step(float dt, MeleeAttack attack, IPlayer player, ItemSlot slot, bool rightHand, System.Func<MeleeAttack.Result, bool> callback, long id)
+    private void Step(float dt, MeleeAttack attack, IPlayer player, ItemSlot slot, bool rightHand, System.Func<MeleeAttack.AttackResult, bool> callback, long id)
     {
-        MeleeAttack.Result result = attack.Step(player, dt, slot, Synchronise, rightHand);
+        MeleeAttack.AttackResult result = attack.Step(player, dt, slot, Synchronize, rightHand);
 
-        if (result == MeleeAttack.Result.None) return;
+        if (result.Result == MeleeAttack.Result.None) return;
 
-        if (callback.Invoke(result) || result == MeleeAttack.Result.Finished)
+        if (callback.Invoke(result) || result.Result == MeleeAttack.Result.Finished)
         {
             Stop(id);
         }
     }
-    private void Synchronise(List<MeleeAttackDamagePacket> packets)
+    private void Synchronize(List<MeleeAttackDamagePacket> packets)
     {
+        MeleeAttackPacket packet = new()
+        {
+            Damages = packets.ToArray()
+        };
 
+        _channel.SendPacket(packet);
     }
 }
 public sealed class MeleeServer : BaseSystem
@@ -56,9 +69,34 @@ public sealed class MeleeServer : BaseSystem
     public MeleeServer(ICoreServerAPI api, string networkId, string debugName = "") : base(api, debugName)
     {
         _api = api;
+        api.Network.RegisterChannel(networkId)
+            .RegisterMessageType<MeleeAttackPacket>()
+            .SetMessageHandler<MeleeAttackPacket>(HandlePacket);
     }
 
     private readonly ICoreServerAPI _api;
+
+    private void HandlePacket(IServerPlayer player, MeleeAttackPacket packet)
+    {
+        foreach (MeleeAttackDamagePacket damagePacket in packet.Damages)
+        {
+            ApplyDamage(damagePacket);
+        }
+    }
+    private void ApplyDamage(MeleeAttackDamagePacket packet)
+    {
+        Entity target = _api.World.GetEntityById(packet.Target);
+        Entity attacker = _api.World.GetEntityById(packet.CauseEntity);
+
+        target.ReceiveDamage(new DamageSource()
+        {
+            Source = packet.Source,
+            SourceEntity = null,
+            CauseEntity = attacker,
+            Type = packet.DamageType,
+            DamageTier = packet.DamageTier
+        }, packet.Damage);
+    }
 }
 
 public sealed class MeleeAttack
@@ -69,6 +107,20 @@ public sealed class MeleeAttack
         HitEntity,
         HitTerrain,
         Finished
+    }
+
+    public readonly struct AttackResult
+    {
+        public readonly Result Result;
+        public readonly IEnumerable<(Block block, Vector3 point)>? Terrain;
+        public readonly IEnumerable<(Entity entity, Vector3 point)>? Entities;
+
+        public AttackResult(Result result = Result.None, IEnumerable<(Block block, Vector3 point)>? terrain = null, IEnumerable<(Entity entity, Vector3 point)>? entities = null)
+        {
+            Result = result;
+            Terrain = terrain;
+            Entities = entities;
+        }
     }
 
     public HitWindow Window { get; }
@@ -103,26 +155,32 @@ public sealed class MeleeAttack
         }
 
     }
-    public Result Step(IPlayer player, float dt, ItemSlot slot, Action<List<MeleeAttackDamagePacket>> networkCallback, bool rightHand = true)
+    public AttackResult Step(IPlayer player, float dt, ItemSlot slot, Action<List<MeleeAttackDamagePacket>> networkCallback, bool rightHand = true)
     {
-        _currentTime[player.Entity.EntityId] += dt;
+        _currentTime[player.Entity.EntityId] += dt * 1000;
         float progress = GameMath.Clamp(_currentTime[player.Entity.EntityId] / _totalTime[player.Entity.EntityId], 0, 1);
-        if (!Window.Check(progress)) return Result.Finished;
+        Console.WriteLine(progress);
+        if (progress >= 1) return new(Result.Finished);
+        if (!Window.Check(progress)) return new(Result.None);
 
         bool success = LineSegmentCollider.Transform(DamageTypes, player.Entity, slot, _api, rightHand);
-        if (!success) return Result.None;
+        if (!success) return new(Result.None);
 
-        if (CheckTerrainCollision()) return Result.HitTerrain;
+        IEnumerable<(Block block, Vector3 point)> terrainCollisions = CheckTerrainCollision();
+
+        if (terrainCollisions.Any()) return new(Result.HitTerrain, terrain: terrainCollisions);
 
         _damagePackets.Clear();
 
-        if (CollideWithEntities(player, _damagePackets))
+        IEnumerable<(Entity entity, Vector3 point)> entitiesCollisions = CollideWithEntities(player, _damagePackets);
+
+        if (entitiesCollisions.Any())
         {
             networkCallback.Invoke(_damagePackets);
-            return Result.HitEntity;
+            return new(Result.HitEntity, entities: entitiesCollisions);
         }
 
-        return Result.None;
+        return new(Result.None);
     }
     public void RenderDebugColliders(IPlayer player, ItemSlot slot, bool rightHand = true)
     {
@@ -138,45 +196,73 @@ public sealed class MeleeAttack
     private readonly Dictionary<long, float> _totalTime = new();
     private readonly Dictionary<long, HashSet<long>> _attackedEntities = new();
     private readonly List<MeleeAttackDamagePacket> _damagePackets = new();
+    private readonly HashSet<(Block block, Vector3 point)> _terrainCollisionsBuffer = new();
+    private readonly HashSet<(Entity entity, Vector3 point)> _entitiesCollisionsBuffer = new();
 
-    private bool CheckTerrainCollision()
+    private IEnumerable<(Block block, Vector3 point)> CheckTerrainCollision()
     {
+        _terrainCollisionsBuffer.Clear();
         foreach (MeleeAttackDamageType damageType in DamageTypes)
         {
             (Block, System.Numerics.Vector3)? result = damageType._inWorldCollider.IntersectTerrain(_api);
 
-            if (result != null) return true;
+            if (result != null)
+            {
+                _terrainCollisionsBuffer.Add(result.Value);
+            }
         }
 
-        return false;
+        return _terrainCollisionsBuffer.ToImmutableHashSet();
     }
-    private bool CollideWithEntities(IPlayer player, List<MeleeAttackDamagePacket> packets)
+    private IEnumerable<(Entity entity, Vector3 point)> CollideWithEntities(IPlayer player, List<MeleeAttackDamagePacket> packets)
     {
         long entityId = player.Entity.EntityId;
 
         Entity[] entities = _api.World.GetEntitiesAround(player.Entity.Pos.XYZ, MaxReach, MaxReach);
 
-        bool collided = false;
+        _entitiesCollisionsBuffer.Clear();
         foreach (MeleeAttackDamageType damageType in DamageTypes)
         {
             foreach (
-                Entity entity in entities
-                    .Where(entity => _attackedEntities[entityId].Contains(entity.EntityId))
-                    .Where(entity => damageType.Collider.RoughIntersect(entity.CollisionBox))
-                    .Where(entity => CollideWithEntity(player, damageType, entity, packets))
+                (Entity entity, Vector3 point) entry in entities
+                    .Where(entity => entity != player.Entity)
+                    .Where(entity => !_attackedEntities[entityId].Contains(entity.EntityId))
+                    .Where(entity => damageType.InWorldCollider.RoughIntersect(GetCollisionBox(entity)))
+                    .Select(entity => (entity, CollideWithEntity(player, damageType, entity, packets)))
+                    .Where(entry => entry.Item2 != null)
+                    .Select(entry => (entry.entity, entry.Item2.Value))
                 )
             {
-                collided = true;
+                _entitiesCollisionsBuffer.Add(entry);
             }
         }
 
-        return collided;
+        return _entitiesCollisionsBuffer.ToImmutableHashSet();
     }
-    private bool CollideWithEntity(IPlayer player, MeleeAttackDamageType damageType, Entity entity, List<MeleeAttackDamagePacket> packets)
+    private Cuboidf GetCollisionBox(Entity entity)
     {
-        System.Numerics.Vector3? result = damageType._inWorldCollider.IntersectCylinder(new(entity.CollisionBox));
+        Cuboidf collisionBox = entity.CollisionBox.Clone();
+        EntityPos position = entity.Pos;
+        collisionBox.X1 += (float)position.X;
+        collisionBox.Y1 += (float)position.Y;
+        collisionBox.Z1 += (float)position.Z;
+        collisionBox.X2 += (float)position.X;
+        collisionBox.Y2 += (float)position.Y;
+        collisionBox.Z2 += (float)position.Z;
+        return collisionBox;
+    }
+    private System.Numerics.Vector3? CollideWithEntity(IPlayer player, MeleeAttackDamageType damageType, Entity entity, List<MeleeAttackDamagePacket> packets)
+    {
+        //System.Numerics.Vector3? result = damageType._inWorldCollider.IntersectCylinder(new(GetCollisionBox(entity)));
+        System.Numerics.Vector3? result = damageType._inWorldCollider.IntersectCuboid(GetCollisionBox(entity));
 
-        if (result == null) return false;
+        if (result == null) return null;
+
+        AdvancedParticleProperties advancedParticleProperties = new();
+        advancedParticleProperties.basePos.X = result.Value.X;
+        advancedParticleProperties.basePos.Y = result.Value.Y;
+        advancedParticleProperties.basePos.Z = result.Value.Z;
+        entity.World.SpawnParticles(advancedParticleProperties);
 
         bool attacked = damageType.Attack(player, entity, out MeleeAttackDamagePacket? packet);
 
@@ -188,7 +274,7 @@ public sealed class MeleeAttack
             if (damageType.Sound != null) _api.World.PlaySoundAt(damageType.Sound, entity, randomizePitch: false);
         }
 
-        return attacked;
+        return attacked ? result : null;
     }
 }
 
@@ -255,6 +341,7 @@ public sealed class MeleeAttackDamageType
 
             packet = new()
             {
+                Target = target.EntityId,
                 Source = attacker is EntityPlayer ? EnumDamageSource.Player : EnumDamageSource.Entity,
                 CauseEntity = attacker.Entity.EntityId,
                 DamageType = _damageType,
@@ -289,8 +376,15 @@ public sealed class MeleeAttackDamageType
 }
 
 [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
+public sealed class MeleeAttackPacket
+{
+    public MeleeAttackDamagePacket[] Damages { get; set; } = Array.Empty<MeleeAttackDamagePacket>();
+}
+
+[ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
 public sealed class MeleeAttackDamagePacket
 {
+    public long Target { get; set; }
     public EnumDamageSource Source { get; set; }
     public long CauseEntity { get; set; }
     public EnumDamageType DamageType { get; set; }
