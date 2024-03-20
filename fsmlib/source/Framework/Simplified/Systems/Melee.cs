@@ -9,16 +9,66 @@ using Vintagestory.API.Server;
 
 namespace MaltiezFSM.Framework.Simplified.Systems;
 
-public sealed class MeleeClient : BaseSystem
+internal static class MeleeSynchronizer
 {
-    public MeleeClient(ICoreClientAPI api, string networkId, string debugName = "") : base(api, debugName)
+    public const string NetworkChannelId = "fsmlib:melee-damage-sync";
+
+    public static void Init(ICoreClientAPI api)
     {
-        _api = api;
-        _channel = api.Network.RegisterChannel(networkId)
+        _clientChannel = api.Network.RegisterChannel(NetworkChannelId)
             .RegisterMessageType<MeleeAttackPacket>();
     }
+    public static void Init(ICoreServerAPI api)
+    {
+        _api = api;
+        api.Network.RegisterChannel(NetworkChannelId)
+            .RegisterMessageType<MeleeAttackPacket>()
+            .SetMessageHandler<MeleeAttackPacket>(HandlePacket);
+    }
+    public static void Send(MeleeAttackPacket packet)
+    {
+        _clientChannel?.SendPacket(packet);
+    }
 
-    public long Start(IPlayer player, MeleeAttack attack, ItemSlot slot, System.Func<MeleeAttack.Result, bool> callback, bool rightHand = true)
+    internal static IClientNetworkChannel? _clientChannel;
+    internal static ICoreServerAPI? _api;
+
+    private static void HandlePacket(IServerPlayer player, MeleeAttackPacket packet)
+    {
+        foreach (MeleeAttackDamagePacket damagePacket in packet.Damages)
+        {
+            ApplyDamage(damagePacket);
+        }
+    }
+    private static void ApplyDamage(MeleeAttackDamagePacket packet)
+    {
+        if (_api == null) return;
+
+        Entity target = _api.World.GetEntityById(packet.Target);
+        Entity attacker = _api.World.GetEntityById(packet.CauseEntity);
+
+        target.ReceiveDamage(new DamageSource()
+        {
+            Source = packet.Source,
+            SourceEntity = null,
+            CauseEntity = attacker,
+            Type = packet.DamageType,
+            DamageTier = packet.DamageTier
+        }, packet.Damage);
+
+        Vec3f knockback = new(packet.Knockback);
+        target.SidedPos.Motion.Add(knockback);
+    }
+}
+
+public sealed class MeleeSystem : BaseSystem
+{
+    public MeleeSystem(ICoreClientAPI api, string debugName = "") : base(api, debugName)
+    {
+        _api = api;
+    }
+
+    public long Start(IPlayer player, MeleeAttack attack, ItemSlot slot, System.Func<MeleeAttack.AttackResult, bool> callback, bool rightHand = true)
     {
         attack.Start(player);
         long id = _nextId++;
@@ -41,7 +91,6 @@ public sealed class MeleeClient : BaseSystem
     private long _nextId = 0;
     private readonly ICoreClientAPI _api;
     private readonly Dictionary<long, long> _timers = new();
-    private readonly IClientNetworkChannel _channel;
 
     private void Step(float dt, MeleeAttack attack, IPlayer player, ItemSlot slot, bool rightHand, System.Func<MeleeAttack.AttackResult, bool> callback, long id)
     {
@@ -61,41 +110,7 @@ public sealed class MeleeClient : BaseSystem
             Damages = packets.ToArray()
         };
 
-        _channel.SendPacket(packet);
-    }
-}
-public sealed class MeleeServer : BaseSystem
-{
-    public MeleeServer(ICoreServerAPI api, string networkId, string debugName = "") : base(api, debugName)
-    {
-        _api = api;
-        api.Network.RegisterChannel(networkId)
-            .RegisterMessageType<MeleeAttackPacket>()
-            .SetMessageHandler<MeleeAttackPacket>(HandlePacket);
-    }
-
-    private readonly ICoreServerAPI _api;
-
-    private void HandlePacket(IServerPlayer player, MeleeAttackPacket packet)
-    {
-        foreach (MeleeAttackDamagePacket damagePacket in packet.Damages)
-        {
-            ApplyDamage(damagePacket);
-        }
-    }
-    private void ApplyDamage(MeleeAttackDamagePacket packet)
-    {
-        Entity target = _api.World.GetEntityById(packet.Target);
-        Entity attacker = _api.World.GetEntityById(packet.CauseEntity);
-
-        target.ReceiveDamage(new DamageSource()
-        {
-            Source = packet.Source,
-            SourceEntity = null,
-            CauseEntity = attacker,
-            Type = packet.DamageType,
-            DamageTier = packet.DamageTier
-        }, packet.Damage);
+        MeleeSynchronizer.Send(packet);
     }
 }
 
@@ -258,12 +273,6 @@ public sealed class MeleeAttack
 
         if (result == null) return null;
 
-        AdvancedParticleProperties advancedParticleProperties = new();
-        advancedParticleProperties.basePos.X = result.Value.X;
-        advancedParticleProperties.basePos.Y = result.Value.Y;
-        advancedParticleProperties.basePos.Z = result.Value.Z;
-        entity.World.SpawnParticles(advancedParticleProperties);
-
         bool attacked = damageType.Attack(player, entity, out MeleeAttackDamagePacket? packet);
 
         if (packet != null) packets.Add(packet);
@@ -347,7 +356,7 @@ public sealed class MeleeAttackDamageType
                 DamageType = _damageType,
                 DamageTier = _tier,
                 Damage = damage,
-                Knockback = new(knockback.X, knockback.Y, knockback.Z)
+                Knockback = new float[] { knockback.X, knockback.Y, knockback.Z }
             };
         }
 
@@ -390,5 +399,5 @@ public sealed class MeleeAttackDamagePacket
     public EnumDamageType DamageType { get; set; }
     public int DamageTier { get; set; }
     public float Damage { get; set; }
-    public Vector3 Knockback { get; set; }
+    public float[] Knockback { get; set; }
 }

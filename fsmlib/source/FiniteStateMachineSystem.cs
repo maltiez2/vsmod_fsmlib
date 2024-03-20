@@ -1,5 +1,6 @@
 ﻿using HarmonyLib;
 using MaltiezFSM.API;
+using MaltiezFSM.Framework.Simplified.Systems;
 using Newtonsoft.Json.Linq;
 using System.Reflection;
 using Vintagestory.API.Client;
@@ -64,11 +65,13 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         if (api is ICoreClientAPI clientApi)
         {
             RegisterInputInvokers(clientApi);
+            MeleeSynchronizer.Init(clientApi);
         }
         if (api is ICoreServerAPI serverApi)
         {
             RegisterInputInvokers(serverApi);
             serverApi.Event.PlayerJoin += (byPlayer) => AddPlayerBehavior(byPlayer.Entity);
+            MeleeSynchronizer.Init(serverApi);
         }
         RegisterInputs();
 
@@ -322,6 +325,9 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         Framework.VectorState2._statesCache.Clear();
         Framework.VectorState3._statesCache.Clear();
         Framework.VectorState4._statesCache.Clear();
+
+        MeleeSynchronizer._clientChannel = null;
+        MeleeSynchronizer._api = null;
 
         base.Dispose();
     }

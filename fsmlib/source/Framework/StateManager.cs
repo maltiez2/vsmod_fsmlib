@@ -28,12 +28,12 @@ internal sealed class StateManager : IStateManager
     public IState Get(ItemSlot slot) => ReadStateFrom(slot);
     public void Set(ItemSlot slot, IState state)
     {
-        if (state is not State supportedState)
+        /*if (state is not State supportedState)
         {
             Logger.Error(_api, this, $"Unsupported state class was passed: {state}");
             return;
-        }
-        WriteStateTo(slot, supportedState);
+        }*/
+        WriteStateTo(slot, state);
     }
     public void Reset(ItemSlot slot) => WriteStateTo(slot, _deserialize(_initialState));
 
@@ -263,8 +263,8 @@ public sealed class VectorState2 : IState, IEquatable<VectorState2>
     {
         return elementIndex switch
         {
-            1 => Deserialize($"{value}-{state._second}"),
-            2 => Deserialize($"{state._first}-{value}"),
+            0 => Deserialize($"{value}-{state._second}"),
+            1 => Deserialize($"{state._first}-{value}"),
             _ => throw new ArgumentException($"Tried to set state element with index '{elementIndex}' greater or equal to dimension '2' of state '{state}'.", nameof(elementIndex))
         };
     }
@@ -329,9 +329,9 @@ public sealed class VectorState3 : IState, IEquatable<VectorState3>
     {
         return elementIndex switch
         {
-            1 => Deserialize($"{value}-{state._second}-{state._third}"),
-            2 => Deserialize($"{state._first}-{value}-{state._third}"),
-            3 => Deserialize($"{state._first}-{state._second}-{value}"),
+            0 => Deserialize($"{value}-{state._second}-{state._third}"),
+            1 => Deserialize($"{state._first}-{value}-{state._third}"),
+            2 => Deserialize($"{state._first}-{state._second}-{value}"),
             _ => throw new ArgumentException($"Tried to set state element with index '{elementIndex}' greater or equal to dimension '3' of state '{state}'.", nameof(elementIndex))
         };
     }
@@ -401,10 +401,10 @@ public sealed class VectorState4 : IState, IEquatable<VectorState4>
     {
         return elementIndex switch
         {
-            1 => Deserialize($"{value}-{state._second}-{state._third}-{state._fourth}"),
-            2 => Deserialize($"{state._first}-{value}-{state._third}-{state._fourth}"),
-            3 => Deserialize($"{state._first}-{state._second}-{value}-{state._fourth}"),
-            4 => Deserialize($"{state._first}-{state._second}-{state._third}-{value}"),
+            0 => Deserialize($"{value}-{state._second}-{state._third}-{state._fourth}"),
+            1 => Deserialize($"{state._first}-{value}-{state._third}-{state._fourth}"),
+            2 => Deserialize($"{state._first}-{state._second}-{value}-{state._fourth}"),
+            3 => Deserialize($"{state._first}-{state._second}-{state._third}-{value}"),
             _ => throw new ArgumentException($"Tried to set state element with index '{elementIndex}' greater or equal to dimension '4' of state '{state}'.", nameof(elementIndex))
         };
     }

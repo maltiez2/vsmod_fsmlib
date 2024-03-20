@@ -177,7 +177,7 @@ public readonly struct LineSegmentCollider
         ItemStack? itemStack = itemSlot?.Itemstack;
         if (itemStack == null) return null;
 
-        AttachmentPointAndPose? attachmentPointAndPose = entity.TpAnimManager?.Animator?.GetAttachmentPointPose(right ? "RightHand" : "LeftHand");
+        AttachmentPointAndPose? attachmentPointAndPose = entity.AnimManager?.Animator?.GetAttachmentPointPose(right ? "RightHand" : "LeftHand");
         if (attachmentPointAndPose == null) return null;
 
         AttachmentPoint attachPoint = attachmentPointAndPose.AttachPoint;
