@@ -328,6 +328,7 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
 
         MeleeSynchronizer._clientChannel = null;
         MeleeSynchronizer._api = null;
+        MeleeSynchronizer._attacks.Clear();
 
         base.Dispose();
     }
