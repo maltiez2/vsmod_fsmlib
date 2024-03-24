@@ -53,6 +53,16 @@ internal static class InputsUtils
             IStatusModifier.StatusType.FeetInLiquid => player.Entity.FeetInLiquid,
             IStatusModifier.StatusType.InLava => player.Entity.InLava,
             IStatusModifier.StatusType.OnGround => player.Entity.OnGround,
+            IStatusModifier.StatusType.Jump => player.Entity.Controls.Jump,
+            IStatusModifier.StatusType.Sprint => player.Entity.Controls.Sprint,
+            IStatusModifier.StatusType.FloorSitting => player.Entity.Controls.FloorSitting,
+            IStatusModifier.StatusType.Gliding => player.Entity.Controls.Gliding,
+            IStatusModifier.StatusType.Sneak => player.Entity.Controls.Sneak,
+            IStatusModifier.StatusType.TriesToMove => player.Entity.Controls.TriesToMove,
+            IStatusModifier.StatusType.Forward => player.Entity.Controls.Forward,
+            IStatusModifier.StatusType.Backward => player.Entity.Controls.Backward,
+            IStatusModifier.StatusType.Down => player.Entity.Controls.Down,
+            IStatusModifier.StatusType.Up => player.Entity.Controls.Up,
             _ => false,
         };
     }

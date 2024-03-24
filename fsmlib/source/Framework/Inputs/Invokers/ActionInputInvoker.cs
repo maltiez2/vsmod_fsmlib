@@ -1,6 +1,4 @@
 ﻿using MaltiezFSM.API;
-using System.Collections.Generic;
-using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 
@@ -30,7 +28,7 @@ public sealed class ActionInputInvoker : IInputInvoker, IActionInputInvoker
         mClientApi = api;
         api.Input.InWorldAction += OnEntityAction;
 
-        for (EnumEntityAction action = EnumEntityAction.Forward; action <= EnumEntityAction.InWorldRightMouseDown; action++)
+        foreach (EnumEntityAction action in Enum.GetValues<EnumEntityAction>())
         {
             mActionsStatuses[action] = false;
         }

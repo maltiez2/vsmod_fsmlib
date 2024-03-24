@@ -24,6 +24,12 @@ public readonly struct LineSegmentCollider
         Direction = new(json["X2"].AsFloat(0), json["Y2"].AsFloat(0), json["Z2"].AsFloat(0));
         Direction -= Position;
     }
+    public LineSegmentCollider(params float[] positions)
+    {
+        Position = new(positions[0], positions[1], positions[2]);
+        Direction = new(positions[3], positions[4], positions[5]);
+        Direction -= Position;
+    }
 
     public void RenderAsLine(ICoreClientAPI api, EntityPlayer entityPlayer, int color = ColorUtil.WhiteArgb)
     {

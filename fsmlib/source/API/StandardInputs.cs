@@ -26,7 +26,17 @@ public interface IStatusModifier
         EyesSubmerged,
         FeetInLiquid,
         InLava,
-        OnGround
+        OnGround,
+        Jump,
+        Sprint,
+        FloorSitting,
+        Gliding,
+        Sneak,
+        TriesToMove,
+        Forward,
+        Backward,
+        Down,
+        Up
     }
     IStandardInput.MultipleCheckType StatusCheckType { get; }
     StatusType[] Statuses { get; }

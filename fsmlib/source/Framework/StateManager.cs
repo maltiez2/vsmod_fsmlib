@@ -25,7 +25,18 @@ internal sealed class StateManager : IStateManager
         _serverStateAttribute = $"{_stateAttributeNameServer}.{id}";
     }
     public IState DeserializeState(string state) => _deserialize(state);
-    public IState Get(ItemSlot slot) => ReadStateFrom(slot);
+    public IState Get(ItemSlot slot)
+    {
+        try
+        {
+            return ReadStateFrom(slot);
+        }
+        catch
+        {
+            Reset(slot);
+            return ReadStateFrom(slot);
+        }
+    }
     public void Set(ItemSlot slot, IState state)
     {
         /*if (state is not State supportedState)

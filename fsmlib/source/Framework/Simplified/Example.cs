@@ -38,8 +38,6 @@ public class BaseItemInteractions
     [InputHandler(state: "idle", "StartAttack")]
     protected bool OnAttack(ItemSlot slot, IPlayer? player, IInput input, IState state)
     {
-        Console.WriteLine("OnAttack");
-        
         if (OnAttackStart(slot, player))
         {
             Fsm.SetState(slot, "attacking");

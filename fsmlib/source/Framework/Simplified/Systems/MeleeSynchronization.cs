@@ -51,6 +51,7 @@ internal static class MeleeSynchronizer
     private static void HandlePacket(IServerPlayer player, MeleeAttackPacket packet)
     {
         (long PlayerId, long AttackId) attackId = (packet.PlayerId, packet.AttackId);
+
         if (!_attacks.ContainsKey(attackId)) return;
 
         int range = (int)Math.Ceiling(_attacks[attackId].range * _rangeFactor);
@@ -67,7 +68,10 @@ internal static class MeleeSynchronizer
         Entity target = _api.World.GetEntityById(packet.Target);
         Entity attacker = _api.World.GetEntityById(packet.CauseEntity);
 
-        if (!target.ServerPos.InRangeOf(attacker.ServerPos, range * range)) return;
+        if (!target.ServerPos.InRangeOf(attacker.ServerPos, range * range))
+        {
+            return;
+        }
 
         target.ReceiveDamage(new DamageSource()
         {
@@ -79,6 +83,8 @@ internal static class MeleeSynchronizer
         }, packet.Damage);
 
         Vec3f knockback = new(packet.Knockback);
+        target.SidedPos.Motion.X *= packet.Stagger;
+        target.SidedPos.Motion.Y *= packet.Stagger;
         target.SidedPos.Motion.Add(knockback);
     }
 }
@@ -101,6 +107,7 @@ public sealed class MeleeAttackDamagePacket
     public int DamageTier { get; set; }
     public float Damage { get; set; }
     public float[] Knockback { get; set; } = Array.Empty<float>();
+    public float Stagger { get; set; }
 }
 
 [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]

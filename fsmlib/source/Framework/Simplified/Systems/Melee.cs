@@ -1,4 +1,7 @@
-﻿using System.Collections.Immutable;
+﻿using CompactExifLib;
+using MaltiezFSM.Systems;
+using OpenTK.Windowing.GraphicsLibraryFramework;
+using System.Collections.Immutable;
 using System.Drawing;
 using System.Numerics;
 using Vintagestory.API.Client;
@@ -120,15 +123,15 @@ public sealed class MeleeAttack
         }
     }
 
-    public HitWindow Window { get; }
+    public TimeSpan Duration { get; }
     public IEnumerable<MeleeAttackDamageType> DamageTypes { get; }
     public StatsModifier? DurationModifier { get; }
     public float MaxReach { get; }
 
-    public MeleeAttack(ICoreClientAPI api, HitWindow hitWindow, IEnumerable<MeleeAttackDamageType> damageTypes, float maxReach, StatsModifier? durationModifier = null)
+    public MeleeAttack(ICoreClientAPI api, TimeSpan duration, IEnumerable<MeleeAttackDamageType> damageTypes, float maxReach, StatsModifier? durationModifier = null)
     {
         _api = api;
-        Window = hitWindow;
+        Duration = duration;
         DamageTypes = damageTypes;
         DurationModifier = durationModifier;
         MaxReach = maxReach;
@@ -139,7 +142,7 @@ public sealed class MeleeAttack
         long entityId = player.Entity.EntityId;
 
         _currentTime[entityId] = 0;
-        _totalTime[entityId] = DurationModifier?.Calc(player, (float)Window.End.TotalMilliseconds) ?? (float)Window.End.TotalMilliseconds;
+        _totalTime[entityId] = DurationModifier?.Calc(player, (float)Duration.TotalMilliseconds) ?? (float)Duration.TotalMilliseconds;
         if (_totalTime[entityId] <= 0) _totalTime[entityId] = 1;
 
         if (_attackedEntities.ContainsKey(entityId))
@@ -156,23 +159,21 @@ public sealed class MeleeAttack
     {
         _currentTime[player.Entity.EntityId] += dt * 1000;
         float progress = GameMath.Clamp(_currentTime[player.Entity.EntityId] / _totalTime[player.Entity.EntityId], 0, 1);
-        Console.WriteLine(progress);
         if (progress >= 1)
         {
             return new(Result.Finished);
         }
-        if (!Window.Check(progress)) return new(Result.None);
 
         bool success = LineSegmentCollider.Transform(DamageTypes, player.Entity, slot, _api, rightHand);
         if (!success) return new(Result.None);
 
-        IEnumerable<(Block block, Vector3 point)> terrainCollisions = CheckTerrainCollision();
+        IEnumerable<(Block block, Vector3 point)> terrainCollisions = CheckTerrainCollision(progress);
 
         if (terrainCollisions.Any()) return new(Result.HitTerrain, terrain: terrainCollisions);
 
         _damagePackets.Clear();
 
-        IEnumerable<(Entity entity, Vector3 point)> entitiesCollisions = CollideWithEntities(player, _damagePackets);
+        IEnumerable<(Entity entity, Vector3 point)> entitiesCollisions = CollideWithEntities(progress, player, _damagePackets);
 
         if (entitiesCollisions.Any())
         {
@@ -199,31 +200,31 @@ public sealed class MeleeAttack
     private readonly HashSet<(Block block, Vector3 point)> _terrainCollisionsBuffer = new();
     private readonly HashSet<(Entity entity, Vector3 point)> _entitiesCollisionsBuffer = new();
 
-    private IEnumerable<(Block block, Vector3 point)> CheckTerrainCollision()
+    private IEnumerable<(Block block, Vector3 point)> CheckTerrainCollision(float progress)
     {
         _terrainCollisionsBuffer.Clear();
-        foreach (MeleeAttackDamageType damageType in DamageTypes)
+        foreach (MeleeAttackDamageType damageType in DamageTypes.Where(item => item.Window.Check(progress)))
         {
             (Block block, Vector3 position)? result = damageType._inWorldCollider.IntersectTerrain(_api);
 
             if (result != null)
             {
                 _terrainCollisionsBuffer.Add(result.Value);
-                SpawnTerrainCollisionParticles(damageType, result.Value.block, result.Value.position);
-                if (damageType.TerrainCollisionSound != null) _api.World.PlaySoundAt(damageType.TerrainCollisionSound, result.Value.position.X, result.Value.position.Y, result.Value.position.Z, randomizePitch: false);
+                Vector3 direction = damageType._inWorldCollider.Direction / damageType._inWorldCollider.Direction.Length() * -1;
+                damageType.Effects.OnTerrainCollision(result.Value.block, result.Value.position, direction, _api);
             }
         }
 
         return _terrainCollisionsBuffer.ToImmutableHashSet();
     }
-    private IEnumerable<(Entity entity, Vector3 point)> CollideWithEntities(IPlayer player, List<MeleeAttackDamagePacket> packets)
+    private IEnumerable<(Entity entity, Vector3 point)> CollideWithEntities(float progress, IPlayer player, List<MeleeAttackDamagePacket> packets)
     {
         long entityId = player.Entity.EntityId;
 
         Entity[] entities = _api.World.GetEntitiesAround(player.Entity.Pos.XYZ, MaxReach, MaxReach);
 
         _entitiesCollisionsBuffer.Clear();
-        foreach (MeleeAttackDamageType damageType in DamageTypes)
+        foreach (MeleeAttackDamageType damageType in DamageTypes.Where(item => item.Window.Check(progress)))
         {
             foreach (
                 (Entity entity, Vector3 point) entry in entities
@@ -267,79 +268,104 @@ public sealed class MeleeAttack
         if (attacked)
         {
             _attackedEntities[player.Entity.EntityId].Add(entity.EntityId);
-            SpawnEntityCollisionParticles(damageType, entity, result.Value);
-            if (damageType.EntityCollisionSound != null) _api.World.PlaySoundAt(damageType.EntityCollisionSound, entity, randomizePitch: false);
+            Vector3 direction = damageType._inWorldCollider.Direction / damageType._inWorldCollider.Direction.Length() * -1;
+            damageType.Effects.OnEntityCollision(entity, result.Value, direction, _api);
         }
 
         return attacked ? result : null;
-    }
-    private void SpawnTerrainCollisionParticles(MeleeAttackDamageType damageType, Block block, Vector3 position)
-    {
-        foreach (AdvancedParticleProperties particles in damageType.TerrainCollisionParticles.Where(entry => WildcardUtil.Match(entry.Key, block.Code.ToString())).Select(entry => entry.Value))
-        {
-            particles.basePos.X = position.X;
-            particles.basePos.Y = position.Y;
-            particles.basePos.Z = position.Z;
-            _api.World.SpawnParticles(particles);
-        }
-    }
-    private void SpawnEntityCollisionParticles(MeleeAttackDamageType damageType, Entity entity, Vector3 position)
-    {
-        foreach (AdvancedParticleProperties particles in damageType.EntityCollisionParticles.Where(entry => WildcardUtil.Match(entry.Key, entity.Code.ToString())).Select(entry => entry.Value))
-        {
-            particles.basePos.X = position.X;
-            particles.basePos.Y = position.Y;
-            particles.basePos.Z = position.Z;
-            _api.World.SpawnParticles(particles);
-        }
     }
 }
 
 public readonly struct HitWindow
 {
-    public readonly TimeSpan Start;
-    public readonly TimeSpan End;
-    public readonly float Progress;
-    public HitWindow(TimeSpan start, TimeSpan end)
+    public readonly float Start;
+    public readonly float End;
+    public HitWindow(float start, float end)
     {
-        Progress = (float)(start / end);
         Start = start;
         End = end;
     }
 
-    public readonly bool Check(float progress) => progress > Progress;
+    public readonly bool Check(float progress) => progress >= Start && progress <= End;
+}
+
+public sealed class CollisionEffects
+{
+    public Dictionary<string, AssetLocation> EntityCollisionSounds { get; set; } = new();
+    public Dictionary<string, AssetLocation> TerrainCollisionSounds { get; set; } = new();
+    public Dictionary<string, (AdvancedParticleProperties effect, float directionFactor)> TerrainCollisionParticles { get; set; } = new();
+    public Dictionary<string, (AdvancedParticleProperties effect, float directionFactor)> EntityCollisionParticles { get; set; } = new();
+
+    public void OnTerrainCollision(Block block, Vector3 position, Vector3 direction, ICoreAPI api)
+    {
+        foreach (AssetLocation sound in TerrainCollisionSounds.Where(entry => WildcardUtil.Match(entry.Key, block.Code.ToString())).Select(entry => entry.Value))
+        {
+            api.World.PlaySoundAt(sound, position.X, position.Y, position.Z, randomizePitch: true);
+            break;
+        }
+
+        foreach ((AdvancedParticleProperties effect, float directionFactor) in TerrainCollisionParticles.Where(entry => WildcardUtil.Match(entry.Key, block.Code.ToString())).Select(entry => entry.Value))
+        {
+            effect.basePos.X = position.X;
+            effect.basePos.Y = position.Y;
+            effect.basePos.Z = position.Z;
+            effect.baseVelocity.X = direction.X * directionFactor;
+            effect.baseVelocity.Y = direction.Y * directionFactor;
+            effect.baseVelocity.Z = direction.Z * directionFactor;
+            api.World.SpawnParticles(effect);
+        }
+    }
+    public void OnEntityCollision(Entity entity, Vector3 position, Vector3 direction, ICoreAPI api)
+    {
+        foreach (AssetLocation sound in EntityCollisionSounds.Where(entry => WildcardUtil.Match(entry.Key, entity.Code.ToString())).Select(entry => entry.Value))
+        {
+            api.World.PlaySoundAt(sound, entity, randomizePitch: true);
+            break;
+        }
+
+        foreach ((AdvancedParticleProperties effect, float directionFactor) in EntityCollisionParticles.Where(entry => WildcardUtil.Match(entry.Key, entity.Code.ToString())).Select(entry => entry.Value))
+        {
+            effect.basePos.X = position.X;
+            effect.basePos.Y = position.Y;
+            effect.basePos.Z = position.Z;
+            effect.baseVelocity.X = direction.X * directionFactor;
+            effect.baseVelocity.Y = direction.Y * directionFactor;
+            effect.baseVelocity.Z = direction.Z * directionFactor;
+            api.World.SpawnParticles(effect);
+        }
+    }
 }
 
 public sealed class MeleeAttackDamageType
 {
     public LineSegmentCollider Collider { get; }
     public LineSegmentCollider InWorldCollider => _inWorldCollider;
-    public AssetLocation? EntityCollisionSound { get; }
-    public AssetLocation? TerrainCollisionSound { get; }
-    public Dictionary<string, AdvancedParticleProperties> TerrainCollisionParticles { get; set; } = new();
-    public Dictionary<string, AdvancedParticleProperties> EntityCollisionParticles { get; set; } = new();
+    public HitWindow Window { get; }
+    public CollisionEffects Effects { get; set; }
 
     public MeleeAttackDamageType(
         float damage,
         EnumDamageType damageType,
         LineSegmentCollider collider,
+        HitWindow hitWindow,
         int tier = 0,
         float knockback = 0,
+        float stagger = 1.0f,
         StatsModifier? damageModifier = null,
         StatsModifier? knockbackModifier = null,
-        AssetLocation? hitSound = null,
-        AssetLocation? terrainSound = null)
+        CollisionEffects? effects = null)
     {
         _damage = damage;
         _damageType = damageType;
         _tier = tier;
         _knockback = knockback;
+        _stagger = stagger;
         _damageModifier = damageModifier;
         _knockbackModifier = knockbackModifier;
         Collider = collider;
+        Window = hitWindow;
         _inWorldCollider = collider;
-        TerrainCollisionSound = terrainSound;
-        EntityCollisionSound = hitSound;
+        Effects = effects ?? new();
     }
 
     public bool Attack(IPlayer attacker, Entity target, out MeleeAttackDamagePacket? packet)
@@ -356,9 +382,13 @@ public sealed class MeleeAttackDamageType
 
         packet = null;
 
-        if (damageReceived)
+        bool received = damageReceived || damage <= 0;
+
+        if (received)
         {
-            Vec3f knockback = (target.Pos.XYZFloat - attacker.Entity.Pos.XYZFloat).Normalize() * GetKnockback(attacker) / 10f * target.Properties.KnockbackResistance;
+            Vec3f knockback = (target.Pos.XYZFloat - attacker.Entity.Pos.XYZFloat).Normalize() * GetKnockback(attacker) * _knockbackFactor * target.Properties.KnockbackResistance;
+            target.SidedPos.Motion.X *= _stagger;
+            target.SidedPos.Motion.Z *= _stagger;
             target.SidedPos.Motion.Add(knockback);
 
             packet = new()
@@ -369,21 +399,24 @@ public sealed class MeleeAttackDamageType
                 DamageType = _damageType,
                 DamageTier = _tier,
                 Damage = damage,
-                Knockback = new float[] { knockback.X, knockback.Y, knockback.Z }
+                Knockback = new float[] { knockback.X, knockback.Y, knockback.Z },
+                Stagger = _stagger
             };
         }
 
-        return damageReceived;
+        return received;
     }
 
     internal LineSegmentCollider _inWorldCollider;
 
     private readonly float _damage;
     private readonly float _knockback;
+    private readonly float _stagger;
     private readonly int _tier;
     private readonly EnumDamageType _damageType;
     private readonly StatsModifier? _damageModifier;
     private readonly StatsModifier? _knockbackModifier;
+    private const float _knockbackFactor = 0.0625f;
 
     private float GetDamage(IPlayer attacker)
     {
