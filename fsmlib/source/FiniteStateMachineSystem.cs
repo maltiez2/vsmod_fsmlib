@@ -52,6 +52,9 @@ public class FiniteStateMachineSystem : ModSystem, IRegistry
         api.RegisterEntityBehaviorClass("tempresists", typeof(Additional.EntityBehaviorResists));
         api.RegisterEntityBehaviorClass("EntityBehaviorAimingAccuracyNoReticle", typeof(Systems.EntityBehaviorAimingAccuracyNoReticle));
 
+        api.RegisterBlockClass("FSMlib:GenericDisplayBlock", typeof(Additional.GenericDisplayBlock));
+        api.RegisterBlockEntityClass("FSMlib:GenericDisplayBlockEntity", typeof(Additional.GenericDisplayBlockEntity));
+
         mAttributeReferencesManager = new Framework.AttributeReferencesManager(api);
 
         mInputsIdGenerator = new Framework.UniqueIdGeneratorForFactory(3);

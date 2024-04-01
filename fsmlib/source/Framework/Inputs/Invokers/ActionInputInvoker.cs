@@ -84,10 +84,10 @@ public sealed class ActionInputInvoker : IInputInvoker, IActionInputInvoker
 
         foreach (EnumEntityAction action in input.Actions)
         {
-            if (!mActionsStatuses[action]) return false;
+            if (mActionsStatuses[action]) return true;
         }
 
-        return true;
+        return false;
     }
 
     public void RegisterInput(IInput input, IInputInvoker.InputCallback callback, CollectibleObject collectible)

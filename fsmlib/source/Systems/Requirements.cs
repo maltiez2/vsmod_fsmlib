@@ -85,8 +85,13 @@ public class Requirements : BaseSystem, IItemStackHolder, IRequirementsSystem
         string action = parameters["action"].AsString("check");
 
         if (action == "empty") return Empty(slot);
+        if (action == "notempty") return !Empty(slot);
+        if (action == "add" && !CheckAmount(slot, player, parameters["max"].AsInt(1)))
+        {
+            return false;
+        }
 
-        if (action != "take" && action != "check") return true;
+        if (action != "take" && action != "check" && action != "add") return true;
 
         string? code = parameters["requirement"].AsString();
 
@@ -137,10 +142,10 @@ public class Requirements : BaseSystem, IItemStackHolder, IRequirementsSystem
         switch (action)
         {
             case "empty":
+            case "notempty":
             case "check":
                 break;
             case "take":
-
                 string? code = parameters["requirement"].AsString();
                 if (code == null)
                 {
@@ -155,6 +160,21 @@ public class Requirements : BaseSystem, IItemStackHolder, IRequirementsSystem
 
                 Take(slot, player, mRequirements[code]);
                 break;
+            case "add":
+                string? code2 = parameters["requirement"].AsString();
+                if (code2 == null)
+                {
+                    LogError($"No 'requirement' in system request");
+                    return false;
+                }
+                if (!mRequirements.ContainsKey(code2))
+                {
+                    LogError($"Requirement with code '{code2}' not found.");
+                    return false;
+                }
+                int max = parameters["max"].AsInt(1);
+
+                return Add(slot, player, mRequirements[code2], max);
             case "amount":
                 if (mApi.Side == EnumAppSide.Client) return true;
                 int amount = parameters["amount"].AsInt(1);
@@ -302,6 +322,39 @@ public class Requirements : BaseSystem, IItemStackHolder, IRequirementsSystem
 
         ClearStacks(slot);
         WriteStacks(slot, stacks);
+    }
+    protected bool Add(ItemSlot slot, IPlayer player, List<IRequirement> requirements, int max)
+    {
+        List<ItemSlot> stacks = ReadStacks(slot).ToList();
+        int amount = stacks.Select(element => element.Itemstack.StackSize).Sum();
+        if (amount >= max) return false;
+
+        bool selected = false;
+        if (mAmmoSelector?.Enabled == true)
+        {
+            stacks.Add(mAmmoSelector.Process(player));
+            int index = stacks.Count - 1;
+            if (stacks[index]?.Itemstack != null && stacks[index].Itemstack.StackSize > 0) selected = true;
+        }
+        if (!selected)
+        {
+            foreach (IRequirement requirement in requirements)
+            {
+                IEnumerable<ItemSlot> requirementStacks = requirement.Process(player);
+
+                stacks.AddRange(requirementStacks);
+            }
+        }
+
+        ClearStacks(slot);
+        WriteStacks(slot, stacks);
+        return true;
+    }
+    protected bool CheckAmount(ItemSlot slot, IPlayer player, int max)
+    {
+        List<ItemSlot> stacks = ReadStacks(slot).ToList();
+        int amount = stacks.Select(element => element.Itemstack.StackSize).Sum();
+        return amount < max;
     }
     protected void Put(ItemSlot slot, IPlayer player)
     {
